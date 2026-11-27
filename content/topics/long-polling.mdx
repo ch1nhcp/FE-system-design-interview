@@ -1,0 +1,119 @@
+---
+description: The server holds each request open until it has news or a timeout passes, then the client asks again.
+visual: animation
+related: [short-polling, server-sent-events, websockets, retries]
+---
+
+## TL;DR
+
+The client sends a request and the server keeps it open until there is new data, then responds.
+The client immediately sends the next request, so updates arrive almost instantly over plain HTTP.
+When nothing happens before a timeout, the server answers empty and the client simply asks again.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RealtimeTransportAnimation initialMode="longPolling" />
+</VisualTab>
+<VisualTab kind="code">
+
+```ts
+type Batch<T> = { events: T[]; cursor: string };
+
+// One request at a time. The cursor makes sure no event is lost between two requests.
+export async function longPoll<T>(url: string, onEvents: (events: T[]) => void, signal: AbortSignal) {
+  let cursor = '';
+  let failures = 0;
+
+  while (!signal.aborted) {
+    try {
+      const response = await fetch(`${url}?after=${encodeURIComponent(cursor)}`, { signal });
+      if (response.status === 204) continue; // timed out with no news: ask again
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const batch = (await response.json()) as Batch<T>;
+      cursor = batch.cursor;
+      failures = 0;
+      onEvents(batch.events);
+    } catch {
+      if (signal.aborted) return;
+      // Exponential backoff with full jitter, so a server restart does not cause a reconnect storm.
+      failures += 1;
+      const delay = Math.random() * Math.min(30_000, 1000 * 2 ** failures);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Updates arrive about one round trip after they are ready, over ordinary HTTP.
+- Every update still costs a full request and response, headers included.
+- Each waiting client holds a request open, so the server must keep many idle requests cheaply.
+- Answer before proxies and load balancers cut idle connections, typically after 20 to 60 seconds.
+- Send a cursor, the id of the last event seen, so events between two requests are not lost.
+
+## Trade-offs
+
+| Strengths                                | Weaknesses                                |
+| ---------------------------------------- | ----------------------------------------- |
+| Near real-time without a new protocol    | One request and response per update       |
+| Works where WebSockets are blocked       | Servers hold many open requests           |
+| Fewer empty responses than short polling | Missed and duplicate events need a cursor |
+
+## Interview questions
+
+<InterviewQuestion question="How is long polling different from short polling?">
+
+Short polling asks on a timer and usually gets nothing back.
+With long polling the server waits until it has something to say, so most responses carry data and arrive right after the update.
+The price is that every waiting client keeps a request open on the server.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you make sure no events are lost between two requests?">
+
+Give every event an increasing id, or cursor.
+The client sends the last cursor it saw, and the server returns everything after it, keeping recent events in a buffer for a while.
+The client ignores events it already has, so a retried request is harmless.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What breaks when many clients long-poll at once?">
+
+Each waiting request uses a connection and memory, and a thread on thread-per-request servers, so use an event-driven server.
+Proxies and load balancers may cut idle requests, so keep the server timeout below theirs.
+After a deploy every client reconnects at once unless retries use jittered backoff.
+On HTTP/1.1 a browser allows about six connections per domain, and each pending long poll takes one.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The server parks the request instead of answering it.
+When an event arrives or the timeout fires, it writes the response, and the client immediately sends the next request with its cursor.
+A timeout answer is usually `204 No Content` or an empty list, never an error.
+
+### Edge cases
+
+- Events that happen while the next request is still in flight must be buffered on the server and returned by that request.
+- Several tabs each holding a long poll can use up the six connections per domain that HTTP/1.1 allows, which stalls other requests.
+- The server, proxies and the browser all have timeouts; the server has to answer before any of the others give up.
+
+### Common mistakes
+
+- No cursor, so events are lost or delivered twice.
+- Retrying immediately after an error, which hammers a server that is already struggling.
+- Not aborting the pending request on unmount, which keeps a connection busy for nothing.
+
+### References
+
+- [RFC 6202: Known issues and best practices for long polling and streaming](https://www.rfc-editor.org/rfc/rfc6202.html)
+- [AbortController on MDN](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)
+
+</DeepDive>

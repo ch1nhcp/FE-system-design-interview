@@ -1,0 +1,127 @@
+---
+description: A long-lived HTTP response that streams events from the server to the client, with reconnection built in.
+visual: animation
+related: [websockets, long-polling, short-polling, offline-usage]
+---
+
+## TL;DR
+
+The browser opens an `EventSource`, a normal HTTP request whose response never ends.
+The server writes events into that stream as soon as it has them, and the browser reconnects on its own if the connection drops.
+Data only flows from server to client.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RealtimeTransportAnimation initialMode="serverSentEvents" />
+</VisualTab>
+<VisualTab kind="code">
+
+```ts
+type AppNotification = { id: string; title: string };
+
+export function subscribeToNotifications(
+  onNotification: (notification: AppNotification) => void,
+  onConnectionLost: () => void,
+) {
+  const source = new EventSource('/api/notifications');
+
+  source.addEventListener('notification', (event) => {
+    onNotification(JSON.parse(event.data) as AppNotification);
+  });
+
+  source.addEventListener('error', () => {
+    // The browser retries on its own. CLOSED means it gave up.
+    if (source.readyState === EventSource.CLOSED) {
+      onConnectionLost();
+    }
+  });
+
+  return () => source.close();
+}
+```
+
+What the server writes to the stream:
+
+```text
+retry: 5000
+
+id: 42
+event: notification
+data: {"id":"42","title":"New comment on your post"}
+
+: heartbeat, keeps proxies from closing an idle stream
+
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- One way, from server to client; the client sends data with normal requests.
+- The browser reconnects automatically and sends `Last-Event-ID`, so the server can replay missed events.
+- Plain HTTP with `Content-Type: text/event-stream`, so cookies, HTTP/2 and most infrastructure just work.
+- Text only, and the native `EventSource` cannot set custom headers such as `Authorization`.
+- A great fit for notifications, live feeds, progress updates and streaming AI responses.
+
+## Trade-offs
+
+| Strengths                          | Weaknesses                                       |
+| ---------------------------------- | ------------------------------------------------ |
+| Reconnection and replay built in   | Server to client only                            |
+| Plain HTTP, easy auth with cookies | Text only, no custom headers in `EventSource`    |
+| Very little client code            | Proxies may buffer the stream unless told not to |
+| Multiplexed for free over HTTP/2   | About six streams per domain on HTTP/1.1         |
+
+## Interview questions
+
+<InterviewQuestion question="When is SSE a better choice than WebSockets?">
+
+When data mostly flows from the server: notifications, feeds, dashboards, progress bars or tokens from an AI model.
+SSE gives you reconnection, event ids and plain HTTP for free.
+Choose WebSockets when the client also sends frequent, low-latency messages, like typing indicators, collaborative editing or games.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How does SSE recover from a dropped connection?">
+
+The browser reconnects after a delay the server can set with `retry:`.
+It sends the id of the last event it received in the `Last-Event-ID` header, and the server replays newer events from a buffer or a database.
+The client should still ignore events it has already seen, by id.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What are the limits of SSE?">
+
+It only goes one way, carries text only and, on HTTP/1.1, each stream uses one of the six or so connections the browser allows per domain.
+`EventSource` cannot send an `Authorization` header, so use cookies or a fetch-based client.
+Proxies that buffer responses delay events, so disable buffering (`X-Accel-Buffering: no` on nginx) and send a heartbeat comment every 15 to 30 seconds.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The response stays open, and the server writes blocks of `field: value` lines, each block ending with a blank line.
+`data` holds the payload, `event` names the event type, `id` sets the last event id and `retry` changes the reconnection delay.
+Lines starting with a colon are comments, which make good heartbeats.
+
+### Edge cases
+
+- Compression or proxy buffering can hold events back until a buffer fills, so flush after every event.
+- After a server restart every client reconnects at once; a `retry` value with some randomness spreads the load.
+- Background tabs keep their streams open; close them when the data is not needed and reopen on `visibilitychange`.
+
+### Common mistakes
+
+- Forgetting `id`, which makes replay after a reconnect impossible.
+- Not closing the `EventSource` on unmount, which leaks a connection.
+- Using SSE for heavy client to server traffic, which is what WebSockets are for.
+
+### References
+
+- [Using server-sent events on MDN](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
+- [Server-sent events in the HTML Living Standard](https://html.spec.whatwg.org/multipage/server-sent-events.html)
+
+</DeepDive>

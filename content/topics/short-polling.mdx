@@ -1,0 +1,122 @@
+---
+description: The client asks the server for new data on a fixed interval, whether or not anything changed.
+visual: animation
+related: [long-polling, server-sent-events, websockets, retries]
+---
+
+## TL;DR
+
+The client sends an ordinary HTTP request every few seconds to ask whether anything changed.
+It is the simplest real-time technique and works with any server, but most requests come back empty and an update can arrive up to one interval late.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RealtimeTransportAnimation initialMode="shortPolling" />
+</VisualTab>
+<VisualTab kind="code">
+
+```ts
+type PollOptions<T> = {
+  url: string;
+  intervalMs: number;
+  onData: (data: T) => void;
+  onError: (error: unknown) => void;
+};
+
+// Chain setTimeout so a new request only starts after the previous one finished.
+export function startPolling<T>({ url, intervalMs, onData, onError }: PollOptions<T>) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let stopped = false;
+
+  const poll = async () => {
+    try {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      onData((await response.json()) as T);
+    } catch (error) {
+      onError(error); // keep showing the last data and try again next tick
+    } finally {
+      if (!stopped) timer = setTimeout(poll, intervalMs);
+    }
+  };
+
+  void poll();
+  return () => {
+    stopped = true;
+    clearTimeout(timer);
+  };
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Plain HTTP requests on a timer, so it works with any server, cache and load balancer.
+- An update waits up to one interval, plus a round trip, before the client sees it.
+- Cost grows with clients times frequency, even when nothing changes.
+- Make it cheaper with adaptive intervals, `ETag` with `304 Not Modified`, and pausing in hidden tabs.
+- A good fit for slow-changing data where a few seconds of delay is fine, such as job status or a dashboard.
+
+## Trade-offs
+
+| Strengths                              | Weaknesses                            |
+| -------------------------------------- | ------------------------------------- |
+| Simplest to build, debug and cache     | Many empty requests                   |
+| Stateless servers scale horizontally   | Latency up to one interval            |
+| Works through every proxy and firewall | Load grows with clients and frequency |
+
+## Interview questions
+
+<InterviewQuestion question="When would you choose short polling over WebSockets?">
+
+When updates are infrequent or a few seconds of delay is acceptable, such as checking whether a report export has finished.
+Polling needs no new infrastructure, survives restrictive proxies and keeps servers stateless.
+Switch to server-sent events or WebSockets once updates must feel instant or the empty requests start to cost real money.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you reduce the cost of polling?">
+
+Poll less: back off while nothing changes, speed up after the user acts, and pause while the tab is hidden (`visibilitychange`).
+Make each poll cheaper with conditional requests: send `If-None-Match` with the last `ETag`, and the server answers `304 Not Modified` without a body.
+Add jitter to the interval so thousands of clients do not hit the server in the same second.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why chain setTimeout instead of using setInterval?">
+
+`setInterval` fires on schedule even if the previous request has not finished, so slow responses overlap and can arrive out of order.
+Scheduling the next poll in `finally` keeps exactly one request in flight and naturally slows down when the server is slow.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Each poll is a complete HTTP exchange.
+Connection reuse helps, but every request still carries headers, cookies and authentication.
+The server answers from its current state and forgets the client until the next request, which is why polling scales so easily.
+
+### Edge cases
+
+- Hidden tabs: browsers throttle timers in background tabs, so check `document.visibilityState` and poll right away when the tab becomes visible again.
+- Out-of-order responses: if requests can overlap, for example after a manual refresh, ignore responses older than the data already on screen.
+- Offline: skip polls while `navigator.onLine` is false and poll as soon as the `online` event fires.
+- Many tabs: each tab polls on its own; a `BroadcastChannel` or a shared worker lets one tab poll for all of them.
+
+### Common mistakes
+
+- Using `setInterval`, which piles up requests when the server is slow.
+- Forgetting to stop polling on unmount, which leaks timers and requests.
+- Giving every client the same interval with no jitter, which creates traffic spikes.
+- Polling every second for data that changes once an hour.
+
+### References
+
+- [Page Visibility API on MDN](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API)
+- [HTTP conditional requests on MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Conditional_requests)
+
+</DeepDive>
