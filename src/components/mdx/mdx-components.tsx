@@ -1,7 +1,9 @@
 import type { MDXComponents } from 'mdx/types';
 import type { ComponentProps } from 'react';
 
+import { FlowDiagram } from '@/components/visuals/flow-diagram/flow-diagram';
 import { RealtimeTransportAnimation } from '@/components/visuals/realtime-transport/realtime-transport-animation';
+import { RenderingTimelineAnimation } from '@/components/visuals/rendering-timeline/rendering-timeline-animation';
 import { cn } from '@/lib/utils';
 
 import { DeepDive, InterviewQuestion } from './disclosure';
@@ -43,4 +45,6 @@ export const topicMdxComponents: MDXComponents = {
   DeepDive,
   InterviewQuestion,
   RealtimeTransportAnimation,
+  RenderingTimelineAnimation,
+  FlowDiagram,
 };
