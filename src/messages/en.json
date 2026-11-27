@@ -263,6 +263,82 @@
       "animation": "Animation",
       "diagram": "Diagram",
       "code": "Code"
+    },
+    "rendering": {
+      "title": "Rendering strategies",
+      "modeLabel": "Strategy",
+      "modes": {
+        "csr": "CSR",
+        "ssr": "SSR",
+        "ssg": "SSG / ISR",
+        "streaming": "Streaming"
+      },
+      "diagramLabel": "Timeline of server, network and browser work during a page load with {mode}",
+      "lanes": {
+        "server": "Server",
+        "network": "Network",
+        "browser": "Browser"
+      },
+      "tasks": {
+        "shell": "Shell",
+        "parseShell": "",
+        "bundle": "JS",
+        "execute": "Run JS",
+        "data": "API",
+        "render": "Render",
+        "html": "HTML",
+        "paint": "",
+        "hydrate": "Hydrate",
+        "query": "Slow query",
+        "shellHtml": "Shell",
+        "rest": "Rest",
+        "restPaint": ""
+      },
+      "screen": {
+        "blank": "Blank screen",
+        "spinner": "Loading spinner",
+        "partial": "Page with a placeholder for the slow part",
+        "content": "Full page"
+      },
+      "visible": "Visible",
+      "interactive": "Interactive",
+      "notInteractive": "Not interactive yet",
+      "pending": "…",
+      "statsVisible": "Content visible",
+      "statsInteractive": "Interactive",
+      "statsJavascript": "JavaScript",
+      "msValue": "{ms} ms",
+      "kbValue": "{kb} kB",
+      "captions": {
+        "idle": "Press play, or step through the page load.",
+        "csrShell": "The server sends an almost empty HTML shell.",
+        "csrParse": "The browser can only show a blank page or a spinner.",
+        "csrBundle": "The browser downloads the whole JavaScript bundle.",
+        "csrExecute": "The JavaScript runs and starts fetching data.",
+        "csrData": "The page waits for the API response.",
+        "csrRender": "React renders the page in the browser.",
+        "csrInteractive": "Content appears and works at the same time, but only after everything has loaded.",
+        "ssrRender": "The server fetches data and renders the full HTML.",
+        "ssrHtml": "Complete HTML travels to the browser.",
+        "ssrPaint": "The browser paints the content right away.",
+        "ssrBundle": "Content is on screen, but the JavaScript that makes it work is still downloading.",
+        "ssrHydrate": "React hydrates: it attaches event handlers to the HTML already on screen.",
+        "ssrInteractive": "The page is now interactive.",
+        "ssgHtml": "A CDN serves HTML that was built ahead of time, close to the user.",
+        "ssgPaint": "The browser paints the content almost immediately.",
+        "ssgBundle": "The JavaScript bundle downloads in the background.",
+        "ssgHydrate": "React hydrates the pre-built page.",
+        "ssgInteractive": "Interactive. With ISR, the CDN rebuilds the page in the background once it goes stale.",
+        "streamShell": "The server renders the fast parts and starts streaming right away.",
+        "streamShellHtml": "The shell streams to the browser while a slow query keeps running on the server.",
+        "streamPaint": "The browser paints the shell and fast content, with a placeholder for the slow part.",
+        "streamBundle": "Only client components ship JavaScript, so the bundle is small.",
+        "streamHydrate": "The client components hydrate.",
+        "streamInteractive": "Interactive, even though the slow part is still loading.",
+        "streamRest": "The slow part streams in on the same response.",
+        "streamRestPaint": "The browser swaps the placeholder for the real content.",
+        "streamComplete": "The whole page is ready."
+      }
     }
   }
 }
