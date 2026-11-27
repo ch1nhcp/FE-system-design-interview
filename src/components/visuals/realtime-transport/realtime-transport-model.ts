@@ -1,26 +1,11 @@
 /**
- * Pure model of the "short polling vs WebSocket" animation.
+ * Pure model of the real-time transport animation.
  * Everything the animation shows is derived from a timeline and a point in time, so any frame can be rendered or tested.
  */
+import { buildMessages } from './transport-messages';
+import type { ServerUpdate, TransportConfig, TransportMessage, TransportMode } from './transport-messages';
 
-export type TransportMode = 'shortPolling' | 'webSocket';
-
-export type MessageKind = 'request' | 'emptyResponse' | 'dataResponse' | 'handshake' | 'handshakeAck' | 'push';
-
-export type TransportMessage = {
-  readonly id: string;
-  readonly kind: MessageKind;
-  readonly direction: 'toServer' | 'toClient';
-  readonly sentAt: number;
-  readonly arrivesAt: number;
-  /** 1-based ids of the server updates this message delivers. */
-  readonly updateIds: readonly number[];
-};
-
-export type ServerUpdate = {
-  readonly id: number;
-  readonly at: number;
-};
+export type { MessageKind, ServerUpdate, TransportConfig, TransportMessage, TransportMode } from './transport-messages';
 
 export type CaptionKey =
   | 'idle'
@@ -28,10 +13,21 @@ export type CaptionKey =
   | 'pollRequest'
   | 'emptyResponse'
   | 'dataResponse'
+  | 'longPollRequest'
+  | 'longPollData'
+  | 'longPollTimeout'
+  | 'sseRequest'
+  | 'sseOpen'
+  | 'sseEvent'
+  | 'sseEventArrives'
+  | 'ssePost'
+  | 'ssePostDone'
   | 'handshake'
   | 'handshakeAck'
   | 'push'
-  | 'pushArrives';
+  | 'pushArrives'
+  | 'clientMessage'
+  | 'clientMessageArrives';
 
 export type Caption = {
   readonly key: CaptionKey;
@@ -50,132 +46,85 @@ export type TransportTimeline = {
   readonly stops: readonly number[];
 };
 
-export type TransportConfig = {
-  readonly duration: number;
-  /** One-way network latency in ms. */
-  readonly latency: number;
-  readonly pollInterval: number;
-  /** Times at which new data becomes available on the server. */
-  readonly serverUpdates: readonly number[];
-};
-
 export type TransportStats = {
+  /** HTTP requests the client made. Messages on an open connection do not count. */
   readonly requests: number;
   readonly wasted: number;
   readonly averageDelay: number | null;
 };
 
+export type Span = { readonly from: number; readonly to: number };
+export type WaitingSpan = Span & { readonly updateId: number };
+
 export const DEFAULT_TRANSPORT_CONFIG: TransportConfig = {
   duration: 9000,
   latency: 300,
   pollInterval: 2000,
+  longPollTimeout: 2500,
+  clientMessageAt: 7000,
   serverUpdates: [1200, 4700, 5300],
 };
 
-function toUpdates(config: TransportConfig): ServerUpdate[] {
-  return config.serverUpdates.map((at, index) => ({ id: index + 1, at }));
-}
-
-function buildShortPollingMessages(config: TransportConfig, updates: readonly ServerUpdate[]): TransportMessage[] {
-  const messages: TransportMessage[] = [];
-  let delivered = 0;
-
-  for (let sentAt = 0; sentAt + 2 * config.latency <= config.duration; sentAt += config.pollInterval) {
-    const serverSeesAt = sentAt + config.latency;
-    const ready = updates.filter((update) => update.id > delivered && update.at <= serverSeesAt);
-    const updateIds = ready.map((update) => update.id);
-    delivered = updateIds.at(-1) ?? delivered;
-
-    messages.push(
-      {
-        id: `request-${sentAt}`,
-        kind: 'request',
-        direction: 'toServer',
-        sentAt,
-        arrivesAt: serverSeesAt,
-        updateIds: [],
-      },
-      {
-        id: `response-${sentAt}`,
-        kind: updateIds.length > 0 ? 'dataResponse' : 'emptyResponse',
-        direction: 'toClient',
-        sentAt: serverSeesAt,
-        arrivesAt: serverSeesAt + config.latency,
-        updateIds,
-      },
-    );
-  }
-
-  return messages;
-}
-
-function buildWebSocketMessages(config: TransportConfig, updates: readonly ServerUpdate[]): TransportMessage[] {
-  const openAt = 2 * config.latency;
-  const handshake: TransportMessage[] = [
-    { id: 'handshake', kind: 'handshake', direction: 'toServer', sentAt: 0, arrivesAt: config.latency, updateIds: [] },
-    {
-      id: 'handshake-ack',
-      kind: 'handshakeAck',
-      direction: 'toClient',
-      sentAt: config.latency,
-      arrivesAt: openAt,
-      updateIds: [],
-    },
-  ];
-
-  const pushes = updates.map((update): TransportMessage => {
-    const sentAt = Math.max(update.at, openAt);
-    return {
-      id: `push-${update.id}`,
-      kind: 'push',
-      direction: 'toClient',
-      sentAt,
-      arrivesAt: sentAt + config.latency,
-      updateIds: [update.id],
-    };
-  });
-
-  return [...handshake, ...pushes];
-}
+const HTTP_REQUEST_KINDS = new Set(['request', 'handshake', 'sideRequest']);
 
 function formatUpdateIds(ids: readonly number[]): string {
   return ids.map((id) => `#${id}`).join(', ');
 }
 
+/** Delay of the update that waited longest among those a message delivers. */
 function getDelay(message: TransportMessage, updates: readonly ServerUpdate[]): number {
   const readyTimes = updates.filter((update) => message.updateIds.includes(update.id)).map((update) => update.at);
   return message.arrivesAt - Math.min(...readyTimes);
 }
 
-function messageEvents(message: TransportMessage, updates: readonly ServerUpdate[]): TimelineEvent[] {
-  const firstUpdate = message.updateIds[0] ?? 0;
+function messageEvents(
+  mode: TransportMode,
+  message: TransportMessage,
+  updates: readonly ServerUpdate[],
+): TimelineEvent[] {
+  const update = message.updateIds[0] ?? 0;
+  const isStream = mode === 'serverSentEvents';
+  const isLongPoll = mode === 'longPolling';
 
   switch (message.kind) {
     case 'request':
-      return [{ at: message.sentAt, key: 'pollRequest', values: {} }];
+      if (isLongPoll && message.sentAt > 0) {
+        // A long-poll client asks again the moment a response arrives; that response's caption says so.
+        return [];
+      }
+      return [{ at: message.sentAt, key: isLongPoll ? 'longPollRequest' : 'pollRequest', values: {} }];
     case 'emptyResponse':
-      return [{ at: message.arrivesAt, key: 'emptyResponse', values: {} }];
+      return [{ at: message.arrivesAt, key: isLongPoll ? 'longPollTimeout' : 'emptyResponse', values: {} }];
     case 'dataResponse':
       return [
         {
           at: message.arrivesAt,
-          key: 'dataResponse',
+          key: isLongPoll ? 'longPollData' : 'dataResponse',
           values: { updates: formatUpdateIds(message.updateIds), delay: getDelay(message, updates) },
         },
       ];
     case 'handshake':
-      return [{ at: message.sentAt, key: 'handshake', values: {} }];
+      return [{ at: message.sentAt, key: isStream ? 'sseRequest' : 'handshake', values: {} }];
     case 'handshakeAck':
-      return [{ at: message.arrivesAt, key: 'handshakeAck', values: {} }];
+      return [{ at: message.arrivesAt, key: isStream ? 'sseOpen' : 'handshakeAck', values: {} }];
     case 'push':
       return [
-        { at: message.sentAt, key: 'push', values: { update: firstUpdate } },
+        { at: message.sentAt, key: isStream ? 'sseEvent' : 'push', values: { update } },
         {
           at: message.arrivesAt,
-          key: 'pushArrives',
-          values: { update: firstUpdate, delay: getDelay(message, updates) },
+          key: isStream ? 'sseEventArrives' : 'pushArrives',
+          values: { update, delay: getDelay(message, updates) },
         },
       ];
+    case 'clientMessage':
+      return [
+        { at: message.sentAt, key: 'clientMessage', values: {} },
+        { at: message.arrivesAt, key: 'clientMessageArrives', values: {} },
+      ];
+    case 'sideRequest':
+      return [{ at: message.sentAt, key: 'ssePost', values: {} }];
+    case 'sideResponse':
+      return [{ at: message.arrivesAt, key: 'ssePostDone', values: {} }];
   }
 }
 
@@ -183,9 +132,8 @@ export function buildTransportTimeline(
   mode: TransportMode,
   config: TransportConfig = DEFAULT_TRANSPORT_CONFIG,
 ): TransportTimeline {
-  const updates = toUpdates(config);
-  const messages =
-    mode === 'shortPolling' ? buildShortPollingMessages(config, updates) : buildWebSocketMessages(config, updates);
+  const updates = config.serverUpdates.map((at, index) => ({ id: index + 1, at }));
+  const messages = buildMessages(mode, config, updates);
 
   // Server updates come first so that, at equal times, the message event wins as the caption.
   const updateEvents = updates.map(
@@ -195,7 +143,7 @@ export function buildTransportTimeline(
       values: { update: update.id },
     }),
   );
-  const events = [...updateEvents, ...messages.flatMap((message) => messageEvents(message, updates))].sort(
+  const events = [...updateEvents, ...messages.flatMap((message) => messageEvents(mode, message, updates))].sort(
     (a, b) => a.at - b.at,
   );
 
@@ -207,7 +155,7 @@ export function buildTransportTimeline(
 
 export function getStatsAt(timeline: TransportTimeline, time: number): TransportStats {
   const requests = timeline.messages.filter(
-    (message) => (message.kind === 'request' || message.kind === 'handshake') && message.sentAt <= time,
+    (message) => HTTP_REQUEST_KINDS.has(message.kind) && message.sentAt <= time,
   ).length;
   const wasted = timeline.messages.filter(
     (message) => message.kind === 'emptyResponse' && message.arrivesAt <= time,
@@ -231,12 +179,6 @@ export function getCaptionAt(timeline: TransportTimeline, time: number): Caption
   return latest ? { key: latest.key, values: latest.values } : { key: 'idle', values: {} };
 }
 
-export type WaitingSpan = {
-  readonly updateId: number;
-  readonly from: number;
-  readonly to: number;
-};
-
 /** How long each ready update has been sitting on the server, up to `time` or until a message carries it away. */
 export function getWaitingSpans(timeline: TransportTimeline, time: number): WaitingSpan[] {
   return timeline.updates
@@ -246,4 +188,30 @@ export function getWaitingSpans(timeline: TransportTimeline, time: number): Wait
       const leavesAt = carrier?.sentAt ?? timeline.duration;
       return { updateId: update.id, from: update.at, to: Math.min(time, leavesAt) };
     });
+}
+
+/** Long polling only: how long the server keeps each request open before answering. */
+export function getHoldSpans(timeline: TransportTimeline, time: number): Span[] {
+  if (timeline.mode !== 'longPolling') {
+    return [];
+  }
+
+  const requests = timeline.messages.filter((message) => message.kind === 'request');
+  const responses = timeline.messages.filter((message) => message.direction === 'toClient');
+
+  return requests
+    .map((request, index) => ({
+      from: request.arrivesAt,
+      to: Math.min(time, responses[index]?.sentAt ?? timeline.duration),
+    }))
+    .filter((span) => span.from <= time && span.to > span.from);
+}
+
+/** SSE and WebSocket only: the long-lived connection, from the moment it opens until `time`. */
+export function getConnectionSpan(timeline: TransportTimeline, time: number): Span | null {
+  const ack = timeline.messages.find((message) => message.kind === 'handshakeAck');
+  if (!ack || ack.arrivesAt > time) {
+    return null;
+  }
+  return { from: ack.arrivesAt, to: time };
 }

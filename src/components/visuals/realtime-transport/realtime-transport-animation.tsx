@@ -12,8 +12,9 @@ import { usePrefersReducedMotion } from '../playback/use-prefers-reduced-motion'
 import { RealtimeTransportDiagram } from './realtime-transport-diagram';
 import { buildTransportTimeline, getCaptionAt, getStatsAt } from './realtime-transport-model';
 import type { TransportMode } from './realtime-transport-model';
+import { TransportLegend } from './transport-legend';
 
-const MODES: readonly TransportMode[] = ['shortPolling', 'webSocket'];
+const MODES: readonly TransportMode[] = ['shortPolling', 'longPolling', 'serverSentEvents', 'webSocket'];
 
 /** Quiet moment before the first event, so "start" shows an idle state and the first step shows the first event. */
 const LEAD_IN = 400;
@@ -48,7 +49,7 @@ export function RealtimeTransportAnimation({ initialMode = 'shortPolling' }: Pro
     <figure ref={figureRef} className="bg-card ring-foreground/10 flex flex-col gap-3 rounded-xl p-3 ring-1">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <figcaption className="text-sm font-medium">{t('title')}</figcaption>
-        <div role="group" aria-label={t('modeLabel')} className="bg-muted flex gap-0.5 rounded-lg p-0.5">
+        <div role="group" aria-label={t('modeLabel')} className="bg-muted flex flex-wrap gap-0.5 rounded-lg p-0.5">
           {MODES.map((option) => (
             <Button
               key={option}
@@ -70,6 +71,8 @@ export function RealtimeTransportAnimation({ initialMode = 'shortPolling' }: Pro
         serverLabel={t('server')}
         clientLabel={t('client')}
       />
+
+      <TransportLegend mode={mode} />
 
       <p aria-live="polite" className="min-h-10 text-sm">
         {t(`captions.${caption.key}`, caption.values)}

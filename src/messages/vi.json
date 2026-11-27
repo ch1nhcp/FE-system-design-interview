@@ -47,7 +47,9 @@
     "translationMissing": "Chủ đề này chưa có bản tiếng Việt nên đang hiển thị bằng tiếng Anh.",
     "previous": "Trước",
     "next": "Tiếp",
-    "pagination": "Điều hướng chủ đề"
+    "pagination": "Điều hướng chủ đề",
+    "deepDive": "Đào sâu",
+    "related": "Chủ đề liên quan"
   },
   "Framework": {
     "title": "Framework phỏng vấn",
@@ -216,14 +218,14 @@
       "controls": "Điều khiển animation"
     },
     "realtimeTransport": {
-      "title": "Short polling và WebSocket",
+      "title": "Các cách cập nhật thời gian thực",
       "modeLabel": "Cách truyền",
       "shortPolling": "Short polling",
       "webSocket": "WebSocket",
       "diagramLabel": "Sơ đồ tuần tự của {mode} giữa client và server trong {seconds} giây",
       "server": "Server",
       "client": "Client",
-      "statsRequests": "Số request",
+      "statsRequests": "Số request HTTP",
       "statsWasted": "Lượt hỏi vô ích",
       "statsDelay": "Độ trễ trung bình",
       "delayValue": "{delay} ms",
@@ -237,8 +239,30 @@
         "handshake": "Client mở WebSocket bằng một request HTTP upgrade.",
         "handshakeAck": "Kết nối đã mở. Server có thể đẩy dữ liệu bất cứ lúc nào.",
         "push": "Server đẩy cập nhật #{update} ngay lập tức.",
-        "pushArrives": "Client nhận cập nhật #{update}, trễ {delay} ms so với lúc sẵn sàng."
-      }
+        "pushArrives": "Client nhận cập nhật #{update}, trễ {delay} ms so với lúc sẵn sàng.",
+        "longPollRequest": "Client hỏi có gì mới không. Server giữ request lại cho tới khi có tin mới.",
+        "longPollData": "Client nhận cập nhật {updates}, trễ {delay} ms so với lúc sẵn sàng, rồi hỏi lại ngay.",
+        "longPollTimeout": "Hết thời gian chờ mà không có tin mới. Server trả về rỗng và client hỏi lại.",
+        "sseRequest": "Client mở một EventSource: một request HTTP bình thường nhưng response không đóng lại.",
+        "sseOpen": "Stream đã mở. Server có thể gửi event xuống response bất cứ lúc nào.",
+        "sseEvent": "Server gửi event #{update} xuống stream đang mở.",
+        "sseEventArrives": "Client nhận event #{update}, trễ {delay} ms so với lúc sẵn sàng.",
+        "ssePost": "Muốn gửi dữ liệu, client phải tạo một request HTTP riêng. Stream chỉ đi một chiều.",
+        "ssePostDone": "Request riêng đã xong. Stream vẫn mở.",
+        "clientMessage": "Client gửi message trên chính kết nối đó, không cần request mới.",
+        "clientMessageArrives": "Server nhận message ngay lập tức, trên kết nối sẵn có."
+      },
+      "longPolling": "Long polling",
+      "serverSentEvents": "SSE",
+      "legendWaiting": "Cập nhật đang chờ trên server",
+      "legendHeld": "Request đang được server giữ",
+      "legendConnection": "Kết nối đang mở"
+    },
+    "panel": {
+      "label": "Hình minh hoạ",
+      "animation": "Animation",
+      "diagram": "Sơ đồ",
+      "code": "Code"
     }
   }
 }

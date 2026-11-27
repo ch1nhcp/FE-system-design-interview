@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 
-import { getWaitingSpans } from './realtime-transport-model';
+import { getConnectionSpan, getHoldSpans, getWaitingSpans } from './realtime-transport-model';
 import type { MessageKind, TransportMessage, TransportTimeline } from './realtime-transport-model';
 
 const VIEW = {
@@ -12,7 +12,17 @@ const VIEW = {
   clientY: 124,
 } as const;
 
-const CARRIES_DATA: ReadonlySet<MessageKind> = new Set(['dataResponse', 'push']);
+const CARRIES_DATA: ReadonlySet<MessageKind> = new Set(['dataResponse', 'push', 'clientMessage']);
+
+/** Visual styles shared with the legend so both always match. */
+export const DIAGRAM_STYLES = {
+  waiting: { strokeWidth: 6, className: 'stroke-foreground/20' },
+  held: { strokeWidth: 4, strokeDasharray: '3 2', className: 'stroke-muted-foreground/60' },
+  connection: { className: 'fill-foreground/[0.06]' },
+} as const;
+
+const HELD_OFFSET = 8;
+const CONNECTION_INSET = 14;
 
 type Props = {
   timeline: TransportTimeline;
@@ -75,6 +85,7 @@ function MessageArrow({ message, time, duration }: { message: TransportMessage; 
 export function RealtimeTransportDiagram({ timeline, time, label, serverLabel, clientLabel }: Props) {
   const { duration } = timeline;
   const playheadX = toX(time, duration);
+  const connection = getConnectionSpan(timeline, time);
 
   return (
     <svg viewBox={`0 0 ${VIEW.width} ${VIEW.height}`} role="img" aria-label={label} className="h-auto w-full">
@@ -93,10 +104,36 @@ export function RealtimeTransportDiagram({ timeline, time, label, serverLabel, c
         </text>
       </g>
 
+      {connection && (
+        <rect
+          data-connection
+          x={toX(connection.from, duration)}
+          y={VIEW.serverY + CONNECTION_INSET}
+          width={toX(connection.to, duration) - toX(connection.from, duration)}
+          height={VIEW.clientY - VIEW.serverY - 2 * CONNECTION_INSET}
+          rx={4}
+          className={DIAGRAM_STYLES.connection.className}
+        />
+      )}
+
       <g className="stroke-border" strokeWidth={1}>
         <line x1={VIEW.axisStart} y1={VIEW.serverY} x2={VIEW.axisEnd} y2={VIEW.serverY} />
         <line x1={VIEW.axisStart} y1={VIEW.clientY} x2={VIEW.axisEnd} y2={VIEW.clientY} />
       </g>
+
+      {getHoldSpans(timeline, time).map((span) => (
+        <line
+          key={span.from}
+          data-hold-span
+          x1={toX(span.from, duration)}
+          y1={VIEW.serverY + HELD_OFFSET}
+          x2={toX(span.to, duration)}
+          y2={VIEW.serverY + HELD_OFFSET}
+          strokeWidth={DIAGRAM_STYLES.held.strokeWidth}
+          strokeDasharray={DIAGRAM_STYLES.held.strokeDasharray}
+          className={DIAGRAM_STYLES.held.className}
+        />
+      ))}
 
       {getWaitingSpans(timeline, time).map((span) => (
         <line
@@ -106,9 +143,9 @@ export function RealtimeTransportDiagram({ timeline, time, label, serverLabel, c
           y1={VIEW.serverY}
           x2={toX(span.to, duration)}
           y2={VIEW.serverY}
-          strokeWidth={6}
+          strokeWidth={DIAGRAM_STYLES.waiting.strokeWidth}
           strokeLinecap="round"
-          className="stroke-foreground/20"
+          className={DIAGRAM_STYLES.waiting.className}
         />
       ))}
 
