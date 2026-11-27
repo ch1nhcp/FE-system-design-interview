@@ -61,4 +61,35 @@ Other topics use a static diagram or a code example, declared in the topic front
 
 ## Phase 0 findings
 
-To be filled in at the end of Phase 0.
+### Content pipeline: headless Fumadocs
+
+Decision: use `fumadocs-core` 16 and `fumadocs-mdx` 15 through the macro API, without `fumadocs-ui`.
+
+- Setup: `defineDocs` from `fumadocs-mdx/macro` in `src/lib/source.ts`, and `createMDX()` from `fumadocs-mdx/next` wrapping the Next config. No generated `.source` folder or tsconfig alias is needed.
+- A spike verified a Next 16 Turbopack build with React Compiler and next-intl, static generation through `generateStaticParams`, and 404 for unknown slugs.
+- The spike also verified that a Zod frontmatter extension is typed end to end, client components inside MDX hydrate, and GFM tables and Shiki highlighting (light and dark) work out of the box.
+- Leave `macro.include` at its default. A narrow pattern such as `src/lib/source.ts` does not match Turbopack rule keys and the build fails.
+- i18n uses `parser: 'dot'`: `websockets.mdx` is English and `websockets.vi.mdx` is Vietnamese.
+- A missing translation falls back to English automatically, but `page.locale` still reports `vi`. Detect the fallback with `page.data !== source.getPage(slugs, 'en')?.data` to show the "not translated yet" notice.
+- `fumadocs-ui` is not used because the two-column topic layout is custom and it brings its own design system; pages use shadcn/ui instead.
+- Unit tests cannot import the macro directly, since it needs the bundler or the `fumadocs-mdx` Node loader. Phase 1 decides how content rule tests load files.
+- `fumadocs-core` ships a static search server, to be evaluated for Cmd+K search in Phase 4.
+- `fumadocs-mdx` depends on `esbuild`, which needs `esbuild: true` under `allowBuilds` in `pnpm-workspace.yaml`.
+
+### Visuals: time-driven SVG without an animation library
+
+Decision: animations are React SVG rendered from a pure model at a point in time, driven by a small `usePlayback` hook built on `requestAnimationFrame`.
+
+- Every frame is deterministic, which makes Step, Restart, reduced motion and tests simple, so Motion is not needed.
+- The prototype lives in `src/components/visuals/realtime-transport/` and compares short polling with WebSocket.
+- It has Play, Pause, Step and Restart controls, captions in a polite live region, live stats, and a bar showing how long each update waits on the server.
+- It autoplays once half of it is visible, except when the user prefers reduced motion.
+- Static diagrams use the same SVG approach instead of Mermaid, so they share theme tokens and can be animated later.
+- The neutral theme has no accent color; data-carrying messages use the foreground color and other messages the muted color. An accent token is revisited in Phase 2.
+- `/lab` is a development-only playground that returns 404 in production; it is removed in Phase 2.
+
+### Tooling
+
+- pnpm 11 ignores settings in `.npmrc`, so `saveExact` and `strictPeerDependencies` now live in `pnpm-workspace.yaml`.
+- Playwright runs against a production build on port 3100, so it never collides with `pnpm dev`.
+- `tsconfig.json` excludes test output folders because `checkJs` would otherwise type-check generated reports during `next build`.
