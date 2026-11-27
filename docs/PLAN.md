@@ -105,3 +105,15 @@ Decision: animations are React SVG rendered from a pure model at a point in time
 - The shadcn CLI (4.12, radix-nova style) writes `import { cn } from "cn"` and installs an unrelated `cn` package. After `shadcn add`, remove the package and point the import at `@/lib/utils`.
 - The `Dialog` and `Sheet` primitives read their "Close" label from the `Common` messages instead of hard-coding English.
 - Accessible names: a link that wraps a card reads its whole text, so section cards use a stretched link with only the title inside it.
+
+## Phase 2 findings
+
+- Topic template: TL;DR (at most 3 sentences), `<VisualPanel>` right after it, Key points (3 to 5), Trade-offs table, 2 to 4 `<InterviewQuestion>`s and a `<DeepDive>` with edge cases, common mistakes and references. Content tests enforce these rules.
+- MDX components (`VisualPanel`, `VisualTab`, `InterviewQuestion`, `DeepDive`, visuals) are provided to MDX without imports, from `src/components/mdx/mdx-components.tsx`.
+- The two-column layout is pure CSS: MDX hands its `wrapper` the whole document as a single element, so React cannot split out the panel. On `xl` screens `.topic-body:has(> .topic-visual)` becomes a grid with the panel sticky in the second column; on smaller screens the panel stays inline after the TL;DR.
+- Prose spacing uses top margins only, because grid items do not collapse margins.
+- `html, body { overflow-x: hidden }` from the starter made `body` a scroll container and silently broke every `position: sticky` (header, sidebar, panel). It is now `overflow-x: clip`.
+- Section overviews live in `content/sections/<section>.mdx` and render below the topic list, for example the "How to choose" table of Real-time updates.
+- The transport animation covers short polling, long polling, SSE and WebSocket, with held requests, the open connection and client-to-server messages, so each topic opens on its own mode and can be compared with the others.
+- Code examples in the 25rem panel scroll horizontally; code blocks are focusable so keyboard users can scroll them.
+- The development-only `/lab` page is removed.

@@ -16,13 +16,13 @@ test.describe('sections and topics', () => {
   });
 
   test('shows a placeholder for topics without a cheatsheet and links to neighbours', async ({ page }) => {
-    await page.goto('/topics/short-polling');
+    await page.goto('/topics/theming');
 
-    await expect(page.getByRole('heading', { level: 1, name: 'Short polling' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Theming config' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Cheatsheet coming soon' })).toBeVisible();
 
     await page.getByRole('navigation', { name: 'Topic navigation' }).getByRole('link', { name: /Next/ }).click();
-    await expect(page).toHaveURL('/topics/long-polling');
+    await expect(page).toHaveURL('/topics/event-handlers');
   });
 
   test('shares progress between the topic page and the dashboard', async ({ page }) => {
@@ -51,6 +51,88 @@ test.describe('sections and topics', () => {
 
     await page.goto('/flashcards');
     await expect(page.getByRole('heading', { level: 1, name: 'Flashcards' })).toBeVisible();
+  });
+});
+
+test.describe('cheatsheet', () => {
+  test('shows a visual panel with animation and code tabs', async ({ page }) => {
+    await page.goto('/topics/long-polling');
+    const panel = page.getByRole('region', { name: 'Visual' });
+
+    await expect(panel.getByRole('tab', { name: 'Animation' })).toHaveAttribute('aria-selected', 'true');
+    await expect(
+      panel.getByRole('group', { name: 'Transport' }).getByRole('button', { name: 'Long polling' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+
+    await panel.getByRole('tab', { name: 'Code' }).click();
+    await expect(panel.getByText('export async function longPoll')).toBeVisible();
+  });
+
+  test('folds interview answers and the deep dive until opened', async ({ page }) => {
+    await page.goto('/topics/websockets');
+
+    const answer = page.getByText('Detect it from the close event and from a heartbeat', { exact: false });
+    await expect(answer).toBeHidden();
+    await page.getByText('How do you handle a dropped WebSocket connection?').click();
+    await expect(answer).toBeVisible();
+
+    const references = page.getByRole('heading', { level: 3, name: 'References' });
+    await expect(references).toBeHidden();
+    await page.getByText('Deep dive').click();
+    await expect(references).toBeVisible();
+    await expect(page.getByRole('link', { name: 'RFC 6455: The WebSocket Protocol' })).toHaveAttribute(
+      'target',
+      '_blank',
+    );
+  });
+
+  test('links related topics', async ({ page }) => {
+    await page.goto('/topics/short-polling');
+
+    await page.getByRole('region', { name: 'Related topics' }).getByRole('link', { name: 'Long polling' }).click();
+
+    await expect(page).toHaveURL('/topics/long-polling');
+  });
+
+  test('keeps the visual next to the cheatsheet while scrolling on wide screens', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'The panel sits inline on small screens');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/topics/server-sent-events');
+
+    const panel = page.getByRole('region', { name: 'Visual' });
+    const keyPoints = page.getByRole('heading', { level: 2, name: 'Key points' });
+    const panelBox = await panel.boundingBox();
+    const keyPointsBox = await keyPoints.boundingBox();
+    expect(panelBox && keyPointsBox && panelBox.x > keyPointsBox.x + keyPointsBox.width).toBe(true);
+
+    await page.getByRole('heading', { level: 2, name: 'Interview questions' }).scrollIntoViewIfNeeded();
+    await expect(panel.getByRole('tab', { name: 'Animation' })).toBeInViewport();
+  });
+
+  test('places the visual right after the TL;DR on small screens', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'Checked on the mobile project');
+    await page.goto('/topics/websockets');
+
+    const order = await page.evaluate(() => {
+      const headings = [...document.querySelectorAll('h2')];
+      const tldr = headings.find((heading) => heading.textContent === 'TL;DR');
+      const keyPoints = headings.find((heading) => heading.textContent === 'Key points');
+      const panel = document.querySelector('[aria-label="Visual"]');
+      if (!tldr || !keyPoints || !panel) return null;
+      const follows = (a: Node, b: Node) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return follows(tldr, panel) && follows(panel, keyPoints);
+    });
+
+    expect(order).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+  });
+
+  test('compares the transports on the section page', async ({ page }) => {
+    await page.goto('/sections/real-time-updates');
+
+    await expect(page.getByRole('heading', { level: 2, name: 'How to choose' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Server-sent events' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Chat, collaboration, games' })).toBeVisible();
   });
 });
 

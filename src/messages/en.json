@@ -47,7 +47,9 @@
     "translationMissing": "This topic is not translated yet, so it is shown in English.",
     "previous": "Previous",
     "next": "Next",
-    "pagination": "Topic navigation"
+    "pagination": "Topic navigation",
+    "deepDive": "Deep dive",
+    "related": "Related topics"
   },
   "Framework": {
     "title": "Interview framework",
@@ -216,14 +218,14 @@
       "controls": "Animation controls"
     },
     "realtimeTransport": {
-      "title": "Short polling vs WebSocket",
+      "title": "Real-time transports",
       "modeLabel": "Transport",
       "shortPolling": "Short polling",
       "webSocket": "WebSocket",
       "diagramLabel": "Sequence diagram of {mode} between client and server over {seconds} seconds",
       "server": "Server",
       "client": "Client",
-      "statsRequests": "Requests",
+      "statsRequests": "HTTP requests",
       "statsWasted": "Wasted round trips",
       "statsDelay": "Average delay",
       "delayValue": "{delay} ms",
@@ -237,8 +239,30 @@
         "handshake": "Client opens a WebSocket with an HTTP upgrade request.",
         "handshakeAck": "Connection open. The server can now push at any time.",
         "push": "Server pushes update #{update} right away.",
-        "pushArrives": "Client receives update #{update}, {delay} ms after it was ready."
-      }
+        "pushArrives": "Client receives update #{update}, {delay} ms after it was ready.",
+        "longPollRequest": "Client asks for news. The server holds the request open until it has some.",
+        "longPollData": "Client receives update {updates}, {delay} ms after it was ready, and asks again right away.",
+        "longPollTimeout": "No news before the timeout. The server answers empty and the client asks again.",
+        "sseRequest": "Client opens an EventSource: a normal HTTP request whose response stays open.",
+        "sseOpen": "Stream open. The server can now send events down the response at any time.",
+        "sseEvent": "Server sends event #{update} down the open stream.",
+        "sseEventArrives": "Client receives event #{update}, {delay} ms after it was ready.",
+        "ssePost": "To send data, the client makes a separate HTTP request. The stream only goes one way.",
+        "ssePostDone": "The separate request completes. The stream stays open.",
+        "clientMessage": "Client sends a message on the same connection. No new request needed.",
+        "clientMessageArrives": "Server receives the message right away, on the connection it already has."
+      },
+      "longPolling": "Long polling",
+      "serverSentEvents": "SSE",
+      "legendWaiting": "Update waiting on the server",
+      "legendHeld": "Request held open by the server",
+      "legendConnection": "Open connection"
+    },
+    "panel": {
+      "label": "Visual",
+      "animation": "Animation",
+      "diagram": "Diagram",
+      "code": "Code"
     }
   }
 }

@@ -66,7 +66,7 @@ describe('RealtimeTransportAnimation', () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText('Press play, or step through the timeline.')).toBeInTheDocument();
-    expect(getStat('Requests')).toBe('0');
+    expect(getStat('HTTP requests')).toBe('0');
     expect(getStat('Average delay')).toBe('n/a');
     expect(screen.getByRole('button', { name: 'Previous step' })).toBeDisabled();
   });
@@ -78,7 +78,7 @@ describe('RealtimeTransportAnimation', () => {
 
     await user.click(next);
     expect(screen.getByText('Client asks the server: anything new?')).toBeInTheDocument();
-    expect(getStat('Requests')).toBe('1');
+    expect(getStat('HTTP requests')).toBe('1');
 
     await user.click(next);
     await user.click(next);
@@ -95,7 +95,7 @@ describe('RealtimeTransportAnimation', () => {
       await user.click(next);
     }
 
-    expect(getStat('Requests')).toBe('5');
+    expect(getStat('HTTP requests')).toBe('5');
     expect(getStat('Wasted round trips')).toBe('3');
     expect(getStat('Average delay')).toBe('1533 ms');
   });
@@ -112,6 +112,32 @@ describe('RealtimeTransportAnimation', () => {
 
     await user.click(screen.getByRole('button', { name: 'Next step' }));
     expect(screen.getByText('Client opens a WebSocket with an HTTP upgrade request.')).toBeInTheDocument();
+  });
+
+  it('offers all four transports and starts on the one a topic asks for', () => {
+    renderWithIntl(<RealtimeTransportAnimation initialMode="longPolling" />);
+    const modes = screen.getByRole('group', { name: 'Transport' });
+
+    expect(
+      within(modes)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Short polling', 'Long polling', 'SSE', 'WebSocket']);
+    expect(within(modes).getByRole('button', { name: 'Long polling' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Request held open by the server')).toBeInTheDocument();
+  });
+
+  it('explains that SSE needs a separate request to send data', async () => {
+    const user = userEvent.setup();
+    renderWithIntl(<RealtimeTransportAnimation initialMode="serverSentEvents" />);
+    const next = screen.getByRole('button', { name: 'Next step' });
+
+    while (!screen.queryByText(/separate HTTP request/)) {
+      await user.click(next);
+    }
+
+    expect(screen.getByText('Open connection')).toBeInTheDocument();
+    expect(getStat('HTTP requests')).toBe('2');
   });
 
   it('autoplays once it scrolls into view', () => {

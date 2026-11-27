@@ -1,9 +1,126 @@
 ---
-description: A persistent, two-way connection that lets the server push data to the client as soon as it changes.
+description: A persistent, two-way connection that lets client and server send messages at any time with very little overhead.
 visual: animation
+related: [server-sent-events, long-polling, retries, conflict-resolution]
 ---
 
 ## TL;DR
 
 A WebSocket starts as an HTTP request that asks to upgrade the connection.
-Once the server agrees, the same TCP connection stays open and both sides can send messages at any time.
+Once the server agrees, the same TCP connection stays open and both sides can send small messages at any time.
+It gives the lowest latency in both directions, but reconnection, heartbeats and scaling are up to you.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RealtimeTransportAnimation initialMode="webSocket" />
+</VisualTab>
+<VisualTab kind="code">
+
+```ts
+type Connection<Out> = { send: (message: Out) => void; close: () => void };
+
+export function connect<In, Out>(url: string, onMessage: (message: In) => void): Connection<Out> {
+  let socket: WebSocket;
+  let attempt = 0;
+  let closedByUser = false;
+
+  const open = () => {
+    socket = new WebSocket(url);
+    socket.addEventListener('open', () => {
+      attempt = 0;
+    });
+    socket.addEventListener('message', (event) => onMessage(JSON.parse(event.data) as In));
+    socket.addEventListener('close', () => {
+      if (closedByUser) return;
+      // Reconnect with exponential backoff and full jitter.
+      const delay = Math.random() * Math.min(30_000, 1000 * 2 ** attempt);
+      attempt += 1;
+      setTimeout(open, delay);
+    });
+  };
+
+  open();
+  return {
+    send: (message) => {
+      // A real app queues messages while reconnecting instead of dropping them.
+      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+    },
+    close: () => {
+      closedByUser = true;
+      socket.close();
+    },
+  };
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Full duplex: both sides send messages on one long-lived connection.
+- After the handshake each message adds only 2 to 14 bytes of framing instead of full HTTP headers.
+- No built-in reconnection, message ids or delivery guarantees; you add heartbeats, backoff and resync.
+- Each connection lives on one server, so broadcasting needs pub/sub across servers, and load balancers need long idle timeouts.
+- Best for chat, collaboration, multiplayer and trading, where both sides talk often.
+
+## Trade-offs
+
+| Strengths                         | Weaknesses                                      |
+| --------------------------------- | ----------------------------------------------- |
+| Lowest latency in both directions | Reconnection, heartbeats and resync are on you  |
+| Tiny per-message overhead         | Stateful servers are harder to scale and deploy |
+| Text and binary messages          | Some corporate proxies block the upgrade        |
+
+## Interview questions
+
+<InterviewQuestion question="How do you handle a dropped WebSocket connection?">
+
+Detect it from the `close` event and from a heartbeat, because a dead TCP connection can stay silent for minutes.
+Reconnect with exponential backoff and jitter, then resubscribe and fetch what was missed using the last sequence number the client saw.
+Queue outgoing messages in the meantime and show the connection state in the UI.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you scale WebSockets across many servers?">
+
+Each connection lives on one server, so publish messages to a shared pub/sub layer, such as Redis, Kafka or a managed service, that every server subscribes to.
+Raise load balancer idle timeouts and keep connections alive with heartbeats.
+On deploys, drain connections gradually and let clients reconnect with jitter to avoid a thundering herd.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Which would you use for a chat app: WebSockets, SSE or long polling?">
+
+WebSockets: users send and receive often, and typing indicators need low latency both ways.
+SSE plus normal `POST` requests is a simpler option when sending is rare.
+Long polling is the fallback when neither gets through the network.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The client sends a `GET` with `Upgrade: websocket`, `Connection: Upgrade` and a random `Sec-WebSocket-Key`.
+The server answers `101 Switching Protocols` with `Sec-WebSocket-Accept`, derived from that key.
+From then on both sides exchange frames on the same connection until one of them closes it.
+
+### Edge cases
+
+- Authentication: browsers cannot set custom headers on the handshake, so use a cookie or send a short-lived token in the first message. Avoid tokens in the URL, which end up in logs.
+- Backpressure: `bufferedAmount` grows when you send faster than the network can carry, so slow down or drop low-value messages.
+- Heartbeats: the browser API does not expose protocol pings, so send small application-level ping messages.
+
+### Common mistakes
+
+- Not checking the `Origin` header on the server, which allows cross-site WebSocket hijacking.
+- Using `ws://` instead of `wss://` in production.
+- Trusting incoming messages without validating them.
+
+### References
+
+- [The WebSocket API on MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API)
+- [RFC 6455: The WebSocket Protocol](https://www.rfc-editor.org/rfc/rfc6455.html)
+
+</DeepDive>
