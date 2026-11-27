@@ -7,8 +7,8 @@ export const redirects: Redirect[] = [
     permanent: true,
   },
   {
-    source: '/ja/index',
-    destination: '/ja',
+    source: '/vi/index',
+    destination: '/vi',
     permanent: true,
   },
 ];

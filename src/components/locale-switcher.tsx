@@ -17,7 +17,7 @@ import { routing } from '@/i18n/routing';
 
 const localeLabels: Record<Locale, string> = {
   en: 'EN',
-  ja: '日本語',
+  vi: 'VI',
 };
 
 export function LocaleSwitcher() {
