@@ -1,0 +1,106 @@
+---
+description: Starting likely-needed resource work earlier without letting speculative downloads crowd out current content.
+visual: code
+related: [loading-sequence, above-the-fold, code-splitting, preload-link]
+---
+
+## TL;DR
+
+Preload advances discovery of current-page resources; prefetch speculates about future use.
+Use a few targeted hints and verify reuse and critical-path impact.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Match the preload to the eventual request so it can be reused.
+
+```html
+<!-- Current-page font, otherwise discovered later through CSS. -->
+<link rel="preload" href="/fonts/ui.woff2" as="font" type="font/woff2" crossorigin />
+
+<!-- A genuinely critical image, already visible in initial HTML. -->
+<img src="/hero.webp" width="1200" height="600" fetchpriority="high" alt="The course dashboard" />
+
+<!-- A likely future static document; the browser may defer or ignore it. -->
+<link rel="prefetch" href="/next-lesson.html" />
+```
+
+An image already discoverable in HTML may need priority adjustment rather than another preload.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Choose a resource hint" steps={[
+  { title: 'Current page needs it?', note: 'Find what blocks useful content' },
+  { title: 'Late discovery?', note: 'Preload the exact resource if it is hidden behind another fetch' },
+  { title: 'Future navigation?', note: 'Prefetch selectively when intent is likely' },
+  { title: 'Verify reuse and priority', note: 'Check request attributes, timing and wasted bytes' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Preload targets current-page late-discovered resources.
+- Prefetch is speculative and may never be consumed.
+- Match URL, destination and credential or CORS behavior.
+- Preloading a script does not execute it by itself.
+- Avoid competing with the current page's critical work.
+
+## Trade-offs
+
+| Hint     | Strengths         | Weaknesses         |
+| -------- | ----------------- | ------------------ |
+| Preload  | Earlier discovery | Current bandwidth  |
+| Prefetch | Future navigation | Wasted bytes       |
+| Priority | Better ordering   | Browser discretion |
+
+## Interview questions
+
+<InterviewQuestion question="Why can a preload download a resource twice?">
+
+The hint and consuming request may use different URLs, destinations or credential modes.
+Check the network panel for reuse and ensure responsive image hints select the same candidate as the rendered image.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should every resource be preloaded?">
+
+No: loading everything early destroys the prioritization that makes a few critical hints valuable.
+Select resources that materially block the current experience and verify the result under constrained bandwidth.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="When would you prefetch a feature chunk?">
+
+When navigation or interaction intent is sufficiently likely, such as a deliberate focus or hover signal, and the download will not crowd out current work.
+Framework prefetching may already handle routes, so avoid duplicating that policy blindly.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Resource hints expose dependencies before the browser would naturally discover them.
+Discovery, fetch priority and execution are distinct: a resource can be known early but queued behind more important work or still require later evaluation.
+Module scripts can use `modulepreload` for module-aware fetching; ordinary `preload` does not replace all module-loading behavior.
+
+### Edge cases
+
+- Font preloads need matching CORS behavior even for common same-origin font setups.
+- A responsive image preload can select the wrong size without matching source-selection information.
+- User data-saving preferences or browser policy can suppress speculative work.
+
+### Common mistakes
+
+- Fetching an optional future route before the current hero has bandwidth.
+- Preloading a URL that differs from the eventual optimized asset URL.
+- Assuming a priority hint is a scheduling guarantee.
+
+### References
+
+- [Preload in MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/preload)
+- [Prefetch in MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/prefetch)
+- [Fetch Priority on web.dev](https://web.dev/articles/fetch-priority)
+
+</DeepDive>

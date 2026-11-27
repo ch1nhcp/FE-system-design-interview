@@ -1,0 +1,101 @@
+---
+description: Mounting a moving window of a large collection while preserving scroll geometry and interaction state.
+visual: animation
+related: [infinite-scrolling, pagination, focus-management, memory-leaks]
+---
+
+## TL;DR
+
+Virtualization bounds mounted UI to the visible rows and a small overscan region.
+Use it for measured long-list costs, with deliberate geometry, keyboard behavior and state ownership.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<VirtualizationAnimation />
+</VisualTab>
+<VisualTab kind="code">
+
+A fixed-height range calculation with an exclusive end index:
+
+```ts
+function visibleRange(scrollTop: number, viewportHeight: number, rowHeight: number, count: number, overscan = 2) {
+  const maxOffset = Math.max(0, count * rowHeight - viewportHeight);
+  const offset = Math.min(Math.max(0, scrollTop), maxOffset);
+  const start = Math.max(0, Math.floor(offset / rowHeight) - overscan);
+  const end = Math.min(count, Math.ceil((offset + viewportHeight) / rowHeight) + overscan);
+  return { start, end, top: start * rowHeight, bottom: (count - end) * rowHeight };
+}
+```
+
+Assume positive row and viewport heights and a nonnegative count.
+Production virtualizers also handle measurement, focus, scrolling and resizing.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Window the mounted rows, not necessarily the loaded data.
+- Preserve total scroll height with spacers or positioning.
+- Overscan trades a few extra rows for smoother scrolling.
+- Store item state by stable id outside recycled rows.
+- Test focus, find-in-page and assistive technology behavior.
+
+## Trade-offs
+
+| Strengths                  | Weaknesses                   |
+| -------------------------- | ---------------------------- |
+| Bounded DOM work           | Geometry complexity          |
+| Fewer mounted components   | Offscreen content absent     |
+| Smoother large collections | Focus and state coordination |
+
+## Interview questions
+
+<InterviewQuestion question="Is infinite scrolling the same as virtualization?">
+
+Infinite scrolling decides when to load more data; virtualization decides how much UI stays mounted.
+They can be combined, but loading page after page without unmounting old rows can still create a large DOM.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What changes with variable-height rows?">
+
+Offsets require measured or estimated cumulative heights rather than multiplying an index by one row height.
+Update measurements and preserve the scroll anchor when rows resize, images load or content expands.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you keep keyboard focus stable?">
+
+Track the active item's stable identity and ensure its interactive element remains mounted or has a deliberate focus handoff.
+Expose position and total-size semantics when appropriate, and test the actual list interaction with assistive technology.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The virtualizer maps a scroll offset to a visible item range, extends it with overscan and renders only that window.
+Spacers or absolute positions preserve the geometry of omitted content.
+The animation models 1,000 fixed-height rows, a five-row viewport and two overscan rows per side; it is a teaching model, not a browser benchmark.
+
+### Edge cases
+
+- Filtering or deleting items can move the scroll position beyond the new collection's end.
+- Row-local draft state can disappear when a row is unmounted or recycled.
+- Browser search, printing and accessibility tools may need an alternative view of unmounted content.
+
+### Common mistakes
+
+- Virtualizing a short list without evidence of a bottleneck.
+- Using unstable array indexes as identities for mutable rows.
+- Assuming virtualization also bounds network payloads or the data cache.
+
+### References
+
+- [Virtualize long lists on web.dev](https://web.dev/articles/virtualize-long-lists-react-window)
+- [TanStack Virtual introduction](https://tanstack.com/virtual/latest/docs/introduction)
+- [ARIA listitem semantics in MDN](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/listitem_role)
+
+</DeepDive>

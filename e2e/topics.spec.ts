@@ -16,13 +16,13 @@ test.describe('sections and topics', () => {
   });
 
   test('shows a placeholder for topics without a cheatsheet and links to neighbours', async ({ page }) => {
-    await page.goto('/topics/code-splitting');
+    await page.goto('/topics/image-cdn');
 
-    await expect(page.getByRole('heading', { level: 1, name: /Bundle splitting/ })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: /CDN/ })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Cheatsheet coming soon' })).toBeVisible();
 
     await page.getByRole('navigation', { name: 'Topic navigation' }).getByRole('link', { name: /Next/ }).click();
-    await expect(page).toHaveURL('/topics/tree-shaking');
+    await expect(page).toHaveURL('/topics/image-formats');
   });
 
   test('shares progress between the topic page and the dashboard', async ({ page }) => {

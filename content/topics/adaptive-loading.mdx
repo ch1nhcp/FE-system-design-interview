@@ -1,0 +1,107 @@
+---
+description: Offering a useful baseline and adapting optional work to user preferences and available capability hints.
+visual: code
+related: [adaptive-images, code-splitting, preloading-and-prefetching, mobile-friendliness]
+---
+
+## TL;DR
+
+Adaptive loading adjusts optional work to available resources and user preferences.
+Start with a useful baseline, treat capability signals as hints and keep essential tasks available to everyone.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Keep an optional video preview off when the browser exposes a data-saving preference.
+
+```ts
+type ConnectionHint = { saveData?: boolean };
+type NavigatorWithHint = Navigator & { connection?: ConnectionHint };
+
+function mayAutoLoadPreview(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const connection = (navigator as NavigatorWithHint).connection;
+  return connection?.saveData === false;
+}
+```
+
+An unknown signal keeps the conservative baseline.
+Always offer an explicit, accessible way to load the preview if the user wants it.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Progressive capability adaptation" steps={[
+  { title: 'Useful baseline', note: 'Core tasks work without optional heavy features' },
+  { title: 'Observe available hints', note: 'User preference, measured experience and supported APIs' },
+  { title: 'Choose optional work', note: 'Avoid speculative media or expensive effects when constrained' },
+  { title: 'Respect user intent', note: 'Allow deliberate upgrades and keep monitoring results' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Keep a usable baseline independent of capability detection.
+- Prefer explicit user choices over inferred device classes.
+- Feature-detect optional hints and define unknown behavior.
+- Adapt optional bytes, effects and speculative work.
+- Measure outcomes across supported devices and connections.
+
+## Trade-offs
+
+| Strategy | Strengths       | Weaknesses     |
+| -------- | --------------- | -------------- |
+| Baseline | Reliable core   | Fewer extras   |
+| Hints    | Optional tuning | Coarse signals |
+| Override | User choice     | Extra controls |
+
+## Interview questions
+
+<InterviewQuestion question="Should a small screen get fewer capabilities?">
+
+Screen dimensions do not reliably identify CPU power, network quality or the user's needs.
+Use responsive layout for geometry and a separate, evidence-based policy for optional performance-heavy behavior.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What if the Network Information API is missing?">
+
+The feature should retain its defined baseline without throwing or hiding essential functionality.
+Treat a missing hint as unknown, and allow user intent or measured experience to guide optional enhancements.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can an adaptive policy change during a session?">
+
+Yes: a connection or preference can change, but avoid disruptive switching of an active task.
+Apply changes at deliberate boundaries and preserve user choices, downloaded resources and work already in progress.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Separate essential behavior from optional enhancements and define a policy for supported signals and explicit preferences.
+Possible adaptations include suppressing speculative downloads, using lighter media or deferring expensive visual effects.
+Coarse capability hints can be unavailable or privacy-restricted, so they cannot be the only route to a functioning product.
+
+### Edge cases
+
+- A user may deliberately choose a high-quality resource despite a data-saving default.
+- Cached capability assumptions can become stale as the network changes.
+- Changing the client-rendered experience based on browser-only hints requires careful server and hydration behavior.
+
+### Common mistakes
+
+- Using user-agent or viewport labels as a complete performance profile.
+- Removing essential actions from a supposedly low-end experience.
+- Fetching a heavy resource before deciding not to display it.
+
+### References
+
+- [Adaptive loading on web.dev](https://web.dev/articles/adaptive-loading-cds-2019)
+- [NetworkInformation.saveData in MDN](https://developer.mozilla.org/en-US/docs/Web/API/NetworkInformation/saveData)
+- [Progressive enhancement in MDN](https://developer.mozilla.org/en-US/docs/Glossary/Progressive_Enhancement)
+
+</DeepDive>

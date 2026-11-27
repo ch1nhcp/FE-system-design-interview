@@ -1,0 +1,109 @@
+---
+description: Understanding style, layout, paint and compositing costs so visual updates target the actual bottleneck.
+visual: diagram
+related: [dom-batching, above-the-fold, core-web-vitals, list-virtualization]
+---
+
+## TL;DR
+
+Layout computes geometry, paint records appearance and compositing assembles the frame.
+Profile the actual rendering stage before choosing an optimization.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram label="Browser rendering work" steps={[
+  { title: 'Style', note: 'Resolve which presentation rules apply' },
+  { title: 'Layout', note: 'Compute positions and sizes when geometry is invalid' },
+  { title: 'Paint', note: 'Record visual content for affected regions' },
+  { title: 'Composite', note: 'Assemble layers for display' },
+]} highlight={1} />
+</VisualTab>
+<VisualTab kind="code">
+
+A visual translation can avoid changing document-flow geometry.
+Whether it stays on the compositor depends on the actual page and browser.
+
+```ts
+function slideIn(element: HTMLElement) {
+  const animation = element.animate(
+    [
+      { transform: 'translateX(-16px)', opacity: 0 },
+      { transform: 'translateX(0)', opacity: 1 },
+    ],
+    { duration: 180, easing: 'ease-out' },
+  );
+  return () => animation.cancel();
+}
+```
+
+Skip motion or use an appropriate alternative when the user prefers reduced motion.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Geometry changes can invalidate layout for related elements.
+- Geometry reads can force pending layout synchronously.
+- Paint cost depends on affected area and visual complexity.
+- Transform and opacity can avoid layout for visual motion.
+- Extra layers use memory; profile before adding hints.
+
+## Trade-offs
+
+| Approach      | Strengths     | Weaknesses       |
+| ------------- | ------------- | ---------------- |
+| Flow geometry | Moves layout  | Broader work     |
+| Transform     | Visual motion | No flow change   |
+| Layers        | Isolated work | Memory and setup |
+
+## Interview questions
+
+<InterviewQuestion question="How is layout different from paint?">
+
+Layout determines positions and dimensions, while paint describes how affected content looks.
+A color change may need paint without changing geometry; a size change can require both layout and paint.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Are transform animations always free?">
+
+No: compositor-friendly properties can avoid layout, but layer setup, rasterization, effects and memory pressure still matter.
+Confirm the rendering path and frame behavior in a trace on representative devices.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="When should you use will-change?">
+
+Only for a specific measured case where advance preparation helps, and for a limited lifetime when possible.
+Applying it broadly can create unnecessary layers and memory usage without improving the actual bottleneck.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Rendering work is invalidated by changes, and the browser performs the stages needed to produce a correct next frame.
+Not every update executes every stage, and a geometry read can bring deferred work forward into JavaScript execution.
+Use performance traces, paint flashing and layer inspection to connect the user's jank to a concrete stage.
+
+### Edge cases
+
+- A transform changes visual coordinates but does not move surrounding flow boxes into the new space.
+- Large blurs, shadows and newly exposed raster content can make apparently simple motion expensive.
+- Layout shifts are a user-facing metric with specific rules, not a count of every layout calculation.
+
+### Common mistakes
+
+- Calling any visual update a reflow.
+- Equating a compositor path with zero resource cost.
+- Adding GPU-related hints without checking layer count and memory pressure.
+
+### References
+
+- [Rendering performance on web.dev](https://web.dev/articles/rendering-performance)
+- [Avoid forced layout on web.dev](https://web.dev/articles/avoid-large-complex-layouts-and-layout-thrashing)
+- [will-change in MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/will-change)
+
+</DeepDive>

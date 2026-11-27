@@ -1,0 +1,108 @@
+---
+description: Prioritizing useful initial-viewport content without assuming every visitor has the same screen or layout.
+visual: code
+related: [loading-sequence, image-lazy-loading, responsive-images, core-web-vitals]
+---
+
+## TL;DR
+
+Prioritize the content users need first in their initial viewport.
+The fold varies by device and layout, so verify the critical path across representative screens.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Expose useful content and its likely hero resource in the initial HTML.
+
+```html
+<main>
+  <h1>Front end interview course</h1>
+  <p>Choose a topic and start reviewing.</p>
+  <img src="/course-hero.webp" width="1200" height="600" fetchpriority="high" alt="Course topics and study progress" />
+  <section aria-labelledby="details-title">
+    <h2 id="details-title">Course details</h2>
+    <img src="/curriculum.webp" width="900" height="600" loading="lazy" alt="Detailed curriculum" />
+  </section>
+</main>
+```
+
+This assumes the hero is initially visible and the second image is below the viewport on the target layout.
+Validate those assumptions at different sizes.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Initial viewport priorities" steps={[
+  { title: 'Useful initial content', note: 'Identify the actual heading, image and primary task' },
+  { title: 'Early critical resources', note: 'Make the required markup, styles and media discoverable' },
+  { title: 'Stable geometry', note: 'Reserve space while resources finish' },
+  { title: 'Progressive enhancement', note: 'Load optional lower-page work without blocking the task' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Prioritize the initial task, not a fixed pixel boundary.
+- Avoid lazy-loading the likely initial LCP image.
+- Reserve dimensions for images and async content.
+- Keep essential styles and content available early.
+- Defer optional work without breaking navigation or access.
+
+## Trade-offs
+
+| Choice        | Strengths       | Weaknesses       |
+| ------------- | --------------- | ---------------- |
+| Prioritize    | Useful content  | Layout dependent |
+| Defer media   | Less contention | Later loading    |
+| Reserve space | Stable geometry | Size estimates   |
+
+## Interview questions
+
+<InterviewQuestion question="Where is the fold?">
+
+It is the boundary of the initial viewport, which varies with screen size, zoom, browser chrome and content.
+Base loading decisions on responsive layouts and real viewing conditions rather than a single desktop height.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should the hero image use lazy loading?">
+
+Usually not when it is visible immediately and is the likely LCP element.
+Make it discoverable early, choose a suitable responsive source and consider priority only when evidence supports it.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can deferred content still cause layout shifts?">
+
+Yes: inserting an image, banner or embed without allocated space can move content the user is already reading.
+Reserve geometry where possible and avoid placing late-arriving content above established content unexpectedly.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Analyze the first meaningful viewport and the resources required to present its useful content.
+Optimize that dependency path while keeping the rest of the document accessible through normal scrolling and navigation.
+CSS `content-visibility` can reduce offscreen rendering work in suitable cases, but it is not a general network lazy-loading mechanism.
+
+### Edge cases
+
+- A hero below the fold on one device can be the first visible image on another.
+- Font swaps and translated strings can change layout even when image dimensions are reserved.
+- Hiding lower content from the DOM can harm find-in-page, accessibility or search discoverability.
+
+### Common mistakes
+
+- Lazy-loading every image with the same rule.
+- Inlining all CSS and JavaScript under the label of critical-path optimization.
+- Optimizing a screenshot while leaving the initial interaction blocked.
+
+### References
+
+- [Optimize LCP on web.dev](https://web.dev/articles/optimize-lcp)
+- [Optimize CLS on web.dev](https://web.dev/articles/optimize-cls)
+- [content-visibility in MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/content-visibility)
+
+</DeepDive>

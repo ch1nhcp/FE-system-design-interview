@@ -1,0 +1,106 @@
+---
+description: Grouping layout reads and DOM writes to avoid repeatedly forcing the browser to synchronize layout.
+visual: code
+related: [reflows-and-repaints, debouncing-and-throttling, list-virtualization]
+---
+
+## TL;DR
+
+DOM batching groups related reads and writes instead of alternating them repeatedly.
+Measure geometry first, apply changes together and verify reduced rendering work in a performance trace.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Read the shared geometry once before making style changes.
+
+```ts
+function alignCards(container: HTMLElement, cards: readonly HTMLElement[]) {
+  const width = container.clientWidth; // one geometry read
+  for (const card of cards) {
+    card.style.boxSizing = 'border-box';
+    card.style.width = `${width}px`;
+  }
+}
+```
+
+Avoid reading `container.clientWidth` again after each card write when that read depends on invalidated layout.
+For high-frequency events, coalesce repeated calls and cancel pending frame work when its owner ends.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Read then write" steps={[
+  { title: 'Collect an update', note: 'Keep the latest useful interaction state' },
+  { title: 'Measure geometry', note: 'Perform required reads before related mutations' },
+  { title: 'Apply writes', note: 'Update styles or nodes without interleaved measurement' },
+  { title: 'Browser renders', note: 'Inspect actual style, layout and paint work' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Separate geometry measurement from related mutations.
+- Avoid repeated write-read cycles that force layout.
+- Coalesce redundant visual updates within a frame.
+- Keep large batches within an interaction-time budget.
+- DocumentFragment is an API tool, not a speed guarantee.
+
+## Trade-offs
+
+| Technique        | Strengths            | Weaknesses         |
+| ---------------- | -------------------- | ------------------ |
+| Read then write  | Fewer forced layouts | Coordination       |
+| Frame coalescing | Skip redundant work  | Deferred update    |
+| Detached build   | Clear assembly       | No speed guarantee |
+
+## Interview questions
+
+<InterviewQuestion question="Why can alternating writes and reads be slow?">
+
+A style mutation can invalidate layout, and a later geometry query may require the browser to compute that layout synchronously.
+Repeating this pattern in a loop can force several layouts before the browser gets its normal rendering opportunity.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does requestAnimationFrame prevent forced layout?">
+
+No: a callback still forces synchronous work if it mixes layout-invalidating writes with dependent geometry reads.
+Frame scheduling helps coordinate updates, but the operations inside the callback still need a sensible read/write order.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Is one large DOM update always better?">
+
+No: a huge batch can still create a long main-thread task and delay interaction feedback.
+Reduce the total work, virtualize where appropriate or split noncritical work while preserving the visible state the user needs.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Browsers can defer style and layout until required, but synchronous geometry reads may demand an up-to-date answer immediately.
+Batching lets several mutations be processed together rather than forcing that synchronization repeatedly.
+React state-update batching and DOM read/write scheduling are related optimizations at different layers, not interchangeable guarantees.
+
+### Edge cases
+
+- Another library can invalidate layout between a measurement and a write phase.
+- A ResizeObserver callback that repeatedly changes observed geometry can create a feedback loop.
+- A detached construction strategy still pays style, layout and paint costs when content becomes visible.
+
+### Common mistakes
+
+- Claiming every DOM insertion triggers an immediate layout.
+- Adding a frame callback without removing its internal layout thrashing.
+- Measuring only JavaScript time while ignoring the browser work that follows it.
+
+### References
+
+- [Avoid layout thrashing on web.dev](https://web.dev/articles/avoid-large-complex-layouts-and-layout-thrashing)
+- [DocumentFragment performance notes in MDN](https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment#performance)
+- [requestAnimationFrame in MDN](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame)
+
+</DeepDive>

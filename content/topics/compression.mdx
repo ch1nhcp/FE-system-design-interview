@@ -1,0 +1,109 @@
+---
+description: Reducing transferred representation bytes through negotiated encodings without confusing transfer savings with execution savings.
+visual: code
+related: [tree-shaking, image-formats, caching-and-expiry, loading-sequence]
+---
+
+## TL;DR
+
+Compression reduces transfer bytes using an encoding the client supports.
+Measure savings alongside encoding cost and the work after decompression.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+The browser advertises supported encodings; the server selects a compatible representation.
+
+```http
+GET /assets/app.abc123.js HTTP/1.1
+Accept-Encoding: br, gzip
+```
+
+```http
+HTTP/1.1 200 OK
+Content-Type: text/javascript
+Content-Encoding: br
+Vary: Accept-Encoding
+Cache-Control: public, max-age=31536000, immutable
+```
+
+The long cache policy assumes a content-hashed immutable asset URL.
+If `Content-Length` is sent, it describes the encoded body's byte length.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Compressed representation delivery" steps={[
+  { title: 'Choose useful source bytes', note: 'Remove unused work before encoding' },
+  { title: 'Negotiate encoding', note: 'Match client support and server capabilities' },
+  { title: 'Transfer compressed body', note: 'Caches distinguish the selected representation' },
+  { title: 'Decode and execute', note: 'The browser still parses and evaluates the content' },
+]} highlight={2} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Compress suitable HTML, CSS, JavaScript and JSON.
+- Negotiate encoding and vary cached representations correctly.
+- Precompress immutable assets when practical.
+- Already compressed media often gains little from another pass.
+- Smaller transfer size does not remove JavaScript execution.
+
+## Trade-offs
+
+| Strategy      | Strengths      | Weaknesses        |
+| ------------- | -------------- | ----------------- |
+| Precompressed | Cheap to serve | Build and storage |
+| On demand     | Fresh outputs  | CPU cost          |
+| Higher ratio  | Fewer bytes    | Encoding work     |
+
+## Interview questions
+
+<InterviewQuestion question="How is compression different from minification?">
+
+Minification rewrites source text to remove unnecessary syntax and whitespace; HTTP compression encodes the resulting representation for transfer.
+They can work together, while tree shaking separately removes unnecessary program behavior.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why can compressed JavaScript still feel slow?">
+
+After transfer, the browser must decompress, parse, compile and execute the retained code.
+A smaller wire payload can coexist with heavy main-thread work, so inspect execution traces as well as transfer size.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Would you recompress every image with gzip?">
+
+Usually not: many image formats already compress their content efficiently.
+Choose appropriate dimensions, format and quality first, and verify whether another encoding actually saves enough bytes to justify its cost.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The client communicates acceptable content encodings and the server emits a compatible encoded representation with `Content-Encoding`.
+An intermediary cache must distinguish variants so it does not send an encoding an incompatible client cannot decode.
+Content hashes and representation validators must remain correct across encoded variants and deployments.
+
+### Edge cases
+
+- Compressing tiny responses can save little or increase their size.
+- Compression middleware can accidentally buffer a streamed response, changing when useful content arrives.
+- Mixing secret and attacker-controlled data in compressed responses can introduce side-channel risks in sensitive contexts.
+
+### Common mistakes
+
+- Comparing uncompressed source sizes with compressed transfer sizes as if they measured the same thing.
+- Serving a compressed body without its encoding metadata.
+- Using immutable caching on mutable asset URLs.
+
+### References
+
+- [Compression in HTTP in MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Compression)
+- [Content-Encoding in MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Encoding)
+- [Vary in MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Vary)
+
+</DeepDive>

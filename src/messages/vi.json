@@ -395,6 +395,80 @@
       "request": "Yêu cầu tìm {query}",
       "ms": "{value} ms",
       "note": "Cả hai yêu cầu đều hoàn thành ở cả hai chế độ. Kiểm tra thế hệ quyết định phản hồi nào được cập nhật màn hình."
+    },
+    "rate": {
+      "title": "Debounce và throttle",
+      "modeLabel": "Chính sách tần suất",
+      "modes": {
+        "debounce": "Debounce",
+        "throttle": "Throttle"
+      },
+      "policy": {
+        "debounce": "Debounce cuối khoảng: gửi giá trị mới nhất sau 300 ms không có đầu vào.",
+        "throttle": "Throttle đầu khoảng: gửi ngay, rồi bỏ qua đầu vào trong 300 ms."
+      },
+      "captions": {
+        "idle": "Cả hai chế độ dùng cùng bảy giá trị đầu vào được đánh số.",
+        "input": "Đầu vào tiếp tục đến. Chính sách quyết định thời điểm xử lý.",
+        "dispatch": "Một giá trị được xử lý mà không cần đợi toàn bộ tương tác kết thúc.",
+        "done": "Đã xử lý tất cả giá trị đủ điều kiện. So sánh thời điểm và giá trị được giữ lại."
+      },
+      "inputs": "Đầu vào",
+      "dispatches": "Lần xử lý",
+      "latest": "Giá trị cuối",
+      "diagram": "Sự kiện đầu vào và giá trị xử lý theo thời gian",
+      "ms": "{value} ms",
+      "note": "Các số biểu thị giá trị đầu vào. Thời gian minh họa; không gửi yêu cầu mạng."
+    },
+    "loading": {
+      "title": "Waterfall tải tài nguyên",
+      "modeLabel": "Cách phát hiện",
+      "modes": {
+        "serial": "Tuần tự",
+        "parallel": "Song song"
+      },
+      "captions": {
+        "idle": "So sánh cùng tài nguyên với thứ tự phát hiện khác nhau.",
+        "html": "Phản hồi HTML đến trước.",
+        "resources": "Quan sát yêu cầu nào có thể bắt đầu trước khi công việc trước đó kết thúc.",
+        "ready": "Các tài nguyên cần cho nội dung minh họa đã sẵn sàng."
+      },
+      "complete": "Tài nguyên xong",
+      "visibleAt": "Hiện nội dung",
+      "ms": "{value} ms",
+      "content": "Nội dung đã hiển thị",
+      "placeholder": "Đang đợi nội dung chính",
+      "diagram": "Phát hiện tài nguyên và hoàn thành yêu cầu",
+      "resources": {
+        "html": "HTML",
+        "javascript": "JS",
+        "data": "Dữ liệu",
+        "image": "Ảnh"
+      },
+      "note": {
+        "serial": "JS tìm dữ liệu, rồi dữ liệu cho biết URL ảnh. Thời gian chỉ để minh họa.",
+        "parallel": "HTML cho biết sẵn dữ liệu và URL ảnh nên có thể tải đồng thời. Mô hình giữ nguyên thời lượng mỗi việc; băng thông chia sẻ có thể làm kết quả thực tế khác đi."
+      }
+    },
+    "virtualization": {
+      "title": "Danh sách nghìn hàng",
+      "modeLabel": "Cách render",
+      "modes": {
+        "full": "Tất cả hàng",
+        "windowed": "Theo cửa sổ"
+      },
+      "captions": {
+        "idle": "Danh sách có 1.000 phần tử cao cố định, vùng nhìn thấy chứa năm hàng.",
+        "full": "Cuộn thay đổi hàng nhìn thấy nhưng cả 1.000 hàng vẫn được mount trong mô hình.",
+        "windowed": "Chỉ mount các hàng nhìn thấy và thêm hai hàng đệm ở mỗi phía trong mô hình.",
+        "end": "Vùng nhìn thấy đã tới năm phần tử cuối. So sánh số hàng được mount trong mô hình."
+      },
+      "mounted": "Hàng được mount",
+      "total": "Tổng phần tử",
+      "range": "Nhìn thấy hàng {first} đến {last}",
+      "row": "Hàng {number}",
+      "diagram": "Minh họa năm hàng đang nhìn thấy",
+      "note": "Cả hai chế độ chỉ vẽ hàng đang nhìn thấy. Số liệu mô phỏng danh sách thật; đây không phải benchmark DOM."
     }
   }
 }

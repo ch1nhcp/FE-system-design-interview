@@ -1,0 +1,107 @@
+---
+description: Shortening the dependency chain to useful content by discovering critical resources early and overlapping independent work.
+visual: animation
+related: [preloading-and-prefetching, above-the-fold, code-splitting, core-web-vitals]
+---
+
+## TL;DR
+
+Loading order determines which work blocks useful content and which can overlap.
+Shorten the critical dependency chain before optimizing an arbitrary request in isolation.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<LoadingAnimation />
+</VisualTab>
+<VisualTab kind="code">
+
+When both endpoint URLs are known, start independent reads together.
+
+```ts
+async function fetchJson(url: string, signal: AbortSignal) {
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`Read failed: ${response.status}`);
+  return response.json();
+}
+
+async function loadProductPage(id: string, signal: AbortSignal) {
+  const productId = encodeURIComponent(id);
+  const [product, reviews] = await Promise.all([
+    fetchJson(`/api/products/${productId}`, signal),
+    fetchJson(`/api/products/${productId}/reviews`, signal),
+  ]);
+  return { product, reviews };
+}
+```
+
+If reviews are optional, render the product independently and give reviews their own loading and failure boundary.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Trace discovery dependencies, not only request duration.
+- Start independent critical work in parallel.
+- Expose critical image and font URLs early.
+- Defer optional work that competes with useful content.
+- Verify the result under bandwidth and CPU constraints.
+
+## Trade-offs
+
+| Choice          | Strengths        | Weaknesses     |
+| --------------- | ---------------- | -------------- |
+| Early discovery | Less waiting     | Known URLs     |
+| Parallel reads  | Overlapping work | Contention     |
+| UI boundaries   | Useful regions   | State handling |
+
+## Interview questions
+
+<InterviewQuestion question="What creates a resource waterfall?">
+
+A request cannot start until earlier work reveals its URL or makes the decision to load it.
+For example, JavaScript can fetch data that reveals an image URL, adding two discovery delays before the image even starts downloading.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should all requests start at once?">
+
+No: parallelize independent useful work, while respecting bandwidth, connection scheduling and back-end capacity.
+Optional analytics or secondary media should not crowd out the resources needed for the current interaction.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why might faster downloads not improve LCP?">
+
+The critical resource may still be discovered late, or main-thread and rendering work may delay its presentation after download.
+Inspect discovery, transfer and render delay separately instead of attributing the entire result to network bytes.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+A network and performance trace reveals when each critical resource becomes discoverable, starts transferring and becomes usable.
+Remove unnecessary dependencies, move known resources into earlier markup or data loading, and give optional regions their own boundaries.
+The animation assumes equal task durations in both modes to isolate ordering; real parallel work can contend for bandwidth and server resources.
+
+### Edge cases
+
+- `Promise.all` rejects when any member rejects, but does not cancel the other requests automatically.
+- A resource can be available in cache while JavaScript execution still blocks its use.
+- Streaming useful HTML helps only if buffering, critical styles and hydration strategy allow it to appear promptly.
+
+### Common mistakes
+
+- Comparing only the sum of request durations instead of the critical path.
+- Adding preloads for resources whose URLs are still unknown at the time of the hint.
+- Starting an optional request early while leaving the critical dependency late.
+
+### References
+
+- [Optimize LCP on web.dev](https://web.dev/articles/optimize-lcp)
+- [Fetch Priority on web.dev](https://web.dev/articles/fetch-priority)
+- [Promise.all in MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all)
+
+</DeepDive>
