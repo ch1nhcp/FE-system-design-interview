@@ -1,0 +1,46 @@
+import type { MDXComponents } from 'mdx/types';
+import type { ComponentProps } from 'react';
+
+import { RealtimeTransportAnimation } from '@/components/visuals/realtime-transport/realtime-transport-animation';
+import { cn } from '@/lib/utils';
+
+import { DeepDive, InterviewQuestion } from './disclosure';
+import { TopicBodyLayout } from './topic-body-layout';
+import { VisualPanel, VisualTab } from './visual-panel';
+
+function ExternalAwareLink({ href = '', ...props }: ComponentProps<'a'>) {
+  const isExternal = /^https?:\/\//.test(href);
+  return <a href={href} {...(isExternal ? { target: '_blank', rel: 'noreferrer' } : {})} {...props} />;
+}
+
+function Table(props: ComponentProps<'table'>) {
+  return (
+    <div className="my-4 overflow-x-auto">
+      <table {...props} />
+    </div>
+  );
+}
+
+/** Code blocks scroll horizontally, so they must be reachable and scrollable with the keyboard. */
+function CodeBlock({ className, ...props }: ComponentProps<'pre'>) {
+  return (
+    <pre
+      tabIndex={0}
+      className={cn(className, 'focus-visible:ring-ring/50 outline-none focus-visible:ring-3')}
+      {...props}
+    />
+  );
+}
+
+/** Components available in topic MDX without imports. */
+export const topicMdxComponents: MDXComponents = {
+  wrapper: TopicBodyLayout,
+  a: ExternalAwareLink,
+  table: Table,
+  pre: CodeBlock,
+  VisualPanel,
+  VisualTab,
+  DeepDive,
+  InterviewQuestion,
+  RealtimeTransportAnimation,
+};

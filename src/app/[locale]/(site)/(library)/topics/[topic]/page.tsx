@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
+import { topicMdxComponents } from '@/components/mdx/mdx-components';
 import { topicLabelMarkup, TopicLabel } from '@/components/site/topic-label';
 import { TopicProgressControls } from '@/components/topic/topic-progress-controls';
 import { Link } from '@/i18n/navigation';
@@ -53,9 +54,10 @@ export default async function TopicPage({ params }: Props) {
   const { previous, next } = getAdjacentTopics(topic);
   const content = getTopicContent(topic, locale);
   const Body = content?.page.data.body;
+  const related = (content?.page.data.related ?? []).filter(isTopicSlug);
 
   return (
-    <article className="flex max-w-3xl flex-col gap-6">
+    <article className="flex flex-col gap-6">
       <nav aria-label={t('breadcrumb')}>
         <ol className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm">
           <li>
@@ -74,7 +76,7 @@ export default async function TopicPage({ params }: Props) {
         </ol>
       </nav>
 
-      <header className="flex flex-col gap-3">
+      <header className="flex max-w-3xl flex-col gap-3">
         <h1 className="text-2xl font-semibold sm:text-3xl">
           <TopicLabel slug={topic} />
         </h1>
@@ -98,27 +100,44 @@ export default async function TopicPage({ params }: Props) {
       </header>
 
       {content?.isFallback && (
-        <p role="note" className="bg-muted flex items-start gap-2 rounded-xl p-3 text-sm">
+        <p role="note" className="bg-muted flex max-w-3xl items-start gap-2 rounded-xl p-3 text-sm">
           <InfoIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
           {t('translationMissing')}
         </p>
       )}
 
       {Body ? (
-        <div
-          lang={content.isFallback ? routing.defaultLocale : undefined}
-          className="flex flex-col gap-4 [&_code]:font-mono [&_code]:text-[0.9em] [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_p]:leading-relaxed"
-        >
-          <Body />
+        <div lang={content.isFallback ? routing.defaultLocale : undefined}>
+          <Body components={topicMdxComponents} />
         </div>
       ) : (
-        <section className="bg-muted flex flex-col gap-1 rounded-xl p-4">
+        <section className="bg-muted flex max-w-3xl flex-col gap-1 rounded-xl p-4">
           <h2 className="font-medium">{t('comingSoonTitle')}</h2>
           <p className="text-muted-foreground text-sm">{t('comingSoonBody')}</p>
         </section>
       )}
 
-      <nav aria-label={t('pagination')} className="mt-4 grid grid-cols-2 gap-3 border-t pt-6">
+      {related.length > 0 && (
+        <section aria-labelledby="related-topics" className="flex flex-col gap-2">
+          <h2 id="related-topics" className="text-base font-semibold">
+            {t('related')}
+          </h2>
+          <ul className="flex flex-wrap gap-2">
+            {related.map((slug) => (
+              <li key={slug}>
+                <Link
+                  href={`/topics/${slug}`}
+                  className="bg-muted hover:bg-muted/70 focus-visible:ring-ring/50 inline-flex rounded-full px-3 py-1 text-sm outline-none focus-visible:ring-3"
+                >
+                  <TopicLabel slug={slug} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <nav aria-label={t('pagination')} className="mt-4 grid max-w-3xl grid-cols-2 gap-3 border-t pt-6">
         {previous ? (
           <Link
             href={`/topics/${previous}`}

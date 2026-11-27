@@ -123,10 +123,11 @@
     @apply border-border outline-ring/50;
   }
 
+  /* `clip` rather than `hidden`: hidden makes body a scroll container, which breaks every `position: sticky`. */
   html,
   body {
     max-width: 100vw;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   body {
@@ -138,6 +139,131 @@
   @media (prefers-color-scheme: dark) {
     html {
       color-scheme: dark;
+    }
+  }
+}
+
+/* Syntax highlighting: Shiki emits both themes as CSS variables (`defaultColor: false`). */
+.shiki,
+.shiki span {
+  color: var(--shiki-light);
+  background-color: var(--shiki-light-bg);
+}
+
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark);
+  background-color: var(--shiki-dark-bg);
+}
+
+/* Long-form topic content rendered from MDX. Spacing uses top margins only, so it is identical in block and grid layout. */
+@layer components {
+  .topic-prose {
+    @apply text-[0.9375rem] leading-relaxed;
+  }
+
+  .topic-prose > :first-child {
+    @apply mt-0;
+  }
+
+  .topic-prose :where(h2) {
+    @apply mt-8 scroll-mt-20 text-lg font-semibold;
+  }
+
+  .topic-prose :where(h3) {
+    @apply mt-6 scroll-mt-20 text-base font-semibold;
+  }
+
+  .topic-prose :where(p, ul, ol, pre, details, .topic-visual) {
+    @apply mt-3;
+  }
+
+  .topic-prose :where(h2, h3) + :where(*) {
+    @apply mt-2;
+  }
+
+  .topic-prose :where(.topic-visual) {
+    @apply mt-6;
+  }
+
+  .topic-prose :where(ul, ol) {
+    @apply flex flex-col gap-1.5 pl-5;
+  }
+
+  .topic-prose :where(ul) {
+    @apply list-disc;
+  }
+
+  .topic-prose :where(ol) {
+    @apply list-decimal;
+  }
+
+  .topic-prose :where(li)::marker {
+    @apply text-muted-foreground;
+  }
+
+  .topic-prose :where(a) {
+    @apply underline underline-offset-4 hover:no-underline;
+  }
+
+  .topic-prose :where(strong) {
+    @apply font-semibold;
+  }
+
+  .topic-prose :where(table) {
+    @apply w-full border-collapse text-sm;
+  }
+
+  .topic-prose :where(th) {
+    @apply border-b px-3 py-2 text-left align-bottom font-medium;
+  }
+
+  .topic-prose :where(td) {
+    @apply border-b px-3 py-2 align-top;
+  }
+
+  .topic-prose :where(th, td):first-child {
+    @apply pl-0;
+  }
+
+  .topic-prose :where(:not(pre) > code),
+  [data-slot='tabs-content'] :where(:not(pre) > code) {
+    @apply bg-muted rounded px-1 py-0.5 font-mono text-[0.85em];
+  }
+
+  .topic-prose :where(pre),
+  [data-slot='tabs-content'] :where(pre) {
+    @apply ring-foreground/10 overflow-x-auto rounded-xl p-4 font-mono text-[0.8125rem] leading-relaxed ring-1;
+  }
+
+  [data-slot='tabs-content'] :where(p) {
+    @apply mt-3 mb-2 text-sm;
+  }
+
+  /*
+   * Wide screens: the cheatsheet flows in the first column and the visual panel spans every row of the second,
+   * staying in view while the reader scrolls. 80 explicit rows is far more than a one-screen cheatsheet uses;
+   * empty auto rows have no height.
+   */
+  @media (width >= 80rem) {
+    .topic-body:has(> .topic-visual) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 25rem;
+      grid-template-rows: repeat(80, auto);
+      column-gap: 2.5rem;
+    }
+
+    .topic-body:has(> .topic-visual) > * {
+      grid-column: 1;
+    }
+
+    .topic-body:has(> .topic-visual) > .topic-visual {
+      position: sticky;
+      top: 5rem;
+      grid-column: 2;
+      grid-row: 1 / -1;
+      align-self: start;
+      margin-top: 0;
     }
   }
 }

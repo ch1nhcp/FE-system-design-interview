@@ -2,10 +2,11 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
+import { topicMdxComponents } from '@/components/mdx/mdx-components';
 import { SectionTopicList } from '@/components/section/section-topic-list';
 import { resolveLocale } from '@/i18n/resolve-locale';
 import { routing } from '@/i18n/routing';
-import { getTopicContent } from '@/lib/content/topic-source';
+import { getSectionOverview, getTopicContent } from '@/lib/content/topic-source';
 import { SECTIONS, getSection } from '@/lib/topics/registry';
 import type { TopicSlug } from '@/lib/topics/registry';
 
@@ -45,13 +46,16 @@ export default async function SectionPage({ params }: Props) {
     }),
   );
 
+  const Overview = getSectionOverview(section.slug, locale)?.data.body;
+
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex max-w-4xl flex-col gap-6">
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">{t(`${section.slug}.title`)}</h1>
         <p className="text-muted-foreground">{t(`${section.slug}.description`)}</p>
       </header>
       <SectionTopicList section={section} summaries={summaries} />
+      {Overview && <Overview components={topicMdxComponents} />}
     </div>
   );
 }
