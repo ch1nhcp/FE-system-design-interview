@@ -1,0 +1,84 @@
+{
+  "HomePage": {
+    "title": "multo — Next.js スターター",
+    "description": "Tailwind CSS、shadcn/ui、next-intl、Zustand、TanStack Query、React Hook Form の設定が完了しています。",
+    "createdBy": "Ch1nhcp 制作",
+    "logoAlt": "Next.js ロゴ",
+    "tabOverview": "概要",
+    "tabComponents": "コンポーネント"
+  },
+  "TechStack": {
+    "title": "技術スタック",
+    "nextjs": "App Router。Turbopack と React Compiler を有効化。",
+    "react": "Server Components 対応の最新 React。",
+    "typescript": "strict モード。ルートと翻訳も型チェック。",
+    "tailwind": "CSS 変数テーマ対応のユーティリティファースト CSS。",
+    "shadcn": "ソースコードとして所有するアクセシブルな UI コンポーネント。",
+    "nextIntl": "英語・日本語のロケールルーティングと翻訳。",
+    "zustand": "小さく高速なグローバル状態管理。",
+    "tanstackQuery": "サーバー状態、キャッシュ、データ取得を devtools 付きで管理。",
+    "reactHookForm": "再レンダリングを最小化する高性能な非制御フォーム。",
+    "zod": "クライアントとサーバーで共有するスキーマファーストのバリデーション。",
+    "t3env": "Zod で検証する型安全な環境変数。",
+    "nextThemes": "ちらつきのないダークモードとテーマ切替。",
+    "sonner": "アクセシブルで意見のあるトースト通知。",
+    "lucide": "一貫性のあるツリーシェイク可能な SVG アイコンセット。"
+  },
+  "Features": {
+    "title": "機能",
+    "i18nRouting": "英語は / 、日本語は /ja で配信",
+    "envValidation": "ビルド時に環境変数を検証",
+    "linting": "oxlint と oxfmt による高速なリントとフォーマット",
+    "commits": "husky と commitlint で Conventional Commits を強制",
+    "csp": "CSP とセキュリティヘッダーを設定済み",
+    "renovate": "Renovate による依存関係の自動更新",
+    "pathAlias": "@/ プレフィックスのパスエイリアス",
+    "redirects": "redirects.ts の型付きリダイレクト定義"
+  },
+  "Counter": {
+    "label": "Zustand カウンター",
+    "increment": "増やす",
+    "decrement": "減らす",
+    "reset": "リセット"
+  },
+  "Metadata": {
+    "title": "Ch1nhcp による Next.js TypeScript スターター",
+    "description": "Tailwind CSS、shadcn/ui、next-intl、Zustand、TanStack Query、React Hook Form を含む Next.js 用 TypeScript スターター。"
+  },
+  "LocaleSwitcher": {
+    "label": "言語"
+  },
+  "ThemeToggle": {
+    "label": "テーマを切り替え"
+  },
+  "Showcase": {
+    "title": "コンポーネントショーケース",
+    "nameLabel": "名前",
+    "namePlaceholder": "山田 太郎",
+    "nameDescription": "公開表示名です。",
+    "roleLabel": "役割",
+    "rolePlaceholder": "役割を選択",
+    "roleAdmin": "管理者",
+    "roleEditor": "編集者",
+    "roleViewer": "閲覧者",
+    "messageLabel": "メッセージ",
+    "messagePlaceholder": "メッセージを入力してください。",
+    "avatarFallback": "山田",
+    "dialogTrigger": "ダイアログを開く",
+    "dialogTitle": "本当によろしいですか?",
+    "dialogDescription": "この操作は取り消せません。",
+    "dialogCancel": "キャンセル",
+    "dialogConfirm": "確認",
+    "menuTrigger": "メニューを開く",
+    "menuLabel": "操作",
+    "menuProfile": "プロフィール",
+    "menuSettings": "設定",
+    "menuLogout": "ログアウト",
+    "tabAccount": "アカウント",
+    "tabPassword": "パスワード",
+    "tabAccountContent": "アカウント情報を更新します。",
+    "tabPasswordContent": "ここでパスワードを変更します。",
+    "toastButton": "トーストを表示",
+    "toastMessage": "保存しました。"
+  }
+}

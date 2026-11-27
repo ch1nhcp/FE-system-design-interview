@@ -1,0 +1,84 @@
+{
+  "HomePage": {
+    "title": "multo — Next.js starter",
+    "description": "Tailwind CSS, shadcn/ui, next-intl, Zustand, TanStack Query, and React Hook Form are wired up and ready to go.",
+    "createdBy": "Created by Ch1nhcp",
+    "logoAlt": "Next.js logo",
+    "tabOverview": "Overview",
+    "tabComponents": "Components"
+  },
+  "TechStack": {
+    "title": "Tech stack",
+    "nextjs": "App Router with Turbopack and React Compiler enabled.",
+    "react": "Latest React with Server Components.",
+    "typescript": "Strict mode with typed routes and translations.",
+    "tailwind": "Utility-first styling with CSS-variable theming.",
+    "shadcn": "Accessible UI primitives, owned as source code.",
+    "nextIntl": "Locale routing and translations for English and Japanese.",
+    "zustand": "Small, fast global state management.",
+    "tanstackQuery": "Server state, caching, and data fetching with devtools.",
+    "reactHookForm": "Performant, uncontrolled forms with minimal re-renders.",
+    "zod": "Schema-first validation shared across client and server.",
+    "t3env": "Type-safe environment variables validated with Zod.",
+    "nextThemes": "Dark mode and theme switching without flashes.",
+    "sonner": "Opinionated, accessible toast notifications.",
+    "lucide": "Consistent, tree-shakeable SVG icon set."
+  },
+  "Features": {
+    "title": "Features",
+    "i18nRouting": "English served at / and Japanese at /ja",
+    "envValidation": "Environment variables validated at build time",
+    "linting": "Fast linting and formatting with oxlint and oxfmt",
+    "commits": "Conventional commits enforced with husky and commitlint",
+    "csp": "Content Security Policy and security headers preconfigured",
+    "renovate": "Automated dependency updates with Renovate",
+    "pathAlias": "Path aliases via the @/ prefix",
+    "redirects": "Typed redirect rules in redirects.ts"
+  },
+  "Counter": {
+    "label": "Zustand counter",
+    "increment": "Increment",
+    "decrement": "Decrement",
+    "reset": "Reset"
+  },
+  "Metadata": {
+    "title": "TypeScript starter for Next.js by Ch1nhcp",
+    "description": "Non-opinionated Next.js starter with Tailwind CSS, shadcn/ui, next-intl, Zustand, TanStack Query, and React Hook Form."
+  },
+  "LocaleSwitcher": {
+    "label": "Language"
+  },
+  "ThemeToggle": {
+    "label": "Toggle theme"
+  },
+  "Showcase": {
+    "title": "Component showcase",
+    "nameLabel": "Name",
+    "namePlaceholder": "Jane Doe",
+    "nameDescription": "This is your public display name.",
+    "roleLabel": "Role",
+    "rolePlaceholder": "Select a role",
+    "roleAdmin": "Admin",
+    "roleEditor": "Editor",
+    "roleViewer": "Viewer",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Type your message here.",
+    "avatarFallback": "JD",
+    "dialogTrigger": "Open dialog",
+    "dialogTitle": "Are you sure?",
+    "dialogDescription": "This action cannot be undone.",
+    "dialogCancel": "Cancel",
+    "dialogConfirm": "Confirm",
+    "menuTrigger": "Open menu",
+    "menuLabel": "Actions",
+    "menuProfile": "Profile",
+    "menuSettings": "Settings",
+    "menuLogout": "Log out",
+    "tabAccount": "Account",
+    "tabPassword": "Password",
+    "tabAccountContent": "Update your account details.",
+    "tabPasswordContent": "Change your password here.",
+    "toastButton": "Show toast",
+    "toastMessage": "Saved successfully."
+  }
+}
