@@ -39,9 +39,10 @@ Other topics use a static diagram or a code example, declared in the topic front
 
 ## Technical approach
 
-- Content: `content/topics/<slug>/en.mdx` (and later `vi.mdx`), with frontmatter validated by Zod.
-- The build fails when a checklist topic has no English content or a `related` link points to a missing topic.
-- The checklist registry is generated from content instead of `checklist-data.ts`.
+- Structure: `src/lib/topics/registry.ts` lists the 14 sections and their topic slugs in reading order. It is the single source of truth for navigation, progress and routes.
+- Content: `content/topics/<slug>.mdx` in English and `content/topics/<slug>.vi.mdx` for a translation, with frontmatter (`description`, `visual`) validated by Zod.
+- Topic and section titles live in the `Topics` and `Sections` messages, so navigation is translated even before content is.
+- Content tests fail when a file does not match a registry topic, a translation has no English file, or frontmatter is invalid. A test that every topic has English content is added once Phase 3 is done.
 - Progress store v2 keys progress by topic, with the states not started, learned and review again, and migrates v1 data.
 - All pages are statically generated; only progress, search and flashcards run on the client.
 - SEO: per-page metadata, `hreflang` alternates, `sitemap.ts`, JSON-LD and Open Graph images.
@@ -49,15 +50,15 @@ Other topics use a static diagram or a code example, declared in the topic front
 
 ## Phases
 
-| Phase                 | Work                                                                                                 | Done when                                                      |
-| --------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| 0. Foundations        | Commit current work, this plan, Vitest and Playwright in CI, Fumadocs spike, one animation prototype | Tests run in CI, content pipeline and visual approach decided  |
-| 1. Site skeleton      | Layout, routes, topic registry, progress store v2, dashboard                                         | Every route renders with placeholder content and tests pass    |
-| 2. Template and pilot | Two-column topic layout, visual components, the full Real-time updates section                       | The user reviews depth and tone before more content is written |
-| 3. English content    | The remaining 13 sections, one or two sections per PR                                                | All 14 sections are written                                    |
-| 4. Study tools        | Cmd+K search, flashcards, "review again" filter                                                      |                                                                |
-| 5. Polish             | Core Web Vitals, accessibility audit, Open Graph images                                              |                                                                |
-| Later                 | Vietnamese content, case studies                                                                     |                                                                |
+| Phase                 | Work                                                                                                        | Done when                                                      |
+| --------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 0. Foundations        | Commit current work, this plan, Vitest and Playwright in CI, Fumadocs spike, one animation prototype (done) | Tests run in CI, content pipeline and visual approach decided  |
+| 1. Site skeleton      | Layout, routes, topic registry, progress store v2, dashboard (done)                                         | Every route renders with placeholder content and tests pass    |
+| 2. Template and pilot | Two-column topic layout, visual components, the full Real-time updates section                              | The user reviews depth and tone before more content is written |
+| 3. English content    | The remaining 13 sections, one or two sections per PR                                                       | All 14 sections are written                                    |
+| 4. Study tools        | Cmd+K search, flashcards, "review again" filter                                                             |                                                                |
+| 5. Polish             | Core Web Vitals, accessibility audit, Open Graph images                                                     |                                                                |
+| Later                 | Vietnamese content, case studies                                                                            |                                                                |
 
 ## Phase 0 findings
 
@@ -93,3 +94,14 @@ Decision: animations are React SVG rendered from a pure model at a point in time
 - pnpm 11 ignores settings in `.npmrc`, so `saveExact` and `strictPeerDependencies` now live in `pnpm-workspace.yaml`.
 - Playwright runs against a production build on port 3100, so it never collides with `pnpm dev`.
 - `tsconfig.json` excludes test output folders because `checkJs` would otherwise type-check generated reports during `next build`.
+
+## Phase 1 findings
+
+- Routes: `/`, `/sections/[section]`, `/topics/[topic]`, `/framework` and `/flashcards`, all statically generated for both locales with `dynamicParams = false`.
+- Layout: the `(library)` route group adds the sections sidebar on wide screens; small screens get a drawer. Both scroll their own list so the current page stays visible without moving the page.
+- A topic shared by two sections has one page and one progress status, and appears in both sections of the dashboard and sidebar.
+- The frontmatter summary is named `description`. Fumadocs types `PageData` with only optional fields, and TypeScript's weak type check rejects a schema that shares none of them.
+- A server component must not import plain constants from a `'use client'` module, since they arrive as client references. Shared constants live in `src/components/site/constants.ts`.
+- The shadcn CLI (4.12, radix-nova style) writes `import { cn } from "cn"` and installs an unrelated `cn` package. After `shadcn add`, remove the package and point the import at `@/lib/utils`.
+- The `Dialog` and `Sheet` primitives read their "Close" label from the `Common` messages instead of hard-coding English.
+- Accessible names: a link that wraps a card reads its whole text, so section cards use a stretched link with only the title inside it.
