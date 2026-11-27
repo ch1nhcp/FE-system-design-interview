@@ -126,14 +126,14 @@ Decision: animations are React SVG rendered from a pure model at a point in time
 | 2     | Back end APIs, Component APIs   | 9      | Merged      |
 | 3     | Networking techniques           | 8      | Merged      |
 | 4     | Performance                     | 14     | Merged      |
-| 5     | Images, Accessibility           | 12     | In review   |
-| 6     | SEO, User experience            | 10     | Not started |
+| 5     | Images, Accessibility           | 12     | Merged      |
+| 6     | SEO, User experience            | 10     | In review   |
 | 7     | Security, i18n, Common patterns | 15     | Not started |
 
 Topics already written in an earlier section are not counted again, such as Optimistic updates under Performance.
 
 Batch 2 adds all five Back end APIs topics and all four Component APIs topics, with a comparison overview for each section.
-There are now 56 English topic pages out of 81 unique topics.
+There are now 66 English topic pages out of 81 unique topics.
 Content tests require every topic and the overview of each completed section to remain present, while unfinished sections can still use placeholders.
 The new topics reuse `FlowDiagram` and code panels because their main concepts are contracts, ownership and request structure rather than timing.
 Batch 2 summaries are checked at a 1440 by 900 desktop viewport with answers and the deep dive collapsed.
@@ -160,6 +160,13 @@ Heading hierarchy has one page shared by Accessibility and SEO.
 Image examples distinguish source dimensions, CSS slots, art direction, loading priority, preload reuse and text alternatives.
 Accessibility examples use native controls where possible and explain ARIA state, keyboard contracts, focus transitions and visual presentation separately.
 E2E coverage includes all twelve reading flows and locale fallbacks, the 820-pixel desktop summary limit, keyboard tab/disclosure operation, mobile-drawer focus return and a narrow 320-pixel reading layout.
+
+Batch 6 adds five new SEO topics, five User experience topics and both section overviews.
+Heading hierarchy reuses its Accessibility page, and Infinite scrolling is shared with Common patterns at a single URL and progress state.
+The new content reuses code panels and `FlowDiagram` for document contracts, request state and recovery decisions.
+SEO examples distinguish discovery, indexing, metadata, structured-data eligibility and rendering rather than promising ranking outcomes.
+User experience examples distinguish initial loading from refresh, ambiguous writes from confirmed failures, and incremental loading from virtualization.
+E2E coverage includes all ten reading flows, delivered descriptions, locale fallbacks, the 820-pixel desktop summary limit, shared Infinite scrolling progress and 320-pixel reading layout.
 
 ### Visual building blocks
 

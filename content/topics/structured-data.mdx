@@ -1,0 +1,119 @@
+---
+description: Describing visible entities with JSON-LD and an appropriate vocabulary while separating valid markup from eligibility for search features.
+visual: code
+related: [semantic-markup, title-and-meta, prerendering, sitemap]
+---
+
+## TL;DR
+
+Structured data describes entities in a machine-readable vocabulary.
+Match the visible page and validate the target feature; valid JSON alone is insufficient.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+An illustrative JSON-LD block describes an article whose heading, author and dates are visible on the page.
+
+```html
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Choosing image loading strategies",
+    "author": {
+      "@type": "Person",
+      "name": "Linh Tran",
+      "url": "https://study.example/authors/linh"
+    },
+    "datePublished": "2026-10-15T09:00:00+07:00",
+    "dateModified": "2026-10-20T10:00:00+07:00"
+  }
+</script>
+```
+
+Check the current documentation for the chosen search feature; this small example is not a complete eligibility checklist.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Structured data validation layers" steps={[
+  { title: 'Choose the real entity', note: 'Use a vocabulary type that matches visible content' },
+  { title: 'Generate JSON-LD safely', note: 'Keep values synchronized with the content model' },
+  { title: 'Validate syntax and meaning', note: 'Check vocabulary plus search-feature requirements' },
+  { title: 'Inspect deployed output', note: 'Eligibility does not guarantee a rich result' },
+]} highlight={2} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Model the actual entity and its relationships.
+- Keep claims consistent with visible content.
+- Separate vocabulary validity from feature eligibility.
+- Serialize and embed untrusted values safely.
+- Revalidate deployed output after content changes.
+
+## Trade-offs
+
+| Form      | Strengths       | Weaknesses      |
+| --------- | --------------- | --------------- |
+| JSON-LD   | Separate graph  | Can drift       |
+| Microdata | In-place values | Markup coupling |
+| RDFa      | Rich semantics  | More attributes |
+
+## Interview questions
+
+<InterviewQuestion question="Does passing a JSON parser guarantee a rich result?">
+
+No: the vocabulary, supported feature, required properties and content policies also matter.
+Even an eligible, correctly marked page is not guaranteed to receive a rich result.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Where should structured values come from?">
+
+Use the same validated content model that produces the visible article, product or other entity.
+Separate manually maintained copies tend to diverge on names, availability, prices or update dates.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why is JSON.stringify alone insufficient for HTML embedding?">
+
+Serializing a value to JSON does not by itself make it safe inside an HTML script element.
+Use an embedding mechanism that prevents a value containing a closing script sequence from terminating the element; never concatenate untrusted strings into markup.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+JSON-LD adds a graph of typed entities and properties without replacing the semantic HTML that readers and assistive technology use.
+The Schema.org vocabulary supports many types, while individual search features support a narrower, changing set of requirements.
+Select the relevant feature first, then test representative content variants with both vocabulary and feature-specific validation tools.
+
+### Design details
+
+Server-delivered structured data can simplify verification, although Google can also process supported JavaScript-generated markup.
+Inspect the rendered public page and crawler access rather than validating only a JSON object in an editor.
+Use accurate dates and identities; a markup generator should not invent reviews or alter claims to make a feature test pass.
+
+### Edge cases
+
+- A product variant can have a different identity or availability from its parent product.
+- Cached markup can disagree with a recently updated visible price or stock state.
+- A vocabulary-valid type may have no corresponding supported rich-result feature.
+
+### Common mistakes
+
+- Adding claims that users cannot find on the page.
+- Treating a validation badge as a ranking guarantee.
+- Building JSON-LD through unsafe string concatenation.
+
+### References
+
+- [Google structured data guidelines](https://developers.google.com/search/docs/appearance/structured-data/sd-policies)
+- [Schema.org Article](https://schema.org/Article)
+- [Google Article markup guidance](https://developers.google.com/search/docs/appearance/structured-data/article)
+- [Next.js JSON-LD embedding guidance](https://nextjs.org/docs/app/guides/json-ld)
+
+</DeepDive>

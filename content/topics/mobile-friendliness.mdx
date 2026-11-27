@@ -1,0 +1,133 @@
+---
+description: Preserving complete tasks on small and changing viewports through responsive layout, usable controls, appropriate input hints and real-device checks.
+visual: code
+related: [responsive-images, long-strings, visual-accessibility, keyboard-interactions, adaptive-loading]
+---
+
+## TL;DR
+
+Mobile usability means completing the same task with less space and different input.
+Adapt layout, controls and loading while preserving content and zoom.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Use a device-width viewport without disabling zoom, and let the form adapt to available space.
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<form class="search-form" action="/lessons" method="get">
+  <label for="query">Find a lesson</label>
+  <input id="query" name="q" type="search" enterkeyhint="search" />
+  <button type="submit">Search</button>
+</form>
+```
+
+```css
+.search-form {
+  display: grid;
+  gap: 0.75rem;
+  padding-inline: 1rem;
+}
+.search-form input {
+  min-inline-size: 0;
+}
+.search-form :is(input, button) {
+  min-block-size: 2.75rem;
+  font: inherit;
+}
+@media (min-width: 40rem) {
+  .search-form {
+    max-inline-size: 40rem;
+  }
+}
+```
+
+The control size is a design choice, not a complete accessibility conformance claim.
+Keep a visible focus indicator in the surrounding theme.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Mobile task verification" steps={[
+  { title: 'Adapt to available space', note: 'Reflow content instead of assuming a device category' },
+  { title: 'Keep controls operable', note: 'Allow touch, keyboard, zoom and appropriate input hints' },
+  { title: 'Handle viewport changes', note: 'Check keyboard, orientation, browser chrome and safe areas' },
+  { title: 'Test the complete task', note: 'Use real devices and constrained networks as well as emulation' },
+]} highlight={2} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Reflow from content needs, not device names.
+- Preserve zoom, full content and primary actions.
+- Use comfortable target sizes and spacing.
+- Test keyboard and changing viewport geometry.
+- Verify real devices and constrained connections.
+
+## Trade-offs
+
+| Technique       | Strengths      | Weaknesses       |
+| --------------- | -------------- | ---------------- |
+| Responsive flow | Shared content | Layout decisions |
+| Sticky actions  | Easy access    | Can obscure UI   |
+| Native inputs   | Platform hints | Device variance  |
+
+## Interview questions
+
+<InterviewQuestion question="Does passing a narrow desktop viewport prove mobile usability?">
+
+No: it does not reproduce every virtual keyboard, touch, browser chrome, safe-area or assistive-technology interaction.
+Use emulation for repeatable coverage and actual devices for representative end-to-end tasks.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What target size should you design for?">
+
+Prefer comfortably sized and spaced controls for the context.
+WCAG 2.2 AA has a 24 by 24 CSS-pixel target-size criterion with defined spacing and other exceptions; the 44 by 44 enhanced criterion is AAA, so distinguish a product guideline from a conformance requirement.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does inputmode validate the entered value?">
+
+No: input hints can influence the keyboard offered by a device but do not replace labels, constraints or validation.
+Choose the underlying field semantics and validate the actual value on the appropriate boundaries.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Responsive layout uses available space and content constraints to choose a usable arrangement.
+A small viewport does not imply touch-only input, low bandwidth or one fixed device capability.
+Keep the document order coherent and preserve task progress while layouts and input methods change.
+
+### Design details
+
+Virtual keyboards can change the visual viewport without resizing every layout reference the same way on every platform.
+Test focused fields, error messages and submit actions so fixed overlays do not hide the next required step.
+Use safe-area insets when drawing into device edges, and verify dynamic viewport units against the target browser behavior rather than assuming 100vh is always the visible space.
+
+### Edge cases
+
+- A hover-only action can disappear from a touch user's workflow.
+- Pinch zoom or text enlargement can reveal clipping even if the default narrow layout fits.
+- A network interruption during a form submission requires preserved input and an honest outcome message.
+
+### Common mistakes
+
+- Disabling zoom to make a fixed layout appear stable.
+- Removing essential content or actions solely to fit a smaller screen.
+- Using user-agent detection as the only responsive layout decision.
+
+### References
+
+- [MDN viewport metadata](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/meta/name/viewport)
+- [WCAG target size minimum](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)
+- [WCAG target size enhanced](https://www.w3.org/WAI/WCAG22/Understanding/target-size-enhanced.html)
+- [MDN inputmode](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/inputmode)
+- [MDN Visual Viewport API](https://developer.mozilla.org/en-US/docs/Web/API/Visual_Viewport_API)
+
+</DeepDive>

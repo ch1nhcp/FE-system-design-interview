@@ -1,0 +1,119 @@
+---
+description: Choosing visible feedback, safe retry or quiet recovery from the failure's effect on the user's task, with clear ownership and preserved input.
+visual: diagram
+related: [ui-states, retries, timeouts, optimistic-updates, authentication]
+---
+
+## TL;DR
+
+Handle failures according to their effect on the user's task.
+Preserve input, explain recovery and retry only when repeating the operation is safe.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram label="Choose an error response" steps={[
+  { title: 'Identify the failed operation', note: 'Validation, authorization, transport or service failure' },
+  { title: 'Assess the task outcome', note: 'A missing response does not prove a write failed' },
+  { title: 'Choose safe recovery', note: 'Preserve input, reconcile state or offer a bounded retry' },
+  { title: 'Show proportionate feedback', note: 'Use local messages or a boundary matching the affected task' },
+]} highlight={2} />
+</VisualTab>
+<VisualTab kind="code">
+
+Fetch rejects on transport failure, but an HTTP error response still needs an explicit status check.
+
+```ts
+type ReadOutcome = { kind: 'ready'; title: string } | { kind: 'not-found' } | { kind: 'failed' };
+
+async function readLessonTitle(id: string, signal: AbortSignal): Promise<ReadOutcome> {
+  try {
+    const response = await fetch(`/api/lessons/${encodeURIComponent(id)}/title`, { signal });
+    if (response.status === 404) return { kind: 'not-found' };
+    if (!response.ok) return { kind: 'failed' };
+    const title = await response.text();
+    return { kind: 'ready', title };
+  } catch (error) {
+    if (signal.aborted) throw error;
+    return { kind: 'failed' };
+  }
+}
+```
+
+The caller owns cancellation and presentation; a production API adapter should distinguish authorization, rate limits and other domain outcomes where they change recovery.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Identify the failed task and preserve user input.
+- Choose feedback near the affected operation.
+- Treat write timeouts as potentially ambiguous.
+- Retry with bounds and a safe operation contract.
+- Keep technical diagnostics out of user messages.
+
+## Trade-offs
+
+| Response      | Strengths        | Weaknesses       |
+| ------------- | ---------------- | ---------------- |
+| Quiet retry   | Low interruption | Can hide delay   |
+| Inline error  | Local recovery   | Needs ownership  |
+| Page boundary | Clear failure    | Replaces context |
+
+## Interview questions
+
+<InterviewQuestion question="When can an error stay invisible to the user?">
+
+When a bounded recovery succeeds without changing the task outcome or requiring a user decision, such as a nonessential telemetry failure.
+Do not silently discard a failed save or hide a failure that changes the trustworthiness of the screen.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Is it safe to retry a save after a timeout?">
+
+The server may have completed the save even though its response did not arrive.
+Use an idempotency contract or reconcile the operation outcome before repeating a write that could create a duplicate side effect.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What makes an error message actionable?">
+
+It identifies what did not complete, retains relevant input and tells the user what they can do next.
+Offer retry only when useful, or guide a different recovery such as correcting a field, signing in or contacting support with a safe reference id.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Separate failure detection in the API boundary from product recovery decisions in the task that owns the interaction.
+A validation rejection, unavailable service and expired session are different outcomes even when all initially appear as an unsuccessful request.
+Assign one presentation owner so a single failure does not produce an inline error, a toast and a modal simultaneously.
+
+### Design details
+
+Use error boundaries for the render failures they can catch, and handle asynchronous requests and event-handler failures explicitly.
+Avoid exposing raw server messages, stack traces or secrets in user-facing text; retain diagnostic context in appropriately protected telemetry.
+Cancellation from navigation or superseded work usually should not appear as an application failure.
+
+### Edge cases
+
+- An initial load failure needs a different view from a failed refresh with useful data already present.
+- Retrying every client at once can amplify an outage; use backoff, jitter and retry budgets where appropriate.
+- A field error needs a programmatic relationship to the field, not only a red border or a transient toast.
+
+### Common mistakes
+
+- Treating every non-200 response as an identical error.
+- Clearing a form before the write is confirmed.
+- Repeating a potentially completed mutation without checking its operation identity.
+
+### References
+
+- [MDN: using Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch)
+- [WAI form notification guidance](https://www.w3.org/WAI/tutorials/forms/notifications/)
+- [React error boundary reference](https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary)
+- [HTTP idempotency semantics](https://www.rfc-editor.org/rfc/rfc9110.html#name-idempotent-methods)
+
+</DeepDive>

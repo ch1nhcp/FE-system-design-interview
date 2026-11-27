@@ -1,0 +1,121 @@
+---
+description: Using native HTML structure and controls to expose content meaning and interaction expectations to browsers, assistive technology and crawlers.
+visual: code
+related: [heading-hierarchy, wai-aria, keyboard-interactions, title-and-meta]
+---
+
+## TL;DR
+
+Semantic HTML expresses what content and controls mean.
+Choose elements by purpose, then style them; meaning and native behavior support usable navigation.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Links navigate, buttons act, and landmarks organize the document.
+
+```html
+<header>
+  <a href="/">Study Notes</a>
+  <nav aria-label="Primary">
+    <a href="/topics">Topics</a>
+  </nav>
+</header>
+<main id="content">
+  <article>
+    <h1>Image loading strategies</h1>
+    <p>Choose delivery based on the image's role.</p>
+    <section aria-labelledby="priority-heading">
+      <h2 id="priority-heading">Loading priority</h2>
+      <p>Make important content available early.</p>
+      <button type="button">Save lesson</button>
+    </section>
+  </article>
+</main>
+```
+
+The Save button still needs application logic and state feedback; an appropriate element supplies only its native interaction baseline.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="From purpose to operable structure" steps={[
+  { title: 'Identify purpose', note: 'Navigation, action, heading, list or independent article' },
+  { title: 'Choose native HTML', note: 'Use meaningful elements and valid relationships' },
+  { title: 'Style without changing meaning', note: 'Visual layout must preserve logical reading order' },
+  { title: 'Test the actual task', note: 'Inspect semantics and use keyboard and assistive technology' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Use links for navigation and buttons for actions.
+- Organize the page with useful landmarks.
+- Choose headings from content hierarchy.
+- Keep labels and relationships meaningful.
+- Verify reading order as well as appearance.
+
+## Trade-offs
+
+| Element choice  | Strengths        | Weaknesses       |
+| --------------- | ---------------- | ---------------- |
+| Native control  | Built-in basics  | Styling work     |
+| Meaningful HTML | Useful structure | Needs judgment   |
+| Generic wrapper | Flexible layout  | No extra meaning |
+
+## Interview questions
+
+<InterviewQuestion question="Does replacing every div with section improve a page?">
+
+No: a section should group a meaningful thematic part of the document, usually identified by a heading.
+Generic layout containers are still appropriate when there is no additional content meaning to expose.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does semantic HTML guarantee better search ranking?">
+
+It provides useful structure and supports robust interpretation, but a tag choice alone does not establish relevance, quality or a ranking outcome.
+Make the public content accessible and discoverable, then evaluate search behavior with the other signals in context.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why not put role button on every clickable card?">
+
+A role does not create keyboard handling or clarify a card containing multiple actions.
+Use a real link for the primary destination and separate native controls for other actions, with valid nesting and clear accessible names.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Browsers interpret HTML into document structure, native interaction behavior and an accessibility tree.
+That meaning can survive a missing stylesheet or a different input method better than a visual convention alone.
+CSS can change appearance without changing element purpose, so the DOM should retain a coherent reading and focus order at every breakpoint.
+
+### Design details
+
+Keep one main landmark for the primary content and give multiple navigation regions distinguishable names when their purposes differ.
+Use lists for meaningful collections and tables for tabular relationships, rather than choosing either merely to obtain a layout.
+Heading levels describe nested content, not a convenient font size.
+
+### Edge cases
+
+- Nesting a button inside a link produces conflicting interactive structure.
+- An icon-only action needs a name that conveys its actual purpose.
+- A visually reordered layout can separate a label or explanation from the control it describes.
+
+### Common mistakes
+
+- Choosing an anchor without href when an action needs a button.
+- Recreating a native control without its keyboard contract.
+- Assuming semantic tags replace meaningful text or validation of the user flow.
+
+### References
+
+- [MDN: semantics](https://developer.mozilla.org/en-US/docs/Glossary/Semantics)
+- [WAI page structure tutorial](https://www.w3.org/WAI/tutorials/page-structure/)
+- [WAI APG: read me first](https://www.w3.org/WAI/ARIA/apg/practices/read-me-first/)
+
+</DeepDive>

@@ -1,0 +1,113 @@
+---
+description: Describing a page accurately with a unique document title and relevant metadata while keeping search snippets and indexing controls distinct.
+visual: code
+related: [semantic-markup, sitemap, structured-data, lang-and-hreflang]
+---
+
+## TL;DR
+
+Give each page a clear title and useful description matching its content.
+Search engines choose their own result text; metadata supplies signals.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A public lesson has its own document title and summary, separate from viewport and social metadata.
+
+```html
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Image loading strategies | Study Notes</title>
+  <meta
+    name="description"
+    content="Compare eager loading, lazy loading and priority hints for useful image delivery."
+  />
+</head>
+```
+
+This describes the lesson; it does not guarantee a particular search title, snippet or ranking.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Page description signals" steps={[
+  { title: 'Identify the page purpose', note: 'Choose a specific subject and visible heading' },
+  { title: 'Write document metadata', note: 'Use a unique title and an accurate description' },
+  { title: 'Deliver the actual page', note: 'Keep HTML, content and navigation aligned' },
+  { title: 'Inspect discovery and presentation', note: 'Search engines select their own result text' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Describe the specific page, not only the brand.
+- Keep the title consistent with visible content.
+- Write descriptions for the user's next decision.
+- Separate indexing, canonical and social signals.
+- Inspect metadata after direct loads and navigation.
+
+## Trade-offs
+
+| Signal      | Purpose        | Limitation      |
+| ----------- | -------------- | --------------- |
+| Title       | Page identity  | Can be replaced |
+| Description | Useful summary | Snippet varies  |
+| Robots      | Index control  | Needs crawling  |
+
+## Interview questions
+
+<InterviewQuestion question="Will a meta description appear exactly in search results?">
+
+No: a search engine can choose a passage from the page that better fits the query.
+Treat the description as an accurate invitation to read, and assess the result against the actual intent of the page.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does robots.txt protect a private page?">
+
+No: crawling rules do not enforce authorization or reliably remove a known URL from search results.
+Protect private resources on the server; a crawler must be allowed to fetch a public page to observe its noindex directive.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do metadata rules scale across thousands of pages?">
+
+Derive titles and summaries from the page's content model with deliberate fallbacks and a consistent brand suffix.
+Check representative routes for duplicate titles, empty descriptions and stale metadata after navigation.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The document title names a browser tab and contributes to how a public page is understood outside its immediate layout.
+Metadata belongs to the page's identity: a category, detail view and filtered result can need different policies.
+Place useful metadata in the delivered HTML when possible, and verify that client navigation updates the same identity without leaving stale tags.
+
+### Design details
+
+There is no character count that guarantees a complete title or snippet in every search result.
+Use concise page-specific language, then inspect important routes rather than padding every field to a supposed ideal length.
+Open Graph metadata serves sharing contexts; it is a separate contract from a document title or an indexing instruction.
+
+### Edge cases
+
+- A missing entity should return an appropriate status instead of a normal-looking empty detail page with generic metadata.
+- A crawler blocked from fetching a URL cannot read that page's noindex instruction.
+- Locale-specific titles and summaries must match the language actually delivered at that URL.
+
+### Common mistakes
+
+- Repeating the same brand-only title across the whole application.
+- Promising content in the description that is absent from the page.
+- Treating metadata or crawling rules as access control.
+
+### References
+
+- [Google title link guidance](https://developers.google.com/search/docs/appearance/title-link)
+- [Google snippet guidance](https://developers.google.com/search/docs/appearance/snippet)
+- [Robots meta tag controls](https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag)
+
+</DeepDive>

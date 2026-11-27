@@ -1,0 +1,123 @@
+---
+description: Modeling loading, success, empty, error and offline presentation without losing existing data or confusing connection hints with request outcomes.
+visual: diagram
+related: [error-handling, offline-usage, optimistic-updates, focus-management]
+---
+
+## TL;DR
+
+Model what the user can see and do during each request state.
+Separate initial loading from refresh, and preserve useful data when an update fails.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram label="A recoverable collection request" steps={[
+  { title: 'Initial request', note: 'Show progress without claiming an empty result' },
+  { title: 'Resolve the result', note: 'Distinguish zero matches, useful data and failure' },
+  { title: 'Refresh existing data', note: 'Keep usable content visible while work continues' },
+  { title: 'Explain the outcome', note: 'Expose freshness, recovery and relevant status changes' },
+]} highlight={2} />
+</VisualTab>
+<VisualTab kind="code">
+
+A small view model distinguishes the first load from background activity.
+
+```ts
+type Lesson = { id: string; title: string };
+type LessonsView =
+  | { kind: 'loading' }
+  | { kind: 'error'; message: string }
+  | { kind: 'ready'; items: Lesson[]; refreshing: boolean; refreshError?: string };
+
+function collectionMessage(view: LessonsView): string {
+  if (view.kind === 'loading') return 'Loading lessons...';
+  if (view.kind === 'error') return view.message;
+  if (view.refreshError) return 'Could not refresh. Showing the previous result.';
+  if (view.refreshing) return 'Refreshing lessons...';
+  return view.items.length === 0 ? 'No lessons match these filters.' : `${view.items.length} lessons`;
+}
+```
+
+Keep a status region mounted before changing its text; render the collection and recovery actions separately.
+
+```html
+<p role="status" aria-atomic="true"></p>
+```
+
+The model's ready state means a response was received; its items may still be empty.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Distinguish loading from a confirmed empty result.
+- Keep useful data visible during background work.
+- Make the next useful action clear in each state.
+- Announce relevant changes without moving focus.
+- Treat connectivity as a hint, not proof of reachability.
+
+## Trade-offs
+
+| Presentation  | Strengths      | Weaknesses      |
+| ------------- | -------------- | --------------- |
+| Skeleton      | Layout preview | Can mislead     |
+| Inline status | Keeps context  | Needs clarity   |
+| Blocking UI   | Clear boundary | Interrupts task |
+
+## Interview questions
+
+<InterviewQuestion question="Is an empty array enough to decide the empty state?">
+
+Only after the relevant request has completed successfully for the current query.
+Before that, the same empty array might mean that nothing has loaded yet, or that a previous request failed.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should refreshing clear the current screen?">
+
+Usually preserve content that is still useful and identify refresh activity or stale results separately.
+Some tasks require fresh authoritative data before acting, so decide which actions remain safe instead of equating visible data with current truth.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can navigator.onLine decide whether a request will succeed?">
+
+No: a device may report a network connection while the service is unreachable, and browser connectivity heuristics vary.
+Observe the actual request outcome and use connectivity hints to explain the situation without disabling useful actions indiscriminately.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Model the lifecycle of a particular resource and query, including whether a usable result already exists.
+Fetching, freshness, connectivity and mutation status are different facts; compressing all of them into a single loading flag creates contradictory screens.
+Choose the visible message, available actions and data retention policy from those facts together.
+
+### Design details
+
+An empty state should explain its cause: no records yet, no filter matches and missing permission suggest different next steps.
+A success message should describe what actually completed, especially when a write is still pending on the server.
+Keep live feedback concise and avoid repeatedly announcing an unchanged background polling state.
+
+### Edge cases
+
+- A late response for old filters must not replace the current query's result.
+- A cached result can be visible while a refresh fails, requiring both data and a warning.
+- A pending optimistic write should not be labeled as durably saved before confirmation.
+
+### Common mistakes
+
+- Flashing an empty-state message before the initial request finishes.
+- Replacing the entire screen with a spinner on every refresh.
+- Assuming a network indicator proves that the application backend is available.
+
+### References
+
+- [WCAG status messages](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html)
+- [MDN navigator.onLine](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/onLine)
+- [React guidance on state structure](https://react.dev/learn/choosing-the-state-structure)
+
+</DeepDive>

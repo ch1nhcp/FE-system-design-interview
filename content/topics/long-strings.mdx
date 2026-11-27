@@ -1,0 +1,127 @@
+---
+description: Keeping long names, URLs and translated text readable without breaking layout or silently hiding information needed to complete a task.
+visual: code
+related: [mobile-friendliness, visual-accessibility, right-to-left, template-strings]
+---
+
+## TL;DR
+
+Let text containers shrink and content wrap before choosing truncation.
+Keep the full value available when a name or identifier matters to the task.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+The flexible column can shrink, and an unbroken value can wrap without hiding its content.
+
+```html
+<div class="document-row">
+  <a class="document-name" href="/documents/42"> frontend_system_design_interview_notes_for_the_entire_team.pdf </a>
+  <button type="button">Download</button>
+</div>
+```
+
+```css
+.document-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.75rem;
+}
+.document-name {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 24rem) {
+  .document-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+```
+
+Test real localized labels and adversarial values, including long words with no spaces.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Choose a long-text policy" steps={[
+  { title: 'Identify the information need', note: 'A name, identifier and paragraph have different reading tasks' },
+  { title: 'Allow the layout to shrink', note: 'Check grid and flex minimum sizes' },
+  { title: 'Choose wrapping or disclosure', note: 'Keep essential values reachable without hover' },
+  { title: 'Verify alternate presentation', note: 'Test translations, zoom, narrow screens and copy behavior' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Test long words as well as long paragraphs.
+- Let flex and grid children shrink where needed.
+- Prefer wrapping for essential information.
+- Provide usable full-text access if truncating.
+- Test zoom, translation, direction and copying.
+
+## Trade-offs
+
+| Policy     | Strengths     | Weaknesses      |
+| ---------- | ------------- | --------------- |
+| Wrap       | Full text     | Variable height |
+| Ellipsis   | Compact scan  | Hidden detail   |
+| Disclosure | Reader choice | Extra action    |
+
+## Interview questions
+
+<InterviewQuestion question="Why can a flex or grid item overflow even when wrapping is enabled?">
+
+Its automatic minimum size can prevent the containing item from shrinking enough for wrapping to help.
+Inspect the relevant child and track, using a deliberate minimum such as min-inline-size: 0 or minmax(0, 1fr) where that matches the layout.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Is a title tooltip enough for truncated content?">
+
+No: hover-only discovery and browser tooltip behavior are unreliable across touch, keyboard and assistive technology.
+Use a readable detail view or an operable disclosure when the full value is needed, and verify how it is named and copied.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should the application shorten stored strings to fit a card?">
+
+Usually keep the original value and choose a presentation policy independently.
+Character slicing can lose distinguishing suffixes or split user-perceived characters, so any genuine data-length limit needs its own domain and Unicode policy.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Layout sizing and line breaking cooperate: an item needs permission to shrink, then the text needs suitable break opportunities.
+Overflow-wrap: anywhere permits emergency breaks for unbroken strings and contributes those opportunities to min-content sizing.
+It differs from hiding overflow or replacing the underlying value with a shorter string.
+
+### Design details
+
+Single-line ellipsis needs a constrained width, no wrapping and overflow handling, but that visual recipe does not define how users obtain the missing information.
+For identifiers, consider a dedicated full-value view and copy action rather than dropping a meaningful extension or distinguishing suffix.
+Use logical sizing properties and test bidirectional values in the reading context instead of assuming every label grows toward the right.
+
+### Edge cases
+
+- Hyphenation depends on language and browser dictionaries; do not assume it will split every product name.
+- A narrow action column can itself contain an unexpectedly long translated button label.
+- Code and genuinely two-dimensional data can need a labeled, keyboard-reachable horizontal scroll region instead of arbitrary character breaking.
+
+### Common mistakes
+
+- Fixing every overflow by hiding text globally.
+- Adding ellipsis to identifiers with no way to inspect the full value.
+- Testing only short English content at the default font size.
+
+### References
+
+- [MDN overflow-wrap](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/overflow-wrap)
+- [MDN text-overflow](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/text-overflow)
+- [MDN min-width](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/min-width)
+- [WCAG reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html)
+
+</DeepDive>
