@@ -1,0 +1,120 @@
+---
+description: Keeping text, controls and state changes perceivable through contrast, readable sizing, reflow and non-color cues.
+visual: code
+related: [theming, focus-management, mobile-friendliness, alt-text]
+---
+
+## TL;DR
+
+Make content and controls perceivable across vision, zoom and display conditions.
+Combine contrast, readable layout, visible focus and non-color state cues.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Use scalable reading styles and an explicit error message as well as a color treatment.
+
+```css
+.reading {
+  font-size: 1rem;
+  line-height: 1.5;
+  max-inline-size: 65ch;
+}
+:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+}
+```
+
+```html
+<label for="email">Email</label>
+<input id="email" type="email" aria-invalid="true" aria-describedby="email-error" />
+<p id="email-error"><strong>Error:</strong> Enter a valid email address.</p>
+```
+
+Validate actual theme colors and focus visibility; these style declarations alone do not guarantee sufficient contrast.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Visual access checks" steps={[
+  { title: 'Perceive content and controls', note: 'Check foreground/background contrast and visible boundaries' },
+  { title: 'Identify states', note: 'Use text, shape or another cue alongside color' },
+  { title: 'Resize and reflow', note: 'Keep the task usable with enlarged text and narrow layouts' },
+  { title: 'Test alternate presentation', note: 'Verify themes, forced colors and focused states' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Check actual foreground and background combinations.
+- Do not communicate important state only through color.
+- Support text resizing without losing content or function.
+- Keep controls and focus perceivable in all themes.
+- Test narrow reflow and forced-color presentation.
+
+## Trade-offs
+
+| AA check       | Common minimum | Context             |
+| -------------- | -------------- | ------------------- |
+| Normal text    | 4.5:1          | Applicable text     |
+| Large text     | 3:1            | Defined size/weight |
+| UI information | 3:1            | Required visuals    |
+
+## Interview questions
+
+<InterviewQuestion question="Does WCAG require one minimum font size?">
+
+No universal font-size number alone establishes accessible text.
+Assess readability, the contrast rules for its size and weight, resizing, spacing and the ability to use the task when content reflows.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Is a red border enough to identify an error?">
+
+No: people may not perceive the color difference or understand which field failed.
+Provide a clear error message and relationship to the field, with another appropriate state cue and a useful recovery instruction.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does passing a contrast checker prove accessibility?">
+
+It establishes only part of the evidence for the tested color combination and state.
+Also inspect keyboard focus, zoom, reflow, semantic structure, disabled and error states, and whether information survives alternate display modes.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Contrast requirements compare relative luminance for applicable text or visual information against adjacent backgrounds.
+WCAG AA commonly requires 4.5:1 for normal text and 3:1 for large text, with large text defined by size and weight rather than a CSS class name.
+Required visual information for controls and graphics has its own non-text contrast criterion and exceptions; not every decorative line is subject to the same rule.
+
+### Design details
+
+Large text for the contrast criterion is at least 18 point, or 14 point bold, corresponding to about 24 CSS pixels or 18.67 CSS pixels bold.
+Verify text can resize to 200 percent without loss and check the reflow criterion at the relevant 320 CSS-pixel width, accounting for its defined exceptions.
+Focus visibility and focus appearance criteria have different requirements and conformance levels, so do not treat one outline recipe as a full conformance claim.
+
+### Edge cases
+
+- A gradient, image or translucent surface can make text contrast vary across the same element.
+- A light theme can pass while dark-mode placeholder, focus or error colors fail.
+- Forced-colors mode can suppress color treatments that the design assumed would carry meaning.
+
+### Common mistakes
+
+- Claiming a particular font size guarantees accessibility.
+- Checking only default text while ignoring controls, focus and error states.
+- Clipping enlarged or translated text inside fixed-height containers.
+
+### References
+
+- [WCAG contrast minimum](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
+- [WCAG non-text contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)
+- [WCAG resize text](https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html)
+- [WCAG reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html)
+
+</DeepDive>

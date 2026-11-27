@@ -1,0 +1,34 @@
+## Build an operable task
+
+Start with the task's content structure and native controls, then verify how people navigate, understand and complete it.
+Keyboard behavior, exposed semantics, document headings, focus and visual presentation need to agree.
+
+| Concern              | Starting point                                     | Verify                                                   |
+| -------------------- | -------------------------------------------------- | -------------------------------------------------------- |
+| Keyboard interaction | Native controls and established widget patterns    | Reachability, expected activation and a usable exit path |
+| WAI-ARIA             | Accurate native semantics with necessary additions | Computed names, roles, states and relationships          |
+| Heading hierarchy    | Levels based on content structure                  | Useful page subject, peers and nested sections           |
+| Focus management     | Logical DOM order and deliberate context changes   | Visible focus, modal behavior and return targets         |
+| Visual accessibility | Readable layout with appropriate contrast          | Themes, errors, zoom, reflow and non-color cues          |
+
+## Coordinate dynamic states
+
+Opening a dialog changes interaction context, so give it a meaningful name, an appropriate initial focus target and a reliable close and return path.
+An ARIA modal attribute does not implement inertness or keyboard containment by itself.
+After a deletion or navigation, choose a logical orientation strategy rather than leaving focus on content that no longer exists.
+
+Routine background updates usually need relevant status feedback rather than a forced focus move.
+Error messages should identify the problem, connect to the affected control and explain how the user can recover.
+
+## Gather different kinds of evidence
+
+| Method                              | Useful for                                    | Limitation                                              |
+| ----------------------------------- | --------------------------------------------- | ------------------------------------------------------- |
+| Automated checks                    | Detecting many structural and rule violations | Cannot prove every interaction or alternative is useful |
+| Keyboard-only task                  | Order, activation, focus and recovery         | Does not establish screen-reader announcement quality   |
+| Accessibility tree inspection       | Computed names, roles and state               | Still needs real task and assistive-technology testing  |
+| Zoom and alternate display modes    | Reflow, clipping and perceivable states       | One viewport or theme is not complete coverage          |
+| Representative assistive technology | Navigation and task understanding             | Browser/device combinations can differ                  |
+
+Treat accessibility as part of the component and content contract, including loading, empty, error and success states.
+Use WCAG criteria and platform patterns as references while validating the actual task with people and representative tools.

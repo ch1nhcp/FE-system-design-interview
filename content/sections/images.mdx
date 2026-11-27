@@ -1,0 +1,36 @@
+## Choose the image pipeline
+
+Start with the image's purpose, required visual meaning and actual rendered slot.
+Delivery, representation, resource selection and accessibility solve different parts of the problem.
+
+| Decision                            | Technique           | Verify                                               |
+| ----------------------------------- | ------------------- | ---------------------------------------------------- |
+| Transform and cache variants        | Image CDN           | Allowed variants, cache identity and private access  |
+| Encode suitable content             | Image formats       | Actual bytes, fidelity, transparency and decode cost |
+| Delay noncritical media             | Native lazy loading | Initial LCP timing and reserved dimensions           |
+| Preserve meaning without sight      | Text alternatives   | Decorative, informative, functional or complex role  |
+| Match pixels to the slot            | Responsive sources  | Truthful sizes, source dimensions and currentSrc     |
+| Reveal a late critical URL          | Focused preload     | Matching request and reuse without duplicate work    |
+| Change composition or optional cost | Adaptive images     | Meaningful crops, explicit preferences and fallback  |
+
+## Keep the contracts aligned
+
+A width descriptor describes the source file's pixels; sizes describes the intended CSS slot; neither replaces the actual layout.
+An image CDN can generate variants, but source selection still needs useful candidates and a cache policy matching the representation.
+Preloading changes discovery and lazy loading defers eligible work, so avoid applying both policies indiscriminately to the same critical image.
+
+The alternative belongs to the image's role in this page, even when several variants share one asset identity.
+If art direction removes important information, review the crop and its text equivalent rather than assuming a smaller file is automatically acceptable.
+
+## Review the result
+
+| Check                      | Evidence                                                 |
+| -------------------------- | -------------------------------------------------------- |
+| Useful first content       | Resource discovery, priority and LCP trace               |
+| Efficient selected variant | Rendered slot, currentSrc, actual dimensions and bytes   |
+| Stable geometry            | Reserved ratios and responsive layout behavior           |
+| Accessible meaning         | Context-specific alternative and complex-data equivalent |
+| Correct reuse              | Matching preload, negotiated format and cache variants   |
+
+Test representative viewports and densities, including warm caches and constrained networks.
+Do not assume one exact chosen file or one nominal format proves the quality of the user experience.

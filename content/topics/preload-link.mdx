@@ -1,0 +1,118 @@
+---
+description: Discovering a genuinely critical image earlier with a preload that matches the image request the browser will consume.
+visual: code
+related: [preloading-and-prefetching, responsive-images, image-lazy-loading, loading-sequence]
+---
+
+## TL;DR
+
+Preload can reveal a late critical image before normal discovery.
+Match the consuming request and verify reuse without wasted downloads.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A responsive preload and image use the same candidate set and slot hint.
+
+```html
+<!-- In the document head. -->
+<link
+  rel="preload"
+  as="image"
+  type="image/webp"
+  href="/hero-1280.webp"
+  imagesrcset="/hero-640.webp 640w, /hero-1280.webp 1280w"
+  imagesizes="(max-width: 640px) 100vw, 640px"
+  fetchpriority="high"
+/>
+
+<!-- The matching image in a layout with the stated slot width. -->
+<img
+  src="/hero-1280.webp"
+  srcset="/hero-640.webp 640w, /hero-1280.webp 1280w"
+  sizes="(max-width: 640px) 100vw, 640px"
+  width="1280"
+  height="720"
+  alt="A visual map of the course learning path"
+/>
+```
+
+Check support and the actual network trace; an already early-discovered image may not need a preload.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Match a critical image preload" steps={[
+  { title: 'Find late critical discovery', note: 'Identify the image blocking useful content' },
+  { title: 'Publish a focused hint', note: 'Use image destination and matching candidate rules' },
+  { title: 'Consume the representation', note: 'Match URL, credentials and source selection' },
+  { title: 'Verify reuse', note: 'Check earlier timing without a duplicate transfer' },
+]} highlight={2} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Target a measured late-discovered critical resource.
+- Use the correct destination and supported format hint.
+- Match responsive candidates and their slot description.
+- Align CORS and credentials with the consumer.
+- Check for duplicate work and bandwidth contention.
+
+## Trade-offs
+
+| Choice            | Strengths         | Weaknesses         |
+| ----------------- | ----------------- | ------------------ |
+| Focused preload   | Earlier discovery | Early bandwidth    |
+| Priority hint     | Better scheduling | Browser discretion |
+| Natural discovery | Simple markup     | Late hidden URLs   |
+
+## Interview questions
+
+<InterviewQuestion question="Why can an image preload be wasted?">
+
+The consuming element may select another responsive candidate or use different request attributes.
+The page may also never render that image, so verify actual reuse and avoid speculative hints for uncertain current-page content.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should both AVIF and WebP be preloaded?">
+
+Usually not for the same picture: a browser can support both and download representations it will not use.
+Choose a justified hint strategy and let typed picture sources provide fallback without duplicating critical downloads.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How does preload differ from fetchpriority?">
+
+Preload makes a resource discoverable before its normal consumer finds it.
+Fetch priority influences scheduling once a request is known; it does not by itself reveal a URL hidden behind later work.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The browser can begin a matching request after encountering a resource hint and later reuse it for the consuming element.
+Responsive image preload attributes help select the same representation as the image's source-selection rules.
+An unsupported responsive-preload implementation can fall back differently, so include target-browser testing in the decision.
+
+### Edge cases
+
+- A framework image optimizer may generate URLs that differ from a hand-written preload.
+- A hero crop chosen through picture media conditions needs matching conditional hints rather than a guessed desktop image.
+- A preloaded image can still appear late if decode or rendering is blocked.
+
+### Common mistakes
+
+- Preloading all fallback formats or many offscreen images.
+- Giving the preload and img inconsistent sizes values.
+- Treating a successful transfer as proof that the hint shortened the critical path.
+
+### References
+
+- [Preload attributes in MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/rel/preload)
+- [Preload responsive images on web.dev](https://web.dev/articles/preload-responsive-images)
+- [Fetch Priority on web.dev](https://web.dev/articles/fetch-priority)
+
+</DeepDive>

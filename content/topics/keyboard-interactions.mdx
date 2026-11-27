@@ -1,0 +1,110 @@
+---
+description: Making every task operable through predictable native controls and documented composite-widget keyboard patterns.
+visual: code
+related: [event-handlers, focus-management, wai-aria, visual-accessibility]
+---
+
+## TL;DR
+
+Keyboard users need predictable controls and visible focus.
+Start with native elements and complete the keyboard contract of any custom widget.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Native controls provide their expected activation behavior without duplicating it in key handlers.
+
+```html
+<form action="/search" method="get">
+  <label for="topic-query">Search topics</label>
+  <input id="topic-query" name="q" type="search" />
+  <button type="submit">Search</button>
+</form>
+
+<a href="/topics/keyboard-interactions">Read keyboard guidance</a>
+
+<details>
+  <summary>Advanced search tips</summary>
+  <p>Combine a technique name with the problem you want to solve.</p>
+</details>
+```
+
+An action belongs on a button; navigation belongs on a link with a real destination.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Keyboard task flow" steps={[
+  { title: 'Reach the task', note: 'Use a logical tab sequence and skip repeated navigation' },
+  { title: 'Identify current focus', note: 'Show a persistent, unobscured indicator' },
+  { title: 'Operate the control', note: 'Use native keys or the documented widget pattern' },
+  { title: 'Leave predictably', note: 'Avoid traps; modal containment needs a close path' },
+]} highlight={2} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Preserve native button, link and form semantics.
+- Keep DOM order aligned with the visual task order.
+- Use Tab between widgets and pattern keys within them.
+- Avoid positive tabindex values and keyboard traps.
+- Scope shortcuts and preserve text-entry behavior.
+
+## Trade-offs
+
+| Approach         | Strengths            | Weaknesses              |
+| ---------------- | -------------------- | ----------------------- |
+| Native control   | Built-in behavior    | Styling boundaries      |
+| Composite widget | Efficient navigation | Full key contract       |
+| Shortcut         | Faster repeat tasks  | Conflicts and discovery |
+
+## Interview questions
+
+<InterviewQuestion question="Why not make a div act like a button?">
+
+A role alone does not add focusability, keyboard activation, disabled behavior or form semantics.
+A native button supplies a stronger starting contract and avoids having to rebuild those behaviors correctly.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should Tab visit every item inside a tab list?">
+
+A composite pattern commonly exposes one tab stop and uses arrow keys to move inside the group.
+Follow the appropriate pattern for focus, selection and activation instead of applying one rule to every kind of widget.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How should shortcuts behave inside an input?">
+
+Avoid intercepting normal typing, composition or established browser and assistive-technology commands.
+Scope shortcuts to an appropriate context and provide disabling, remapping or modifier behavior when a single-character shortcut requires it.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Sequential focus navigation follows focusable elements in a document's intended order unless custom logic changes that contract.
+Native controls supply keyboard activation, while composite widgets need deliberate focus movement and state coordination.
+Test an end-to-end task with keyboard-only input, including validation failures, dialogs and content updates.
+
+### Edge cases
+
+- A visually reordered layout can make its unchanged DOM tab sequence confusing.
+- Roving focus and active-descendant patterns have different implementation contracts.
+- A custom Enter or Space handler on a native button can trigger its action twice.
+
+### Common mistakes
+
+- Adding role and tabindex while omitting the corresponding keyboard behavior.
+- Forcing a custom tab sequence with positive tabindex values.
+- Treating a modal focus loop as acceptable without Escape or another usable close action.
+
+### References
+
+- [WAI APG keyboard interface guidance](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/)
+- [HTML button in MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/button)
+- [WCAG character key shortcuts](https://www.w3.org/WAI/WCAG22/Understanding/character-key-shortcuts.html)
+
+</DeepDive>

@@ -122,18 +122,18 @@ Decision: animations are React SVG rendered from a pure model at a point in time
 
 | Batch | Sections                        | Topics | Status      |
 | ----- | ------------------------------- | ------ | ----------- |
-| 1     | Architecture, State management  | 9      | In review   |
-| 2     | Back end APIs, Component APIs   | 9      | In review   |
-| 3     | Networking techniques           | 8      | In review   |
-| 4     | Performance                     | 14     | In review   |
-| 5     | Images, Accessibility           | 12     | Not started |
+| 1     | Architecture, State management  | 9      | Merged      |
+| 2     | Back end APIs, Component APIs   | 9      | Merged      |
+| 3     | Networking techniques           | 8      | Merged      |
+| 4     | Performance                     | 14     | Merged      |
+| 5     | Images, Accessibility           | 12     | In review   |
 | 6     | SEO, User experience            | 10     | Not started |
 | 7     | Security, i18n, Common patterns | 15     | Not started |
 
 Topics already written in an earlier section are not counted again, such as Optimistic updates under Performance.
 
 Batch 2 adds all five Back end APIs topics and all four Component APIs topics, with a comparison overview for each section.
-There are now 44 English topic pages out of 81 unique topics.
+There are now 56 English topic pages out of 81 unique topics.
 Content tests require every topic and the overview of each completed section to remain present, while unfinished sections can still use placeholders.
 The new topics reuse `FlowDiagram` and code panels because their main concepts are contracts, ownership and request structure rather than timing.
 Batch 2 summaries are checked at a 1440 by 900 desktop viewport with answers and the deep dive collapsed.
@@ -153,6 +153,13 @@ Batch 4 adds the fourteen new Performance topics and a diagnostic overview; Opti
 The list drawing is a viewport sketch, and its mounted-row counts describe the model rather than a live DOM benchmark.
 All three animations reuse deterministic playback, localized captions and reduced-motion behavior.
 Performance content uses the same 820-pixel desktop summary check, locale fallback and mobile interaction coverage as earlier batches.
+
+Batch 5 adds all seven Images topics, all five Accessibility topics and an overview for each section.
+The new content uses code examples and the existing `FlowDiagram` rather than introducing animations.
+Heading hierarchy has one page shared by Accessibility and SEO.
+Image examples distinguish source dimensions, CSS slots, art direction, loading priority, preload reuse and text alternatives.
+Accessibility examples use native controls where possible and explain ARIA state, keyboard contracts, focus transitions and visual presentation separately.
+E2E coverage includes all twelve reading flows and locale fallbacks, the 820-pixel desktop summary limit, keyboard tab/disclosure operation, mobile-drawer focus return and a narrow 320-pixel reading layout.
 
 ### Visual building blocks
 
