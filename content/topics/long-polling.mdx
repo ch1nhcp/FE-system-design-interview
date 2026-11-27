@@ -19,6 +19,17 @@ When nothing happens before a timeout, the server answers empty and the client s
 ```ts
 type Batch<T> = { events: T[]; cursor: string };
 
+// Resolves after `ms`, or right away when the signal aborts, so cleanup never waits on a backoff.
+function wait(ms: number, signal: AbortSignal) {
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener('abort', () => {
+      clearTimeout(timer);
+      resolve();
+    }, { once: true });
+  });
+}
+
 // One request at a time. The cursor makes sure no event is lost between two requests.
 export async function longPoll<T>(url: string, onEvents: (events: T[]) => void, signal: AbortSignal) {
   let cursor = '';
@@ -39,7 +50,7 @@ export async function longPoll<T>(url: string, onEvents: (events: T[]) => void, 
       // Exponential backoff with full jitter, so a server restart does not cause a reconnect storm.
       failures += 1;
       const delay = Math.random() * Math.min(30_000, 1000 * 2 ** failures);
-      await new Promise((resolve) => setTimeout(resolve, delay));
+      await wait(delay, signal);
     }
   }
 }
