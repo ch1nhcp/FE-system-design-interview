@@ -2,6 +2,8 @@ import type { MDXComponents } from 'mdx/types';
 import type { ComponentProps } from 'react';
 
 import { FlowDiagram } from '@/components/visuals/flow-diagram/flow-diagram';
+import { RaceAnimation } from '@/components/visuals/networking/race-animation';
+import { RetryAnimation } from '@/components/visuals/networking/retry-animation';
 import { RealtimeTransportAnimation } from '@/components/visuals/realtime-transport/realtime-transport-animation';
 import { RenderingTimelineAnimation } from '@/components/visuals/rendering-timeline/rendering-timeline-animation';
 import { cn } from '@/lib/utils';
@@ -47,4 +49,6 @@ export const topicMdxComponents: MDXComponents = {
   RealtimeTransportAnimation,
   RenderingTimelineAnimation,
   FlowDiagram,
+  RetryAnimation,
+  RaceAnimation,
 };

@@ -24,6 +24,7 @@ const COMPLETED_ENGLISH_SECTIONS = [
   'real-time-updates',
   'backend-apis',
   'component-apis',
+  'networking',
 ] as const;
 
 describe.each(COMPLETED_ENGLISH_SECTIONS)('completed English section: %s', (slug) => {

@@ -1,0 +1,123 @@
+---
+description: Keeping asynchronous completions from applying results that no longer match the current user intent.
+visual: animation
+related: [debouncing-updates, timeouts, optimistic-updates, pagination]
+---
+
+## TL;DR
+
+Async requests may finish in a different order from the order they started.
+Accept results only when they still belong to the current intent; cancellation helps save work but is not a write-ordering protocol.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RaceAnimation />
+</VisualTab>
+<VisualTab kind="code">
+
+A search controller combines best-effort cancellation with a generation guard.
+Call `cancel` when its owner is disposed.
+
+```ts
+export function createSearch(onResult: (data: unknown) => void, onError: (error: unknown) => void) {
+  let generation = 0;
+  let active: AbortController | undefined;
+
+  return {
+    async search(query: string) {
+      const current = ++generation;
+      active?.abort();
+      const controller = new AbortController();
+      active = controller;
+      try {
+        const response = await fetch(`/api/search?${new URLSearchParams({ q: query })}`, { signal: controller.signal });
+        if (!response.ok) throw new Error(`Search failed: ${response.status}`);
+        const data: unknown = await response.json();
+        if (current === generation) onResult(data);
+      } catch (error) {
+        if (current === generation && !controller.signal.aborted) onError(error);
+      }
+    },
+    cancel() {
+      generation++;
+      active?.abort();
+    },
+  };
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Request start order does not imply completion order.
+- Associate each read with its query identity or generation.
+- Guard stale errors and loading state as well as data.
+- Cancel obsolete work and release it on owner disposal.
+- Order conflicting writes with server versions or sequencing.
+
+## Trade-offs
+
+| Technique        | Strengths               | Weaknesses           |
+| ---------------- | ----------------------- | -------------------- |
+| Generation guard | Rejects stale effects   | Work may still run   |
+| Abort signal     | Saves obsolete work     | Does not undo writes |
+| Server version   | Detects write conflicts | Needs reconciliation |
+
+## Interview questions
+
+<InterviewQuestion question="Why is debouncing not enough?">
+
+It limits how often a request starts, but any two requests that do start may still return out of order.
+The result acceptance rule must compare the response with the current search, independent of timing assumptions.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Which state needs a stale-response guard?">
+
+Data, errors and loading state all belong to a particular request generation.
+An older request's `finally` block must not hide the current spinner, and its failure must not replace a newer success with an error.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does ignoring an old save response protect writes?">
+
+No: it only protects the display, while the server may still apply an older save after a newer one.
+Serialize conflicting writes or use conditional versions and conflict handling on the server; never rely on response filtering to enforce persistence order.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+A request captures the active generation before beginning async work.
+When each completion arrives, it compares that generation with the current one before applying any screen state change.
+Cancellation reduces wasted work, while the guard also protects later transforms or request mechanisms that do not honor cancellation.
+
+### Design details
+
+React effect cleanup can mark a particular request inactive when its dependencies change or its component unmounts.
+For cached data, use the full query identity, including account, filters and sort, so independent requests do not overwrite the same cache entry.
+The animation deliberately lets both reads finish to isolate the difference between accepting every completion and accepting only the latest intent.
+
+### Edge cases
+
+- Returning to the same query text does not necessarily make an old generation valid; freshness and parameters may have changed.
+- An older request may complete parsing or a custom transform after network cancellation.
+- Parallel independent widgets need independent identities rather than one global generation counter that cancels unrelated work.
+
+### Common mistakes
+
+- Guarding successful data but letting a stale error or `finally` update the screen.
+- Assuming a fast local network reproduces production request ordering.
+- Using a latest-response guard as a substitute for write concurrency control.
+
+### References
+
+- [Fetching data and avoiding races in React effects](https://react.dev/reference/react/useEffect#fetching-data-with-effects)
+- [AbortController in MDN](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)
+- [Query keys in TanStack Query](https://tanstack.com/query/latest/docs/framework/react/guides/query-keys)
+
+</DeepDive>

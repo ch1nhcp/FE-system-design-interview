@@ -339,6 +339,62 @@
         "streamRestPaint": "Trình duyệt thay chỗ giữ bằng nội dung thật.",
         "streamComplete": "Toàn bộ trang đã sẵn sàng."
       }
+    },
+    "retries": {
+      "title": "Thời điểm thử lại",
+      "modeLabel": "Chiến lược thử lại",
+      "modes": {
+        "immediate": "Ngay lập tức",
+        "backoff": "Backoff",
+        "jitter": "Jitter"
+      },
+      "explanation": {
+        "immediate": "Không chờ: các client cùng gửi lại yêu cầu đọc vừa thất bại.",
+        "backoff": "Khoảng chờ tăng dần giảm tần suất, nhưng các client vẫn thử lại cùng lúc.",
+        "jitter": "Full jitter phân tán lần thử lại trong từng khoảng backoff. Mẫu cố định giúp phát lại nhất quán."
+      },
+      "captions": {
+        "idle": "Ba client chuẩn bị gửi cùng một yêu cầu đọc.",
+        "first": "Các yêu cầu đầu tiên chạy đồng thời; cả ba đều sẽ thất bại.",
+        "retrying": "Các yêu cầu thử lại đang chạy. So sánh thời điểm gửi giữa các client.",
+        "waiting": "Client chờ trước khi thử lại thay vì lập tức tăng tải.",
+        "recovered": "Cả ba client đã thành công ở lần gửi thứ ba."
+      },
+      "sent": "Yêu cầu đã gửi",
+      "recovered": "Client thành công",
+      "client": "Client {number}",
+      "attempt": "Lần gửi {number}",
+      "diagramLabel": "Thời điểm yêu cầu của ba client",
+      "ms": "{value} ms",
+      "legend": "× lần gửi thất bại; ✓ thành công. Mỗi thanh là một yêu cầu. Thời gian và kết quả chỉ để minh họa."
+    },
+    "race": {
+      "title": "Tìm kiếm trả về sai thứ tự",
+      "modeLabel": "Xử lý phản hồi",
+      "modes": {
+        "unguarded": "Không kiểm tra",
+        "latest": "Chỉ nhận mới nhất"
+      },
+      "captions": {
+        "idle": "Phản hồi tìm kiếm có thể đến khác thứ tự gửi yêu cầu.",
+        "first": "Người dùng tìm r. Yêu cầu này sẽ chậm.",
+        "second": "Người dùng chuyển sang tìm react. Yêu cầu mới sẽ xong trước.",
+        "newResult": "Kết quả cho react đã đến và khớp nội dung đang nhập.",
+        "ignored": "Phản hồi r cũ đã đến nhưng bị bỏ qua. Kết quả vẫn khớp react.",
+        "stale": "Phản hồi r cũ ghi đè kết quả mới. Ô nhập vẫn là react."
+      },
+      "ignored": "Phản hồi bỏ qua",
+      "query": "Nội dung đang nhập",
+      "result": "Kết quả hiển thị",
+      "terms": {
+        "empty": "Chưa có",
+        "r": "r",
+        "react": "react"
+      },
+      "diagramLabel": "Tìm kiếm cũ hoàn thành sau tìm kiếm mới",
+      "request": "Yêu cầu tìm {query}",
+      "ms": "{value} ms",
+      "note": "Cả hai yêu cầu đều hoàn thành ở cả hai chế độ. Kiểm tra thế hệ quyết định phản hồi nào được cập nhật màn hình."
     }
   }
 }

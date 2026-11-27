@@ -1,0 +1,112 @@
+---
+description: Repeating transient failures with bounded attempts, exponential delays and jitter to avoid synchronized load.
+visual: animation
+related: [timeouts, rest, optimistic-updates, offline-usage]
+---
+
+## TL;DR
+
+Retries can recover transient failures, but they also add load and may repeat a completed write.
+Retry only eligible operations, with an attempt limit, an overall deadline and jittered backoff.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RetryAnimation />
+</VisualTab>
+<VisualTab kind="code">
+
+Delay selection for full jitter, called after a failed attempt.
+This is a scheduling policy, not a complete retry loop.
+
+```ts
+function retryDelay(retryIndex: number, retryAfterMs = 0, random = Math.random) {
+  const base = 500;
+  const cap = 8_000;
+  const window = Math.min(cap, base * 2 ** retryIndex);
+  return Math.max(retryAfterMs, random() * window);
+}
+
+const policy = {
+  maxAttempts: 3, // includes the initial request
+  totalBudgetMs: 10_000, // includes request time and waiting
+  retryableStatuses: new Set([429, 502, 503, 504]),
+};
+```
+
+Before each retry, confirm the operation is repeatable, honor cancellation, parse any server retry hint and ensure the remaining budget allows it.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Retry transient failures, not every rejected request.
+- Bound attempts and total time, including backoff waits.
+- Use idempotency protection for retryable creates or payments.
+- Add jitter so clients do not retry in lockstep.
+- Honor Retry-After; stop when canceled or out of budget.
+
+## Trade-offs
+
+| Policy      | Strengths             | Weaknesses          |
+| ----------- | --------------------- | ------------------- |
+| Immediate   | Low recovery delay    | Synchronized load   |
+| Backoff     | Lower retry frequency | Clients still align |
+| Full jitter | Dispersed retry times | Variable wait time  |
+
+## Interview questions
+
+<InterviewQuestion question="Why add jitter to exponential backoff?">
+
+Clients that fail together can keep retrying together even when every delay doubles.
+Randomizing each delay spreads those attempts across the backoff window instead of recreating a burst at its boundary.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can you retry a write after a timeout?">
+
+Only with a contract that makes repetition safe, such as an idempotent operation or a server-enforced idempotency key reused for the same logical write.
+A timeout describes the client's uncertainty; it does not prove the server rejected or rolled back the operation.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Where should retries live?">
+
+Choose a deliberate owner and budget, usually near the layer that understands the operation's semantics.
+If several layers independently retry, their attempt counts multiply and can overload a dependency that is already struggling.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+After an eligible failure, exponential backoff grows a capped delay window with the retry index.
+Full jitter chooses a delay between zero and that window; a server-provided minimum wait must still be respected.
+The animation uses fixed samples and assumes each client's third read succeeds to isolate scheduling differences, not to predict recovery under real load.
+
+### Design details
+
+Classify HTTP responses and network failures separately, and distinguish user cancellation from a request timeout.
+Parse `Retry-After` as either seconds or an HTTP date; if it exceeds the remaining deadline, stop rather than retry earlier.
+An application error inside HTTP 200, such as a GraphQL field error, needs operation-specific classification.
+
+### Edge cases
+
+- An offline browser can keep failing regardless of backoff; preserve pending intent and recheck reachability without exhausting a battery.
+- Long retry waits need cancellation too, not only the in-flight fetch.
+- Different error codes can have different policies; authentication or validation failures generally need a changed request or user action.
+
+### Common mistakes
+
+- Retrying every 4xx response or every mutation automatically.
+- Resetting the total deadline for each attempt.
+- Generating a new idempotency key for a retry, turning it into a new operation.
+
+### References
+
+- [Exponential backoff and jitter at AWS](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/)
+- [Timeouts, retries and jitter in the AWS Builders' Library](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/)
+- [Retry-After in MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Retry-After)
+
+</DeepDive>

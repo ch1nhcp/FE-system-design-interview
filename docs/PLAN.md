@@ -124,7 +124,7 @@ Decision: animations are React SVG rendered from a pure model at a point in time
 | ----- | ------------------------------- | ------ | ----------- |
 | 1     | Architecture, State management  | 9      | In review   |
 | 2     | Back end APIs, Component APIs   | 9      | In review   |
-| 3     | Networking techniques           | 8      | Not started |
+| 3     | Networking techniques           | 8      | In review   |
 | 4     | Performance                     | 14     | Not started |
 | 5     | Images, Accessibility           | 12     | Not started |
 | 6     | SEO, User experience            | 10     | Not started |
@@ -133,17 +133,24 @@ Decision: animations are React SVG rendered from a pure model at a point in time
 Topics already written in an earlier section are not counted again, such as Optimistic updates under Performance.
 
 Batch 2 adds all five Back end APIs topics and all four Component APIs topics, with a comparison overview for each section.
-There are now 22 English topic pages out of 81 unique topics.
+There are now 30 English topic pages out of 81 unique topics.
 Content tests require every topic and the overview of each completed section to remain present, while unfinished sections can still use placeholders.
 The new topics reuse `FlowDiagram` and code panels because their main concepts are contracts, ownership and request structure rather than timing.
 Batch 2 summaries are checked at a 1440 by 900 desktop viewport with answers and the deep dive collapsed.
 From the TL;DR heading to the deep dive, the summary must fit within 820 pixels, leaving space for the sticky header when scrolled into view.
 Detailed key points live under "Design details" in the deep dive; the visible bullets stay short enough for quick review.
 
+Batch 3 adds all eight Networking techniques topics and a section overview that explains how their safeguards compose.
+`RetryAnimation` compares immediate retries, exponential backoff and full jitter for three clients, using fixed jitter samples for repeatable playback.
+`RaceAnimation` compares unguarded completions with a latest-generation guard while both requests finish out of order.
+Both animations use the existing playback controls, localized captions and reduced-motion behavior.
+Networking summaries use the same 820-pixel desktop height check as Batch 2, with desktop/mobile E2E coverage for navigation, code tabs, disclosures and English fallback.
+
 ### Visual building blocks
 
 - `RealtimeTransportAnimation`: short polling, long polling, SSE and WebSocket.
 - `RenderingTimelineAnimation`: CSR, SSR, SSG/ISR and streaming with Server Components, with a browser mock and server, network and browser lanes.
+- `RetryAnimation` and `RaceAnimation`: retry scheduling across clients and accepting only the current search result, sharing a request timeline diagram.
 - `FlowDiagram`: a vertical chain of steps with an optional loop, for topics about structure rather than timing.
 - `AnimationFrame` and `useTimelinePlayback` hold what every step-through animation shares, so a new animation only needs a model and a picture.
-- Animations still planned for later batches: debounce and throttle, retries with backoff, race conditions, loading waterfalls and list virtualization.
+- Animations still planned for later batches: debounce and throttle, loading waterfalls and list virtualization.

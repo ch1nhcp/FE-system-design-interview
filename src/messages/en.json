@@ -339,6 +339,62 @@
         "streamRestPaint": "The browser swaps the placeholder for the real content.",
         "streamComplete": "The whole page is ready."
       }
+    },
+    "retries": {
+      "title": "Retry timing",
+      "modeLabel": "Retry strategy",
+      "modes": {
+        "immediate": "Immediate",
+        "backoff": "Backoff",
+        "jitter": "Jitter"
+      },
+      "explanation": {
+        "immediate": "No delay: clients immediately repeat the failed read together.",
+        "backoff": "Exponential delays reduce frequency, but clients still retry together.",
+        "jitter": "Full jitter spreads retries inside each backoff window. Fixed samples make this demo repeatable."
+      },
+      "captions": {
+        "idle": "Three clients are about to make the same read.",
+        "first": "The first requests run together; all three will fail.",
+        "retrying": "Retry requests are in flight. Compare their alignment across clients.",
+        "waiting": "Clients wait before retrying instead of adding immediate load.",
+        "recovered": "All three clients have succeeded on their third attempt."
+      },
+      "sent": "Requests sent",
+      "recovered": "Clients recovered",
+      "client": "Client {number}",
+      "attempt": "Attempt {number}",
+      "diagramLabel": "Request timing for three clients",
+      "ms": "{value} ms",
+      "legend": "× failed attempt; ✓ success. Every bar is one request. Times and outcomes are illustrative."
+    },
+    "race": {
+      "title": "Out-of-order search",
+      "modeLabel": "Response handling",
+      "modes": {
+        "unguarded": "Unguarded",
+        "latest": "Latest only"
+      },
+      "captions": {
+        "idle": "Search responses can arrive in a different order from the requests.",
+        "first": "The user searches for r. Its request will be slow.",
+        "second": "The user now searches for react. The new request will finish first.",
+        "newResult": "Results for react arrive and match the current input.",
+        "ignored": "The older r response arrives but is ignored. Results still match react.",
+        "stale": "The older r response overwrites the newer results. The input still says react."
+      },
+      "ignored": "Responses ignored",
+      "query": "Current input",
+      "result": "Displayed results",
+      "terms": {
+        "empty": "None yet",
+        "r": "r",
+        "react": "react"
+      },
+      "diagramLabel": "Older search completes after the newer search",
+      "request": "Request for {query}",
+      "ms": "{value} ms",
+      "note": "Both requests finish in both modes. The guard controls which response may update the screen."
     }
   }
 }

@@ -1,0 +1,132 @@
+---
+description: Keeping useful reads and recoverable user intent available when the network cannot reach the service.
+visual: diagram
+related: [caching-and-expiry, optimistic-updates, retries, conflict-resolution]
+---
+
+## TL;DR
+
+Offline support combines cached reads with durable local intent.
+Distinguish local saves from server confirmation, with explicit replay and conflict handling.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Offline outbox lifecycle"
+  steps={[
+    { title: 'Local intent', note: 'Show a draft or provisional change' },
+    { title: 'Durable outbox', note: 'Persist an operation id, account scope and payload' },
+    { title: 'Attempt synchronization', note: 'Recheck identity, reachability and server version' },
+    { title: 'Confirm or resolve', note: 'Reconcile server data; preserve rejected intent for recovery' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+A persisted operation record separates local durability from server confirmation.
+
+```ts
+type OutboxEntry = {
+  operationId: string; // reused as the server idempotency key
+  accountId: string;
+  documentId: string;
+  expectedVersion: string;
+  title: string;
+  createdAt: number;
+  state: 'pending' | 'blocked';
+};
+
+const entry: OutboxEntry = {
+  operationId: crypto.randomUUID(),
+  accountId: 'user-42',
+  documentId: 'doc-7',
+  expectedVersion: 'v3',
+  title: 'Offline draft',
+  createdAt: Date.now(),
+  state: 'pending',
+};
+
+// Persist entry in IndexedDB before claiming it is saved locally.
+// Send only under the matching authenticated account.
+// Remove only after server confirmation is reconciled locally.
+```
+
+The record is an example contract, not a complete outbox implementation.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Cache an app shell and selected reads deliberately.
+- Persist important drafts before claiming local durability.
+- Treat navigator.onLine as a hint, not a service health check.
+- Scope caches and queued writes to the correct account.
+- Replay with idempotency, ordering and conflict handling.
+
+## Trade-offs
+
+| Strategy     | Strengths               | Weaknesses                     |
+| ------------ | ----------------------- | ------------------------------ |
+| Cached reads | Useful offline browsing | Data may be stale              |
+| Local drafts | Recoverable input       | Storage can fail               |
+| Write outbox | Work can continue       | Replay and conflict complexity |
+
+## Interview questions
+
+<InterviewQuestion question="Does navigator.onLine prove the API is reachable?">
+
+No: a device can have a network interface while a captive portal, outage or failed route prevents access to the service.
+Use actual request outcomes to drive synchronization and offer retries without disabling all work based solely on that browser hint.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What if the app closes while replaying a write?">
+
+The server might have applied the write before the client could record confirmation.
+Persist a stable operation id before sending and reuse it for replay, with server-side deduplication and a defined retention period.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How should offline edits handle another device's changes?">
+
+Send the version the edit was based on and let the server detect a conflict.
+Keep the local draft, show the canonical change and offer a merge or user decision; use automatic merge only when the domain's semantics support it.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+A service worker can serve a previously cached application shell and selected resources, while IndexedDB stores structured drafts and pending operations.
+A synchronizer replays eligible work once the service is reachable, checking the active identity and each operation's dependencies.
+Successful writes update local canonical data before their pending records are retired.
+
+### Design details
+
+Define a storage budget, cache versions, eviction and upgrade behavior; persistent browser storage is not an unconditional backup guarantee.
+Background Sync can help on supported platforms, but foreground retries and a visible pending-work view are still needed.
+Do not cache private responses or replay another account's work through a global, identity-blind handler.
+
+### Edge cases
+
+- A session can expire while offline, blocking replay until the original account authenticates again.
+- Quota errors or user-cleared storage can destroy local-only data; handle persistence failures visibly.
+- A queued delete can invalidate later edits; preserve operation dependencies and provide a resolution path.
+
+### Common mistakes
+
+- Labeling a local-only edit as successfully synced.
+- Assuming background sync will run promptly or on every platform.
+- Clearing unsent drafts on logout without a deliberate recovery or account-isolation policy.
+
+### References
+
+- [Service Worker API in MDN](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API)
+- [IndexedDB API in MDN](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
+- [Navigator.onLine in MDN](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/onLine)
+- [Background Synchronization API in MDN](https://developer.mozilla.org/en-US/docs/Web/API/Background_Synchronization_API)
+
+</DeepDive>

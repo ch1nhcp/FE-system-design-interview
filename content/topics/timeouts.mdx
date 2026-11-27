@@ -1,0 +1,121 @@
+---
+description: Bounding how long a request may occupy the user's attention and resources without assuming the server stopped.
+visual: code
+related: [retries, race-conditions, error-handling, offline-usage]
+---
+
+## TL;DR
+
+A timeout bounds how long the client waits before treating an operation as uncertain.
+Separate per-attempt limits from an overall deadline, and preserve a recovery path when the server outcome is unknown.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Combine user cancellation and a per-attempt timeout, including reading the response body.
+
+```ts
+async function readJson(url: string, userSignal: AbortSignal) {
+  const deadline = AbortSignal.timeout(5_000);
+  const signal = AbortSignal.any([userSignal, deadline]);
+  try {
+    const response = await fetch(url, { signal });
+    if (!response.ok) throw new Error(`Read failed: ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    if (signal.aborted) throw signal.reason;
+    throw error;
+  }
+}
+```
+
+The caller can distinguish a timeout reason from a user abort and a network failure.
+Check target-browser support or use a maintained abortable request utility where these APIs are unavailable.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Request deadline"
+  steps={[
+    { title: 'Begin with a budget', note: 'Include time already spent waiting or retrying' },
+    { title: 'Wait for data', note: 'The attempt has a bounded time allowance' },
+    { title: 'Response or timeout', note: 'An abort stops client waiting, not necessarily the server write' },
+    { title: 'Recover deliberately', note: 'Retry eligible reads; reconcile uncertain writes' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Set limits from measured latency and the user's workflow.
+- Include backoff waits inside the overall retry budget.
+- Abort obsolete reads and clean up timers or listeners.
+- Distinguish cancellation, timeout and HTTP errors.
+- Reconcile uncertain writes before repeating them.
+
+## Trade-offs
+
+| Policy           | Strengths           | Weaknesses              |
+| ---------------- | ------------------- | ----------------------- |
+| Short timeout    | Fast recovery path  | More false failures     |
+| Long timeout     | Tolerates slow work | Long resource occupancy |
+| Overall deadline | Bounded user wait   | Budget coordination     |
+
+## Interview questions
+
+<InterviewQuestion question="Does aborting fetch cancel the server operation?">
+
+It stops the browser's request processing and body consumption, but the server may already have committed a change.
+Use an operation id, status lookup or idempotency contract to reconcile that uncertainty rather than assuming rollback.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why does a retry need an overall deadline?">
+
+Three attempts with five-second limits can also include seconds of backoff and queueing.
+Compute each new allowance from a shared remaining budget so a retry policy cannot extend the user's wait indefinitely.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should every timeout show a full-page error?">
+
+No: preserve already loaded content and the user's input, then expose a local retry or background-recovery state when possible.
+An intentional cancellation after navigating away usually needs no error message at all.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The request layer combines cancellation signals and enforces a bounded allowance for the current attempt.
+A workflow deadline belongs above that layer and includes retries, waits and any earlier work that consumes the user's time budget.
+For a custom timer implementation, clear the timer in a `finally` block and remove abort listeners on completion.
+
+### Design details
+
+Choose timeouts from latency distributions and acceptable false-timeout rates rather than copying a single number across endpoints.
+Connection setup, response headers and body streaming can have different behavior; decide whether the operation has a total or inactivity limit.
+The sample uses modern browser APIs whose timeout counts active time and can pause during browser suspension, so a strict wall-clock deadline may require checking an absolute expiry too.
+
+### Edge cases
+
+- A response can return headers quickly and then stall while its body downloads.
+- CPU-heavy synchronous work cannot be interrupted merely by aborting a signal.
+- A canceled request can still have later application callbacks; guard whether its result belongs to the active screen.
+
+### Common mistakes
+
+- Using `Promise.race` to abandon a fetch while leaving the underlying network request running.
+- Giving every retry a fresh overall budget.
+- Reporting a timed-out payment as definitively failed and encouraging a duplicate payment.
+
+### References
+
+- [AbortSignal.timeout in MDN](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/timeout_static)
+- [AbortSignal.any in MDN](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/any_static)
+- [Timeout selection in the AWS Builders' Library](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/)
+
+</DeepDive>

@@ -1,0 +1,125 @@
+---
+description: Waiting for a quiet interval before sending the latest input while keeping local feedback immediate.
+visual: code
+related: [debouncing-and-throttling, race-conditions, optimistic-updates, batching]
+---
+
+## TL;DR
+
+Debouncing waits for a quiet interval before sending the latest input, replacing intermediate values.
+Keep typing feedback immediate, and apply the delay only to expensive downstream work.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Debounce a value, then use it as the key for a query that handles cancellation and stale responses.
+
+```tsx
+import { useEffect, useState } from 'react';
+
+export function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+// Inside a search component:
+// const [query, setQuery] = useState('');
+// const searchQuery = useDebouncedValue(query, 250);
+// Render the input from query; fetch results using searchQuery.
+```
+
+This hook delays subsequent changes, not the initial value.
+It does not cancel requests already in flight or serialize writes.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Debounced search pipeline"
+  steps={[
+    { title: 'Input updates immediately', note: 'The controlled field follows every keystroke' },
+    { title: 'Restart the quiet timer', note: 'New input replaces the pending value' },
+    { title: 'Dispatch latest query', note: 'A quiet interval releases one request' },
+    { title: 'Accept current results only', note: 'Old requests may still finish later' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Delay side effects, not the input's visible value.
+- Cancel the previous timer when a new value arrives.
+- Guard stale responses even when requests are debounced.
+- Define flush, cancel and maximum-wait behavior if needed.
+- Serialize autosaves or use versions to protect write order.
+
+## Trade-offs
+
+| Strengths                 | Weaknesses                        |
+| ------------------------- | --------------------------------- |
+| Fewer redundant requests  | Intentional response delay        |
+| Latest intent is retained | Continuous input can starve work  |
+| Simple search integration | In-flight work still needs guards |
+
+## Interview questions
+
+<InterviewQuestion question="Does debouncing prevent stale search results?">
+
+No: it reduces how many requests start, but an older request can still finish after the latest one.
+Use an active-query identity, generation check or query library to ensure only relevant responses update the current screen.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should an autosave debounce be flushed on exit?">
+
+Define the user-facing guarantee first: show unsaved state, save on an explicit action when needed, and retain recoverable drafts.
+A page-close event is not a reliable place to complete an ordinary async save, so do not promise durability based only on flushing a timer there.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How is debounce different from throttle?">
+
+Trailing debounce waits until input settles; throttle limits execution frequency while activity continues.
+Use debounce for a settled search query and throttle or a frame-based strategy for continuous progress or pointer updates.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Each input change cancels the previous scheduled dispatch and starts a new timer capturing the latest value.
+When no new input arrives during the interval, the pending value is released to a query or effect.
+For requests, keep the complete search identity in the cache key, including filters and tenant scope.
+
+### Design details
+
+Leading and trailing execution are separate choices; an optional maximum wait prevents continuous typing from postponing work indefinitely.
+Cancel timers on unmount and when their delay changes, and define whether explicit submit should bypass the delay.
+For text composition with input method editors, avoid dispatching intermediate composition text as a final search or save intent.
+
+### Edge cases
+
+- An initial nonempty value may need immediate loading rather than a delayed first query.
+- A save request already in flight cannot be undone by clearing its debounce timer; use serialized writes or version checks.
+- Unstable object values can restart a value-based debounce on every render; choose a stable semantic input.
+
+### Common mistakes
+
+- Creating a new debounced callback on every render without canceling the old timer.
+- Delaying the controlled input update, making typing feel unresponsive.
+- Treating debounce as a concurrency or durability guarantee.
+
+### References
+
+- [Debounce in MDN](https://developer.mozilla.org/en-US/docs/Glossary/Debounce)
+- [Throttle in MDN](https://developer.mozilla.org/en-US/docs/Glossary/Throttle)
+- [Effect cleanup in React](https://react.dev/reference/react/useEffect)
+- [Composition events in MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/compositionend_event)
+
+</DeepDive>
