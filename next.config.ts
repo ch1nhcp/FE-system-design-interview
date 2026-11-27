@@ -1,3 +1,4 @@
+import { createMDX } from 'fumadocs-mdx/next';
 import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
@@ -73,4 +74,7 @@ const nextConfig: NextConfig = {
 
 const withNextIntl = createNextIntlPlugin();
 
-export default withNextIntl(nextConfig);
+// Leave the macro `include` at its default: narrower patterns do not match Turbopack rule keys.
+const withMDX = createMDX();
+
+export default withMDX(withNextIntl(nextConfig));

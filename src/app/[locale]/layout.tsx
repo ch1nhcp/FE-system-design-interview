@@ -24,8 +24,9 @@ type Props = Readonly<{
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = await resolveLocale(params);
   const t = await getTranslations({ locale, namespace: 'Metadata' });
+  const tSite = await getTranslations({ locale, namespace: 'Site' });
   return {
-    title: t('title'),
+    title: { default: t('title'), template: `%s | ${tSite('name')}` },
     description: t('description'),
   };
 }

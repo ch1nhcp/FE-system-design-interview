@@ -14,15 +14,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useChecklistStore } from '@/stores/use-checklist-store';
+import { useProgressStore } from '@/stores/use-progress-store';
 
 type Props = {
   disabled: boolean;
 };
 
 export function ResetProgressDialog({ disabled }: Props) {
-  const t = useTranslations('Checklist');
-  const reset = useChecklistStore((state) => state.reset);
+  const t = useTranslations('Dashboard');
+  const reset = useProgressStore((state) => state.reset);
 
   return (
     <Dialog>
