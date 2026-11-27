@@ -1,0 +1,118 @@
+---
+description: Delivering meaningful public HTML through SSR or static generation while planning freshness, caching and hydration as separate responsibilities.
+visual: diagram
+related: [server-side-rendering, incremental-static-regeneration, client-side-rendering, sitemap]
+---
+
+## TL;DR
+
+Deliver useful public content in the initial HTML through SSR or SSG.
+Choose freshness and cache policies separately; rendering alone does not ensure indexing.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram label="Public content rendering contract" steps={[
+  { title: 'Resolve URL and publication state', note: 'Identify the public content and correct HTTP status' },
+  { title: 'Produce useful HTML', note: 'Render at build time or for the request' },
+  { title: 'Deliver through the cache policy', note: 'Keep freshness and authorization boundaries explicit' },
+  { title: 'Enhance in the browser', note: 'Hydrate interactions without replacing the main meaning' },
+]} highlight={1} />
+</VisualTab>
+<VisualTab kind="code">
+
+Both strategies should deliver useful content before client-side event handlers run.
+
+```html
+<!-- Useful document output from either SSR or SSG -->
+<main>
+  <h1>Image loading strategies</h1>
+  <p>Compare eager, lazy and high-priority image loading.</p>
+  <a href="/topics/image-lazy-loading">Read loading guidance</a>
+</main>
+```
+
+```text
+SSG: content -> build -> stored HTML -> request
+SSR: request -> content lookup -> generated HTML
+
+Either route still needs:
+- correct status and metadata
+- a publication and freshness policy
+- crawlable links and a usable client transition
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Put important public content in delivered HTML.
+- Choose generation time from freshness needs.
+- Use real URLs, links and appropriate status codes.
+- Keep public caches separate from private data.
+- Verify output and hydration on direct loads.
+
+## Trade-offs
+
+| Strategy | Strengths        | Weaknesses        |
+| -------- | ---------------- | ----------------- |
+| SSG      | Reusable HTML    | Build freshness   |
+| SSR      | Request context  | Request-time cost |
+| CSR      | Rich interaction | Render dependency |
+
+## Interview questions
+
+<InterviewQuestion question="Can Google index a client-rendered page?">
+
+Google can render JavaScript, but rendering adds dependencies on accessible scripts, data and successful execution.
+Other consumers may have different capabilities, so useful initial HTML reduces dependencies without guaranteeing an indexing outcome.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should every public page use SSR?">
+
+No: stable public content can be generated ahead of requests and refreshed through builds or revalidation.
+Choose based on publication delay, request-specific needs, cache safety and the amount of content, rather than treating SSR as a universal SEO switch.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why inspect both raw HTML and the rendered page?">
+
+Raw HTML shows what the initial response provides; the rendered page shows the effects and failures of browser enhancement.
+Compare main content, links, status, metadata and hydration behavior so a successful screenshot does not hide a broken initial response.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+SSG moves document generation ahead of the request, while SSR performs it for a request, potentially with caching around parts of the work.
+Hydration attaches client behavior and has its own JavaScript and consistency costs in either strategy.
+A useful public document should not depend on scrolling, a click or a login-only data call to reveal the primary content meant for indexing.
+
+### Design details
+
+Treat removal and unpublished content as part of the rendering pipeline: stale generated HTML must not outlive the intended publication policy indefinitely.
+Plan invalidation for the HTML, data and metadata together so one layer does not describe an older entity than another.
+Verify deep links directly, including not-found responses, rather than relying only on client navigation from the home page.
+
+### Edge cases
+
+- Personalized SSR output must not leak through a public shared cache.
+- An empty shell returned as 200 for a missing entity can create a soft-404 problem.
+- Rendering HTML at an edge location does not automatically make its origin data fresh or nearby.
+
+### Common mistakes
+
+- Confusing server rendering with zero client JavaScript.
+- Claiming initial HTML guarantees crawling, indexing or ranking.
+- Shipping stale metadata after updating the visible document.
+
+### References
+
+- [Google JavaScript SEO basics](https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics)
+- [Rendering on the web](https://web.dev/articles/rendering-on-the-web)
+- [Google HTTP and network error guidance](https://developers.google.com/search/docs/crawling-indexing/http-network-errors)
+
+</DeepDive>

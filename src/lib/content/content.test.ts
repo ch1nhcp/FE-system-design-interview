@@ -28,6 +28,8 @@ const COMPLETED_ENGLISH_SECTIONS = [
   'performance',
   'images',
   'accessibility',
+  'seo',
+  'user-experience',
 ] as const;
 
 describe.each(COMPLETED_ENGLISH_SECTIONS)('completed English section: %s', (slug) => {

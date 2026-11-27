@@ -1,0 +1,37 @@
+## Make public content discoverable
+
+Start with the public page and its URL, then verify discovery, rendering and interpretation separately.
+A title, sitemap or structured-data block cannot compensate for inaccessible content or an incorrect response.
+
+| Concern           | Starting point                         | Verify                                            |
+| ----------------- | -------------------------------------- | ------------------------------------------------- |
+| Title and meta    | Accurate page-specific identity        | Direct loads, navigation and language alignment   |
+| Sitemap           | Preferred public URL inventory         | Absolute URLs, publication state and real updates |
+| Structured data   | Visible entities and relationships     | Vocabulary, feature policy and safe serialization |
+| Semantic markup   | Native document structure and controls | Meaningful links, landmarks and interaction       |
+| Heading hierarchy | A coherent content outline             | Page subject, sibling sections and nesting        |
+| SSR or SSG        | Useful initial public HTML             | Freshness, status, caching and hydration          |
+
+## Trace the public document
+
+A page must be reachable, return an appropriate response and expose the content that is intended for discovery.
+Inspect both the initial HTML and the browser-rendered result, including links, metadata and error routes.
+Google can render JavaScript, but scripts and data add dependencies, and other consumers can have different rendering capabilities.
+
+Treat canonical identity, language alternates and publication state as one content policy across pages, navigation and sitemap generation.
+A crawler cannot read a noindex instruction on a page it is forbidden to fetch.
+Use authorization to protect private content instead of relying on crawling or indexing controls.
+
+## Keep signals honest
+
+| Check                    | Useful evidence                     | Does not establish           |
+| ------------------------ | ----------------------------------- | ---------------------------- |
+| Page-specific metadata   | Delivered and updated document head | Exact search-result wording  |
+| Reachable sitemap        | Maintained canonical URL inventory  | Guaranteed crawling/indexing |
+| Structured-data testing  | Syntax, vocabulary and eligibility  | Guaranteed rich result       |
+| Rendered HTML inspection | Useful content and valid links      | Guaranteed ranking           |
+| Production observation   | Search reports and URL inspection   | Permanent future behavior    |
+
+Use real content variants for validation: missing entities, removed pages, translations, filtered collections and recently updated records.
+Keep metadata and structured values tied to the same content model as the visible page so they change together.
+The rendering strategy pages cover architectural timing in more depth; Heading hierarchy is the same shared lesson used in Accessibility.

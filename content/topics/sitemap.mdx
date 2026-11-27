@@ -1,0 +1,120 @@
+---
+description: Publishing a maintained list of preferred public URLs to support search discovery without confusing discovery with crawling, indexing or ranking.
+visual: code
+related: [title-and-meta, prerendering, lang-and-hreflang, infinite-scrolling]
+---
+
+## TL;DR
+
+A sitemap helps crawlers discover preferred public URLs.
+Keep it aligned with canonical pages and real updates; inclusion does not guarantee indexing.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+An XML sitemap lists absolute preferred URLs and trustworthy modification dates.
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://study.example/topics/image-cdn</loc>
+    <lastmod>2026-10-15</lastmod>
+  </url>
+  <url>
+    <loc>https://study.example/topics/responsive-images</loc>
+    <lastmod>2026-10-20</lastmod>
+  </url>
+</urlset>
+```
+
+The dates illustrate actual content changes, not the time a build happened.
+
+```text
+# robots.txt can advertise the sitemap location
+Sitemap: https://study.example/sitemap.xml
+```
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Sitemap publication pipeline" steps={[
+  { title: 'Select public canonical pages', note: 'Exclude private, redirected and non-indexable URLs' },
+  { title: 'Generate absolute locations', note: 'Escape XML and use real modification dates' },
+  { title: 'Publish and advertise', note: 'Keep sitemap files reachable and split large inventories' },
+  { title: 'Inspect discovery and indexing', note: 'Check errors instead of assuming inclusion means indexed' },
+]} highlight={0} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- List preferred, indexable public URLs.
+- Use absolute locations with correct XML escaping.
+- Keep dates tied to meaningful content changes.
+- Split large inventories with a sitemap index.
+- Keep internal links and canonical signals aligned.
+
+## Trade-offs
+
+| Approach       | Strengths       | Weaknesses       |
+| -------------- | --------------- | ---------------- |
+| Static file    | Simple delivery | Can drift        |
+| Data-generated | Matches catalog | Filtering needed |
+| Sitemap index  | Large inventory | More files       |
+
+## Interview questions
+
+<InterviewQuestion question="Does a sitemap guarantee that every listed page is indexed?">
+
+No: it supplies discovery and canonicalization signals, while crawl access, page quality and indexing decisions remain separate.
+Inspect representative URLs and sitemap reports when pages are missing.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should every build update every lastmod value?">
+
+No: changing a deployment timestamp does not imply the content changed.
+Use the last significant page update, or omit the field if the system cannot maintain it accurately.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you handle a very large catalog?">
+
+Generate bounded sitemap files and reference them from a sitemap index, often partitioned by stable catalog ranges or update groups.
+Keep deleted and redirected pages out of the published inventory and monitor generation failures.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+A content or routing inventory can generate sitemap files alongside the public pages it describes.
+The generator needs a policy for publication state, canonical identity, locale URLs and deletion, rather than blindly exporting every route the application can accept.
+Serving a valid sitemap does not replace navigable links between related pages.
+
+### Design details
+
+Each sitemap is limited to 50,000 URLs or 50 MB uncompressed; split before exceeding either limit.
+Google ignores changefreq and priority values, so do not build a ranking strategy around them.
+Use an established XML serializer when generating from content that may include characters such as ampersands.
+
+### Edge cases
+
+- Faceted navigation can generate many low-value combinations that should not all enter the public inventory.
+- A URL can return 200 while its canonical points elsewhere, creating contradictory signals.
+- Translations need a consistent alternate-language policy across pages and any sitemap annotations.
+
+### Common mistakes
+
+- Listing login-only or noindex pages as preferred public destinations.
+- Updating dates on every deployment regardless of content changes.
+- Using relative URLs or leaving deleted routes indefinitely in generated output.
+
+### References
+
+- [Build and submit a sitemap](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap)
+- [Sitemaps XML protocol](https://www.sitemaps.org/protocol.html)
+- [Canonical URL guidance](https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls)
+
+</DeepDive>

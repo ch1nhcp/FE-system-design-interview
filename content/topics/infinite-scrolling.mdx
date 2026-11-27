@@ -1,0 +1,127 @@
+---
+description: Extending a collection incrementally while preserving navigation, request ordering, keyboard access and a usable route back to the reader's place.
+visual: diagram
+related: [pagination, list-virtualization, race-conditions, ui-states, sitemap]
+---
+
+## TL;DR
+
+Infinite scrolling adds pages as the reader approaches the end.
+Keep explicit loading, recovery and navigation paths; fetching more is not virtualization.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram label="Incremental collection controller" steps={[
+  { title: 'Observe near the end', note: 'A sentinel or explicit Load more action requests progress' },
+  { title: 'Check controller state', note: 'Guard pending work, query identity and end of collection' },
+  { title: 'Fetch and merge a page', note: 'Respect cursor order and stable item identities' },
+  { title: 'Preserve the reading context', note: 'Keep focus, recovery, return position and a reachable end' },
+]} highlight={1} />
+</VisualTab>
+<VisualTab kind="code">
+
+An observer supplies a trigger; a separate collection controller owns request safety.
+
+```ts
+function watchCollectionEnd(sentinel: Element, requestMore: () => void) {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) requestMore();
+    },
+    { rootMargin: '200px' },
+  );
+  observer.observe(sentinel);
+  return () => observer.disconnect();
+}
+```
+
+`requestMore` must guard in-flight work and exhausted cursors, handle rejection, and ignore stale query results.
+Call the same guarded action from a real Load more button; disconnect the observer when the view is disposed.
+
+```html
+<ul aria-label="Lessons">
+  <li><a href="/lessons/image-loading">Image loading</a></li>
+</ul>
+<button type="button">Load more lessons</button>
+<p role="status" aria-atomic="true"></p>
+<div id="collection-end" aria-hidden="true"></div>
+<a href="/lessons?page=2">Next page</a>
+```
+
+Wire the button and sentinel in the host component; the next-page URL must render a real independently reachable page.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Guard repeated triggers and exhausted cursors.
+- Merge by stable ids without losing server order.
+- Keep an explicit load and retry path.
+- Preserve focus and return-to-list position.
+- Bound memory and provide real page URLs.
+
+## Trade-offs
+
+| Pattern     | Strengths        | Weaknesses       |
+| ----------- | ---------------- | ---------------- |
+| Page links  | Stable locations | Explicit moves   |
+| Load more   | Reader controls  | Needs activation |
+| Auto append | Continuous scan  | Context and cost |
+
+## Interview questions
+
+<InterviewQuestion question="Is infinite scrolling the same as virtualization?">
+
+No: incremental loading controls how much data has been requested, while virtualization controls how much of that data is mounted in the DOM.
+A long session can need both a loading policy and a bounded rendering and memory policy.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What happens if the sentinel remains visible after a page loads?">
+
+An observer is not a complete request loop or a guarantee of a new event after every state change.
+Let the controller decide whether to request again or re-arm observation after layout settles, with a cap on automatic pages and an explicit Load more fallback.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you keep deeper content discoverable?">
+
+Give chunks real URLs that render independently and link to them with anchors that have href values.
+Do not rely on a crawler scrolling or pressing Load more, and preserve useful history and restoration behavior for human readers too.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Maintain the current query identity, ordered items, next cursor, pending state and a recoverable error separately.
+IntersectionObserver indicates proximity; it should not become the owner of data consistency or a second competing request path.
+On a filter change, cancel or invalidate the previous generation and reset its cursor so late pages cannot join the new collection.
+
+### Design details
+
+Keep focus on the activating control when appending, announce a concise result and define a logical focus target if that control must disappear at the end.
+A plain semantic list plus controls is often sufficient; the ARIA feed pattern introduces a specific article and keyboard interaction contract that must be implemented and tested in full if chosen.
+Restoring a list requires its query, loaded range and stable item or offset, not just a scroll coordinate against a different set of rows.
+
+### Edge cases
+
+- Duplicate items can occur across pages when the underlying dataset changes; deduplication cannot repair an inconsistent server cursor contract.
+- A repeated cursor or empty page with a next cursor needs a progress guard to prevent an endless request loop.
+- Automatic append can continually push a footer away; provide a stopping point or move essential actions outside that moving boundary.
+
+### Common mistakes
+
+- Assuming the observer callback fires only once.
+- Allowing automatic requests to retry indefinitely after failure.
+- Using an ARIA feed role as a shortcut for making any appended list accessible.
+
+### References
+
+- [MDN Intersection Observer API](https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API)
+- [Google pagination and incremental loading](https://developers.google.com/search/docs/specialty/ecommerce/pagination-and-incremental-page-loading)
+- [WAI feed pattern](https://www.w3.org/WAI/ARIA/apg/patterns/feed/)
+
+</DeepDive>

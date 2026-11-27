@@ -1,0 +1,37 @@
+## Keep the task recoverable
+
+Design what the user can see and do while the application waits, fails, expands or changes layout.
+Preserve useful context and make the next action clear instead of treating the happy-path screenshot as the whole experience.
+
+| Concern             | Starting point                       | Verify                                        |
+| ------------------- | ------------------------------------ | --------------------------------------------- |
+| UI states           | Explicit resource and request states | Loading, empty, stale, error and confirmation |
+| Error handling      | Recovery matching the failed task    | Input retention, safe retry and clear owner   |
+| Infinite scrolling  | Guarded incremental page controller  | Focus, return position, bounds and real URLs  |
+| Long strings        | Shrinkable layout and wrapping       | Full values, translations, zoom and copying   |
+| Mobile-friendliness | Complete task in changing space      | Touch, keyboard, overlays and network changes |
+
+## Separate facts from presentation
+
+A request can be pending while useful data is already visible, and a refresh can fail without erasing the previous result.
+Connectivity hints do not prove service reachability, and a timeout does not prove a write was rejected.
+Choose messages and available actions from the actual operation contract and the user's need for current information.
+
+Assign one owner for recovery so one failed operation does not produce several competing notifications.
+Keep feedback specific and place it near the affected task, with appropriate semantic relationships and announcements.
+Preserve user input and avoid moving focus for routine background updates.
+
+## Test continuity as well as completion
+
+| Scenario                    | Observe                                          |
+| --------------------------- | ------------------------------------------------ |
+| Slow first load and refresh | Distinct progress without a false empty state    |
+| Rejected or ambiguous write | Honest outcome and safe next action              |
+| Long collection and Back    | Query identity, loaded range and reading place   |
+| Long localized content      | Wrapping, full-value access and operable actions |
+| Small viewport and keyboard | Visible fields, errors and submit controls       |
+| Interrupted connection      | Preserved work and a usable recovery path        |
+
+Incremental loading controls fetched pages; virtualization controls mounted rows, and neither alone defines the full memory policy.
+Infinite scrolling is shared with Common patterns and retains one URL and one progress state.
+Use repeatable browser checks plus representative real-device and assistive-technology tasks to validate the complete flow.
