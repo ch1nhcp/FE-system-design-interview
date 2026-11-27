@@ -1,0 +1,137 @@
+---
+description: A one-way data flow where views dispatch actions, a store updates state, and the views re-render from it.
+visual: diagram
+related: [reducer-pattern, event-sourcing, normalized-state, undo-redo]
+---
+
+## TL;DR
+
+In Flux, data moves in one direction: the view dispatches an action, the store handles it and produces new state, and the view re-renders from that state.
+Views never change state directly, so every change has a single, traceable cause.
+Redux and React's `useReducer` are the most common descendants of the pattern.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Flux data flow"
+  steps={[
+    { title: 'Action', note: 'A plain object: what happened, e.g. { type: "todoAdded" }' },
+    { title: 'Dispatcher', note: 'Sends every action to the stores' },
+    { title: 'Store', note: 'Computes the next state; the only place state changes' },
+    { title: 'View', note: 'Renders from the state and subscribes to changes' },
+  ]}
+  highlight={2}
+  loop="User input in the view dispatches a new action"
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+```tsx
+type Todo = { id: string; title: string; done: boolean };
+
+type Action =
+  | { type: 'todoAdded'; id: string; title: string }
+  | { type: 'todoToggled'; id: string }
+  | { type: 'todoRemoved'; id: string };
+
+// The store's logic: a pure function from (state, action) to the next state.
+function todosReducer(todos: readonly Todo[], action: Action): readonly Todo[] {
+  switch (action.type) {
+    case 'todoAdded':
+      return [...todos, { id: action.id, title: action.title, done: false }];
+    case 'todoToggled':
+      return todos.map((todo) => (todo.id === action.id ? { ...todo, done: !todo.done } : todo));
+    case 'todoRemoved':
+      return todos.filter((todo) => todo.id !== action.id);
+  }
+}
+
+export function TodoList() {
+  const [todos, dispatch] = useReducer(todosReducer, []);
+  return (
+    <ul>
+      {todos.map((todo) => (
+        <li key={todo.id}>
+          <label>
+            <input
+              type="checkbox"
+              checked={todo.done}
+              onChange={() => dispatch({ type: 'todoToggled', id: todo.id })}
+            />
+            {todo.title}
+          </label>
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- One-way flow: action, then store, then view, never the view writing state directly.
+- Actions describe what happened, not how to change state, which makes logs readable.
+- Reducers are pure functions, so state changes are predictable and easy to test.
+- Every change goes through one place, which enables logging, devtools and time travel.
+- Keep server data in a data-fetching cache and local UI state in components; a global store is for state many parts share.
+
+## Trade-offs
+
+| Strengths                                 | Weaknesses                                     |
+| ----------------------------------------- | ---------------------------------------------- |
+| Predictable, traceable state changes      | Boilerplate for small apps                     |
+| Easy to test, log and debug (time travel) | Everything in one store can re-render too much |
+| Scales to many developers and features    | Indirection: actions, reducers, selectors      |
+
+## Interview questions
+
+<InterviewQuestion question="Why is one-way data flow easier to reason about than two-way binding?">
+
+With two-way binding, any view can change shared state, so a bug can come from anywhere.
+With one-way flow, state only changes in response to an action, in one place, so you can log, replay and test every change.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Where would you keep server data in a Flux or Redux app?">
+
+In a data-fetching cache, such as TanStack Query or RTK Query, which handles loading states, caching, refetching and invalidation.
+The store then holds only client state that many components share, such as UI preferences or a draft.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you avoid re-rendering everything when the store changes?">
+
+Subscribe with narrow selectors that return only what a component needs, and keep returned values stable with memoization.
+Split unrelated state into separate stores or slices, and normalize collections so one item's update does not change the whole list.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Original Flux had a dispatcher that broadcast each action to several stores, which updated themselves and emitted change events.
+Redux simplified it to a single store whose state is computed by a root reducer, with middleware for side effects.
+React's `useReducer` applies the same idea locally to one component tree.
+
+### Edge cases
+
+- Side effects such as API calls do not belong in reducers; run them in middleware, thunks or event handlers, then dispatch the results.
+- Derived data should be computed with selectors, not stored, or it drifts out of sync.
+- Non-serializable values in actions or state break devtools and persistence.
+
+### Common mistakes
+
+- Mutating state in a reducer, so subscribers do not see a change.
+- Putting every piece of state in the global store, including form inputs and server data.
+- Naming actions as setters (`setTodos`) instead of events (`todoAdded`), which hides intent.
+
+### References
+
+- [Redux fundamentals: data flow](https://redux.js.org/tutorials/fundamentals/part-2-concepts-data-flow)
+- [Extracting state logic into a reducer in the React docs](https://react.dev/learn/extracting-state-logic-into-a-reducer)
+
+</DeepDive>
