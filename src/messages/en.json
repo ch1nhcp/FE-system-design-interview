@@ -119,5 +119,40 @@
   },
   "ThemeToggle": {
     "label": "Toggle theme"
+  },
+  "Visuals": {
+    "playback": {
+      "play": "Play",
+      "pause": "Pause",
+      "stepBack": "Previous step",
+      "stepForward": "Next step",
+      "restart": "Restart",
+      "controls": "Animation controls"
+    },
+    "realtimeTransport": {
+      "title": "Short polling vs WebSocket",
+      "modeLabel": "Transport",
+      "shortPolling": "Short polling",
+      "webSocket": "WebSocket",
+      "diagramLabel": "Sequence diagram of {mode} between client and server over {seconds} seconds",
+      "server": "Server",
+      "client": "Client",
+      "statsRequests": "Requests",
+      "statsWasted": "Wasted round trips",
+      "statsDelay": "Average delay",
+      "delayValue": "{delay} ms",
+      "noDelay": "n/a",
+      "captions": {
+        "idle": "Press play, or step through the timeline.",
+        "serverUpdate": "Update #{update} is ready on the server.",
+        "pollRequest": "Client asks the server: anything new?",
+        "emptyResponse": "Nothing new. That round trip was wasted.",
+        "dataResponse": "Client receives update {updates}, {delay} ms after it was ready.",
+        "handshake": "Client opens a WebSocket with an HTTP upgrade request.",
+        "handshakeAck": "Connection open. The server can now push at any time.",
+        "push": "Server pushes update #{update} right away.",
+        "pushArrives": "Client receives update #{update}, {delay} ms after it was ready."
+      }
+    }
   }
 }

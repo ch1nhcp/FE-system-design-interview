@@ -119,5 +119,40 @@
   },
   "ThemeToggle": {
     "label": "Đổi giao diện sáng/tối"
+  },
+  "Visuals": {
+    "playback": {
+      "play": "Phát",
+      "pause": "Tạm dừng",
+      "stepBack": "Bước trước",
+      "stepForward": "Bước tiếp",
+      "restart": "Phát lại từ đầu",
+      "controls": "Điều khiển animation"
+    },
+    "realtimeTransport": {
+      "title": "Short polling và WebSocket",
+      "modeLabel": "Cách truyền",
+      "shortPolling": "Short polling",
+      "webSocket": "WebSocket",
+      "diagramLabel": "Sơ đồ tuần tự của {mode} giữa client và server trong {seconds} giây",
+      "server": "Server",
+      "client": "Client",
+      "statsRequests": "Số request",
+      "statsWasted": "Lượt hỏi vô ích",
+      "statsDelay": "Độ trễ trung bình",
+      "delayValue": "{delay} ms",
+      "noDelay": "chưa có",
+      "captions": {
+        "idle": "Bấm phát, hoặc đi qua từng bước của timeline.",
+        "serverUpdate": "Cập nhật #{update} đã sẵn sàng trên server.",
+        "pollRequest": "Client hỏi server: có gì mới không?",
+        "emptyResponse": "Không có gì mới. Lượt hỏi đáp này vô ích.",
+        "dataResponse": "Client nhận cập nhật {updates}, trễ {delay} ms so với lúc sẵn sàng.",
+        "handshake": "Client mở WebSocket bằng một request HTTP upgrade.",
+        "handshakeAck": "Kết nối đã mở. Server có thể đẩy dữ liệu bất cứ lúc nào.",
+        "push": "Server đẩy cập nhật #{update} ngay lập tức.",
+        "pushArrives": "Client nhận cập nhật #{update}, trễ {delay} ms so với lúc sẵn sàng."
+      }
+    }
   }
 }
