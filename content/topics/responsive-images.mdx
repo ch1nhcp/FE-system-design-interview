@@ -1,0 +1,119 @@
+---
+description: Giving the browser suitable image candidates and truthful layout hints while using picture for art direction or format choices.
+visual: code
+related: [adaptive-images, image-cdn, image-formats, preload-link]
+---
+
+## TL;DR
+
+Responsive sources let the browser select pixels for a layout slot.
+Describe its size accurately; use picture for crop or format changes.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+The declared slot and CSS agree: full viewport width on small screens, half on larger screens.
+
+```html
+<img
+  class="course-photo"
+  src="/course-1280.webp"
+  srcset="/course-640.webp 640w, /course-1280.webp 1280w, /course-1920.webp 1920w"
+  sizes="(max-width: 48rem) 100vw, 50vw"
+  width="1920"
+  height="1080"
+  alt="Students reviewing a system design exercise"
+/>
+```
+
+```css
+.course-photo {
+  inline-size: 50vw;
+  block-size: auto;
+}
+@media (max-width: 48rem) {
+  .course-photo {
+    inline-size: 100vw;
+  }
+}
+```
+
+In a padded or capped layout, update `sizes` to describe the actual slot instead of copying these values.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Responsive candidate selection" steps={[
+  { title: 'Measure the intended slot', note: 'CSS determines display geometry' },
+  { title: 'Declare candidate widths', note: 'Each w descriptor matches the resource pixel width' },
+  { title: 'Describe the slot in sizes', note: 'The browser combines it with density and other conditions' },
+  { title: 'Verify currentSrc', note: 'Check the selected resource and delivered bytes' },
+]} highlight={2} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- CSS sets layout; sizes describes the expected slot.
+- Width descriptors must match actual source dimensions.
+- Keep resolution variants consistent in aspect and meaning.
+- Use picture for art direction or typed format sources.
+- Verify selection across viewport, density and cache states.
+
+## Trade-offs
+
+| Technique          | Strengths      | Weaknesses         |
+| ------------------ | -------------- | ------------------ |
+| Width candidates   | Flexible slots | Accurate sizes     |
+| Density candidates | Fixed CSS size | Less layout detail |
+| Picture sources    | Crop or format | Source ordering    |
+
+## Interview questions
+
+<InterviewQuestion question="Does sizes resize the image?">
+
+No: it informs source selection, while CSS and the element's layout context determine the rendered size.
+An inaccurate hint can make the browser download more pixels than the actual slot needs.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="When should you use picture instead of only srcset?">
+
+When the crop or composition should change with media conditions, or when selecting typed image formats with a fallback.
+Use resolution candidates for the same visual content at different pixel dimensions.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Will a viewport always select the same file?">
+
+Not necessarily: device density, cached candidates and browser resource-selection policy can affect the choice.
+Test useful byte and quality outcomes without assuming the browser must always choose one exact URL.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+For width-descriptor sources, the browser evaluates the slot hint and candidate dimensions to select an appropriate resource.
+Density descriptors such as `1x` and `2x` instead describe alternatives for a fixed CSS-size use case.
+Do not mix width and density descriptors within one source set.
+
+### Edge cases
+
+- Omitting a needed sizes value with width candidates can lead to a viewport-wide default assumption.
+- A previously cached large candidate may be reused instead of downloading a smaller one.
+- Art-directed sources can need their own aspect-ratio dimensions or container rules to avoid shifts.
+
+### Common mistakes
+
+- Labeling a resource 640w when the actual file has another width.
+- Writing 100vw for an image inside a narrow desktop column.
+- Using picture without an img fallback and accessible alternative.
+
+### References
+
+- [Responsive images in MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Responsive_images)
+- [The img element in MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/img)
+- [The picture element in MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/picture)
+
+</DeepDive>

@@ -1,0 +1,111 @@
+---
+description: Providing an image's purpose and essential information in its actual context, including empty alternatives for decoration.
+visual: code
+related: [wai-aria, image-formats, visual-accessibility, semantic-markup]
+---
+
+## TL;DR
+
+Alt text supplies an image's purpose in context.
+Use empty alternatives for decoration and action-oriented names for functional images.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+```html
+<!-- Decoration beside an already complete heading. -->
+<img src="/divider.svg" alt="" />
+
+<!-- The image alone names the link's destination. -->
+<a href="/reports/annual.pdf">
+  <img src="/report-cover.webp" alt="Annual report (PDF)" />
+</a>
+
+<!-- Complex information also has a readable full equivalent. -->
+<figure>
+  <img src="/revenue-chart.webp" alt="Revenue rises across all four quarters; Q4 is highest." />
+  <figcaption>
+    <a href="#revenue-data">Revenue values by quarter</a>
+  </figcaption>
+</figure>
+```
+
+The referenced revenue data must actually be present and accessible in the complete page.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Choose an image alternative" steps={[
+  { title: 'Determine context and purpose', note: 'What does the image contribute here?' },
+  { title: 'Decorative or redundant?', note: 'Use an empty alternative when no information is lost' },
+  { title: 'Functional or informative?', note: 'Describe the destination, action or essential meaning' },
+  { title: 'Complex information?', note: 'Provide a short alternative plus a full equivalent' },
+]} highlight={0} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Describe purpose in context, not every visible detail.
+- Use an explicit empty alt for decoration.
+- Name image-only links and buttons by their function.
+- Give charts and diagrams a full information equivalent.
+- Avoid duplicating nearby accessible text unnecessarily.
+
+## Trade-offs
+
+| Image role | Alternative      | Watch for         |
+| ---------- | ---------------- | ----------------- |
+| Decorative | Empty alt        | Missing semantics |
+| Functional | Action or target | Duplicate naming  |
+| Complex    | Summary and data | Incomplete detail |
+
+## Interview questions
+
+<InterviewQuestion question="Is missing alt the same as an empty alt?">
+
+No: an explicit empty alternative marks the image as not contributing text information in that context.
+Without an alternative, assistive technology may expose an unhelpful filename or other fallback instead.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What should an icon-only button be called?">
+
+Name the button's action, such as Save, rather than the icon's shape, such as floppy disk.
+Put that name on the control and hide the decorative inner graphic when appropriate so its name is not repeated.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can a chart be explained in one alt attribute?">
+
+A short alternative can identify the chart and its main point, but detailed values and relationships usually need a nearby text explanation or data table.
+Make the full equivalent available without requiring users to see the picture.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Text alternatives communicate the role of image content through the page's accessible representation.
+The same file can need different alternatives when it is decorative in one location and functional in another.
+When an image contains essential text, preserve that information in an appropriate text equivalent rather than describing only its visual appearance.
+
+### Edge cases
+
+- An image and visible text inside one link can create a duplicated accessible name if both repeat the same words.
+- CSS background images have no `alt` attribute; essential content needs another accessible representation.
+- A generated description can miss the actual purpose of an image in its surrounding task.
+
+### Common mistakes
+
+- Filling decorative alternatives with filenames or generic words such as image.
+- Naming an action by its visual icon rather than what happens.
+- Treating a tooltip or `title` attribute as a reliable substitute for a needed alternative.
+
+### References
+
+- [WAI images tutorial](https://www.w3.org/WAI/tutorials/images/)
+- [WAI alt decision tree](https://www.w3.org/WAI/tutorials/images/decision-tree/)
+- [WAI complex images](https://www.w3.org/WAI/tutorials/images/complex/)
+
+</DeepDive>

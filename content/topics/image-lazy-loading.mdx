@@ -1,0 +1,115 @@
+---
+description: Deferring noncritical images while making initial content discoverable and reserving stable layout space.
+visual: code
+related: [above-the-fold, loading-sequence, preload-link, core-web-vitals]
+---
+
+## TL;DR
+
+Lazy loading defers images that are not needed immediately.
+Expose likely initial LCP images early and reserve space for later media.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+This assumes the hero is initially visible and the detail image is below the target viewport.
+
+```html
+<img src="/hero.webp" width="1200" height="600" fetchpriority="high" alt="Course dashboard with study topics" />
+
+<img
+  src="/lesson-details.webp"
+  width="900"
+  height="600"
+  loading="lazy"
+  decoding="async"
+  alt="The lesson outline grouped into three study stages"
+/>
+```
+
+```css
+img {
+  max-inline-size: 100%;
+  block-size: auto;
+}
+```
+
+`decoding` is a decode-scheduling hint, separate from when a network request starts.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Image loading priority" steps={[
+  { title: 'Locate useful initial content', note: 'Check representative responsive layouts' },
+  { title: 'Expose critical images', note: 'Do not hide likely LCP behind lazy discovery' },
+  { title: 'Defer later media', note: 'Let native lazy loading manage eligible images' },
+  { title: 'Verify geometry and timing', note: 'Inspect requests, decode and visible shifts' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Defer below-viewport images when appropriate.
+- Avoid lazy-loading the likely initial LCP image.
+- Width and height reserve an intrinsic aspect ratio.
+- Native lazy thresholds belong to the browser.
+- Fetch priority and decode hints solve different tasks.
+
+## Trade-offs
+
+| Policy          | Strengths         | Weaknesses          |
+| --------------- | ----------------- | ------------------- |
+| Eager critical  | Early discovery   | Initial bandwidth   |
+| Native lazy     | Less early work   | Browser thresholds  |
+| Custom observer | Specific behavior | More lifecycle code |
+
+## Interview questions
+
+<InterviewQuestion question="Why can lazy loading make LCP worse?">
+
+If the large initial image is deferred until the browser confirms its layout position, discovery or scheduling can happen later than needed.
+Expose it in initial markup and evaluate its priority in a network trace.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does loading lazy replace width and height?">
+
+No: the layout still needs useful geometry before image data arrives.
+Reserve the aspect ratio with dimensions or an appropriate container, and ensure CSS does not distort it.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="When would you use an observer instead?">
+
+When the behavior concerns non-image content or needs a deliberate custom activation policy that native image loading does not provide.
+Retain a usable fallback and clean up subscriptions rather than adding observer machinery for ordinary images by default.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The browser uses loading hints and its own proximity heuristics to decide when eligible image work should begin.
+Resource discovery, request priority, decoding and presentation remain distinct stages.
+Inspect those stages under slow connections and representative viewport sizes before judging the result.
+
+### Edge cases
+
+- A below-viewport image on one layout can become initially visible on another.
+- A zero-sized unloaded image or container can make visibility-based behavior misleading.
+- Images in horizontal carousels need testing in their actual scroll container and browser.
+
+### Common mistakes
+
+- Adding lazy loading to every image, including the initial hero.
+- Assuming a decode hint defers network transfer.
+- Omitting dimensions because an image eventually acquires its natural size.
+
+### References
+
+- [Image loading attributes in MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/img)
+- [Browser-level image lazy loading](https://web.dev/articles/browser-level-image-lazy-loading)
+- [Optimize LCP](https://web.dev/articles/optimize-lcp)
+
+</DeepDive>

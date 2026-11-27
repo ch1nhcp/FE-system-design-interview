@@ -1,0 +1,119 @@
+---
+description: Keeping keyboard focus visible, logically ordered and predictable when dialogs, navigation and dynamic content change the interface.
+visual: code
+related: [keyboard-interactions, wai-aria, visual-accessibility, ui-states]
+---
+
+## TL;DR
+
+Focus marks where keyboard input goes.
+Keep task order and visible focus predictable when dialogs, navigation or dynamic content change context.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A native modal dialog provides modal behavior when opened with `showModal`, with a labeled task and explicit close actions.
+
+```html
+<button id="open-settings" type="button">Study settings</button>
+<dialog id="settings" aria-labelledby="settings-title">
+  <form method="dialog">
+    <h2 id="settings-title">Study settings</h2>
+    <label
+      >Daily minutes
+      <input name="minutes" type="number" min="1" value="20" autofocus />
+    </label>
+    <button value="save">Save</button>
+    <button value="cancel" formnovalidate>Cancel</button>
+  </form>
+</dialog>
+```
+
+```ts
+const opener = document.querySelector<HTMLButtonElement>('#open-settings');
+const dialog = document.querySelector<HTMLDialogElement>('#settings');
+if (opener && dialog) {
+  opener.addEventListener('click', () => dialog.showModal());
+}
+```
+
+Install the example once with matching markup; reusable components need lifecycle cleanup and an explicit fallback if the opener disappears.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Modal focus lifecycle" steps={[
+  { title: 'Trigger opens a task', note: 'Remember the initiating control' },
+  { title: 'Focus enters the modal', note: 'Choose a useful starting point for this task' },
+  { title: 'Keyboard stays in context', note: 'Modal containment includes a usable close path' },
+  { title: 'Task closes', note: 'Restore focus to the trigger or a logical fallback' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Keep focus order consistent with the task and DOM.
+- Show focus clearly and avoid obscuring it.
+- Choose initial dialog focus for the actual content.
+- Restore focus when a transient task closes.
+- Distinguish focus from selection and announcements.
+
+## Trade-offs
+
+| Technique          | Strengths          | Weaknesses            |
+| ------------------ | ------------------ | --------------------- |
+| Native dialog      | Modal baseline     | Lifecycle decisions   |
+| Programmatic focus | Clear orientation  | Can disrupt users     |
+| Live status        | Nonmoving feedback | Does not orient alone |
+
+## Interview questions
+
+<InterviewQuestion question="Where should focus start in a dialog?">
+
+At a useful place for the task, such as an editing field, an introductory heading for structured content or a safe action in a destructive confirmation.
+Do not assume that always focusing the first interactive element gives the best reading and decision context.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Where should focus go after deleting an item?">
+
+If the old focused control no longer exists, move to a logical neighboring item or the collection's heading or action.
+Choose a target that preserves task continuity instead of letting focus fall unpredictably to the page body.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does announcing a route change move focus?">
+
+No: announcements and focus are separate mechanisms.
+A client-side navigation strategy should consider document title, main content orientation and the user's current interaction without stealing focus for every background update.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Focus navigation uses native focusable elements, document order and any deliberate programmatic moves.
+Use `tabindex="-1"` for a meaningful programmatic target that does not need to join the normal tab sequence.
+An opened native modal dialog makes outside content inert; setting an ARIA modal attribute alone does not implement that behavior.
+
+### Edge cases
+
+- A sticky header or fixed overlay can visually obscure a focused element after scrolling.
+- Closing a dialog after its opener is removed needs a meaningful fallback target.
+- A complex dialog's first field can be a poor starting point if users need introductory content before acting.
+
+### Common mistakes
+
+- Removing outlines without a clearly visible replacement.
+- Moving focus on routine data refreshes that do not change the user's task.
+- Relying on `aria-modal` to implement inertness or keyboard containment.
+
+### References
+
+- [WAI modal dialog pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)
+- [The dialog element in MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/dialog)
+- [WCAG focus order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html)
+- [WCAG focus not obscured](https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html)
+
+</DeepDive>

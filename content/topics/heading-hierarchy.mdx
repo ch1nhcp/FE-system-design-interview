@@ -1,0 +1,110 @@
+---
+description: Expressing document structure with meaningful heading levels independently of their visual styling.
+visual: code
+related: [semantic-markup, wai-aria, title-and-meta, keyboard-interactions]
+---
+
+## TL;DR
+
+Headings describe a page's organization and let readers navigate by section.
+Choose levels from content hierarchy, with visual size controlled separately by CSS.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+```html
+<main>
+  <h1>System design study guide</h1>
+  <section aria-labelledby="images-heading">
+    <h2 id="images-heading">Images</h2>
+    <h3>Choosing a format</h3>
+    <p>Compare fidelity, dimensions and delivery requirements.</p>
+    <h3>Responsive delivery</h3>
+    <p>Describe the rendered slot and supply useful candidates.</p>
+  </section>
+  <section aria-labelledby="accessibility-heading">
+    <h2 id="accessibility-heading">Accessibility</h2>
+    <p>Verify semantics, keyboard behavior and focus.</p>
+  </section>
+</main>
+```
+
+These h2 sections are peers; the h3 topics belong inside Images.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Document heading structure" steps={[
+  { title: 'Page subject', note: 'A useful top-level page heading' },
+  { title: 'Peer sections', note: 'Related sections share the same level' },
+  { title: 'Nested topics', note: 'Subtopics use the next appropriate level' },
+  { title: 'Independent visual style', note: 'CSS typography does not determine hierarchy' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Use real headings for meaningful sections.
+- Choose level from structure, not desired font size.
+- Keep peer sections at consistent levels.
+- Prefer a clear page subject and logical nesting.
+- Make reusable heading levels fit their embedding context.
+
+## Trade-offs
+
+| Choice             | Strengths            | Weaknesses           |
+| ------------------ | -------------------- | -------------------- |
+| Native headings    | Useful navigation    | Structure discipline |
+| Flexible component | Fits different pages | Caller contract      |
+| Visual-only title  | Styling freedom      | Missing semantics    |
+
+## Interview questions
+
+<InterviewQuestion question="Why not style a div as a section title?">
+
+The appearance alone does not expose a heading for readers using heading navigation or an accessibility tree.
+Use a heading element at the right level, then style it to match the design.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should a reusable card always render h2?">
+
+Not if the same card can appear beneath headings at different nesting levels.
+Expose a clear level or title-slot contract and keep the consumer responsible for placing it within a logical document structure.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can a section element fix incorrect heading levels?">
+
+Do not rely on section wrappers to reinterpret a set of headings into a useful automatic outline.
+Choose the intended heading levels explicitly and inspect the resulting document structure.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Heading elements expose section labels and levels that assistive technology can use for navigation and orientation.
+A clear main heading followed by logically nested sections is a practical default for a content page.
+This is a document-structure decision, not a promise that a particular heading count guarantees search ranking.
+
+### Edge cases
+
+- Moving from an h3 subsection back to an h2 peer section is a normal end to nesting.
+- Repeated widget titles should remain understandable in their surrounding context.
+- A heading hidden only visually can still be useful if it labels real content and remains available to assistive technology.
+
+### Common mistakes
+
+- Picking h4 because its default font size looks correct.
+- Adding headings to every bold label, including labels that do not introduce sections.
+- Assuming nested section tags repair a confusing set of levels.
+
+### References
+
+- [WAI heading guidance](https://www.w3.org/WAI/tutorials/page-structure/headings/)
+- [HTML heading elements in MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/Heading_Elements)
+- [WCAG headings and labels](https://www.w3.org/WAI/WCAG22/Understanding/headings-and-labels.html)
+
+</DeepDive>

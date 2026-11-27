@@ -1,0 +1,112 @@
+---
+description: Selecting raster or vector formats from visual content, transparency, quality and decoding requirements.
+visual: code
+related: [image-cdn, responsive-images, compression, visual-accessibility]
+---
+
+## TL;DR
+
+Choose raster or vector formats for the content and fidelity needed.
+Compare real encoded variants and keep a suitable delivery fallback.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+The browser uses the first supported matching source; the `img` supplies fallback content and semantics.
+
+```html
+<picture>
+  <source type="image/avif" srcset="/landscape.avif" />
+  <source type="image/webp" srcset="/landscape.webp" />
+  <img src="/landscape.jpg" width="1200" height="800" alt="Terraced fields beneath a mountain ridge" />
+</picture>
+```
+
+For a decorative inline vector icon beside visible text:
+
+```html
+<button type="button">
+  <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+    <path d="M5 12h14M12 5v14" fill="none" stroke="currentColor" />
+  </svg>
+  Add topic
+</button>
+```
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Format selection" steps={[
+  { title: 'Identify visual content', note: 'Photo, interface screenshot, icon or animation' },
+  { title: 'Preserve required fidelity', note: 'Transparency, sharp edges, text and motion' },
+  { title: 'Compare encodings', note: 'Evaluate real bytes, artifacts and decode cost' },
+  { title: 'Deliver supported variants', note: 'Use source types or correct negotiation' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Raster formats encode pixels; SVG describes vector content.
+- Compare real quality and bytes at the needed dimensions.
+- Preserve alpha, sharp edges and animation when required.
+- SVG delivery does not remove accessible naming needs.
+- Treat untrusted SVG markup as active-content input.
+
+## Trade-offs
+
+| Content        | Candidate       | Watch for            |
+| -------------- | --------------- | -------------------- |
+| Photos         | AVIF or WebP    | Encode/decode cost   |
+| Sharp graphics | Lossless raster | Pixel dimensions     |
+| Simple icons   | SVG             | Complexity and trust |
+
+## Interview questions
+
+<InterviewQuestion question="Is AVIF always smaller or faster than WebP?">
+
+No: results depend on content, dimensions, quality settings and the encoding and decoding environment.
+Compare representative assets at acceptable visual quality rather than choosing from format names alone.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why is SVG useful for icons?">
+
+Simple vector geometry can scale sharply and inherit theme colors without maintaining many pixel-density variants.
+Complex artwork can still be costly, and an icon must have an appropriate name or be hidden when its meaning is already provided by text.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Where does the alt text go in picture?">
+
+On the `img` element, which represents the selected image and its fallback.
+The `source` elements describe candidate media resources, not separate accessible images.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Encoded raster variants trade file size, visual fidelity and processing cost, while SVG describes shapes and other vector content.
+Use format-specific source declarations or well-configured server negotiation to deliver a suitable representation.
+Preserve required color, orientation and transparency information as part of the transformation pipeline.
+
+### Edge cases
+
+- Text embedded in a lossy screenshot can become difficult to read even when a photo at the same settings looks acceptable.
+- Animated media needs deliberate motion, playback and reduced-motion behavior.
+- SVG inserted directly into the page has a different security and styling surface from an isolated image resource.
+
+### Common mistakes
+
+- Replacing every asset with one format without checking quality.
+- Using a large raster icon where simple vector geometry would suffice.
+- Assuming a decorative icon's visible appearance supplies a button's accessible name.
+
+### References
+
+- [Image format guide in MDN](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/Image_types)
+- [The picture element in MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/picture)
+- [Functional image alternatives in WAI](https://www.w3.org/WAI/tutorials/images/functional/)
+
+</DeepDive>

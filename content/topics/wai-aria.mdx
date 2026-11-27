@@ -1,0 +1,115 @@
+---
+description: Exposing accurate names, roles, states and relationships without treating ARIA as a substitute for native behavior.
+visual: code
+related: [keyboard-interactions, focus-management, alt-text, semantic-markup]
+---
+
+## TL;DR
+
+ARIA exposes semantics and state, not interaction behavior.
+Prefer native HTML and keep necessary ARIA synchronized with the interface.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A disclosure uses a native button and updates both the exposed state and actual panel visibility.
+
+```tsx
+'use client';
+import { useId, useState } from 'react';
+
+export function SyllabusDisclosure() {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  return (
+    <>
+      <button type="button" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(!open)}>
+        Course syllabus
+      </button>
+      <div id={panelId} hidden={!open}>
+        Start with requirements, then compare trade-offs.
+      </div>
+    </>
+  );
+}
+```
+
+A native `details` and `summary` can be simpler when their built-in disclosure behavior fits.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Accurate accessible semantics" steps={[
+  { title: 'Choose native structure', note: 'Use the element matching the actual task' },
+  { title: 'Add a useful name', note: 'Prefer visible labels and valid relationships' },
+  { title: 'Expose necessary state', note: 'Expanded, selected and invalid reflect reality' },
+  { title: 'Verify behavior and announcement', note: 'Inspect the accessibility tree and test interactions' },
+]} highlight={2} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Native semantics are the starting point.
+- A role promises the corresponding behavior.
+- Give controls a concise, useful accessible name.
+- Keep states and referenced ids accurate.
+- Use live regions sparingly for relevant updates.
+
+## Trade-offs
+
+| Technique        | Strengths           | Weaknesses          |
+| ---------------- | ------------------- | ------------------- |
+| Native semantics | Consistent baseline | Element constraints |
+| ARIA states      | Exposes dynamic UI  | Synchronization     |
+| Live region      | Announces updates   | Noise and timing    |
+
+## Interview questions
+
+<InterviewQuestion question="Does role button add keyboard support?">
+
+No: it changes the exposed role but does not add the interaction contract of a native button.
+Authors still need to supply appropriate focus and activation behavior, which is why the native element is usually preferable.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="When can aria-label make a control worse?">
+
+It can override or diverge from the visible label, leaving speech-input users unable to refer to the control by the words they see.
+Prefer the visible text or an appropriate labeled-by relationship, and keep the accessible name aligned with that label.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should every async update be an alert?">
+
+No: assertive announcements can interrupt important speech and make frequently updating interfaces unusable.
+Choose a status or polite live region for relevant nonurgent feedback and reserve urgent interruption for justified cases.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+HTML and ARIA contribute to the accessibility tree through which assistive technology discovers structure and operable controls.
+ARIA can describe missing semantics or relationships, but it must agree with actual visibility, state and keyboard behavior.
+Inspect computed names and roles, then test the intended task with representative browser and assistive-technology combinations.
+
+### Edge cases
+
+- Broken or duplicated ids can disconnect controls from their descriptions or panels.
+- `aria-hidden` does not prevent keyboard focus and must not conceal an otherwise focusable control.
+- `aria-disabled` communicates a state but does not automatically suppress an action.
+
+### Common mistakes
+
+- Adding an elaborate role to an element without implementing its expected behavior.
+- Using live regions for every animation frame or minor visual change.
+- Setting a state attribute while leaving the actual interface in a contradictory state.
+
+### References
+
+- [WAI APG: read me first](https://www.w3.org/WAI/ARIA/apg/practices/read-me-first/)
+- [WAI disclosure pattern](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/)
+- [Accessible name guidance](https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/)
+
+</DeepDive>

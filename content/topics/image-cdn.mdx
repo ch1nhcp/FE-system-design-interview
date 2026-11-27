@@ -1,0 +1,106 @@
+---
+description: Delivering appropriately transformed and cached image variants near users with a controlled transformation policy.
+visual: diagram
+related: [responsive-images, image-formats, caching-and-expiry, adaptive-images]
+---
+
+## TL;DR
+
+Image CDNs transform, cache and deliver image variants.
+Choose useful sizes and correct cache identity; location alone cannot fix an oversized asset.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram label="Image variant delivery" steps={[
+  { title: 'Source asset', note: 'A versioned, authorized original' },
+  { title: 'Transformation policy', note: 'Allowed width, crop, format and quality variants' },
+  { title: 'Variant cache', note: 'Key every input that changes the encoded image' },
+  { title: 'Browser selection', note: 'Serve the selected candidate near the user' },
+]} highlight={1} />
+</VisualTab>
+<VisualTab kind="code">
+
+These URL parameters illustrate an image service contract; parameter names vary by provider.
+
+```html
+<img
+  src="/media/catalog-v4.webp?w=640&q=75"
+  srcset="/media/catalog-v4.webp?w=640&q=75 640w, /media/catalog-v4.webp?w=1280&q=75 1280w"
+  sizes="(max-width: 640px) 100vw, 640px"
+  width="1280"
+  height="720"
+  alt="Course categories arranged by learning path"
+/>
+```
+
+Keep the same aspect ratio across these resolution variants and make the actual CSS layout match `sizes`.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Transform dimensions and encoding, not only delivery location.
+- Use a bounded set of useful variants.
+- Include crop, quality and format in cache identity.
+- Protect private originals and transformation endpoints.
+- Measure delivered bytes and cache misses on real screens.
+
+## Trade-offs
+
+| Approach       | Strengths           | Weaknesses        |
+| -------------- | ------------------- | ----------------- |
+| Build variants | Predictable serving | Build and storage |
+| On-demand CDN  | Flexible sizes      | Cold transforms   |
+| Edge caching   | Nearby reuse        | Cache policy      |
+
+## Interview questions
+
+<InterviewQuestion question="Why can a CDN image still be slow?">
+
+It may contain far more pixels than the rendered slot needs, use an expensive encoding path or miss the transformed-image cache.
+Inspect the selected URL, transfer size, transformation latency and discovery timing rather than assuming location is the only factor.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why restrict requested image dimensions?">
+
+Arbitrary dimensions create many unique variants and can consume transformation CPU and cache space.
+Use allowed widths, size limits and source restrictions, with signed URLs or authorization where the asset policy requires them.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you replace an image safely?">
+
+Version the asset identity or apply a deliberate invalidation policy across originals, transformed variants and delivery caches.
+Avoid long immutable caching on a URL whose image contents can change unexpectedly.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+An image service fetches a source, applies an allowed transformation and caches the resulting representation for reuse.
+The browser still needs suitable candidates and layout information to select an efficient resource.
+Format negotiation based on request headers requires cache variation that matches the negotiated representation.
+
+### Edge cases
+
+- A cold transform can add latency before the first byte even when later cache hits are fast.
+- Private images need access controls that cannot be bypassed by a public transformation URL.
+- Preserving orientation, transparency and focal points matters as much as nominal pixel dimensions.
+
+### Common mistakes
+
+- Creating a distinct width for every tiny viewport change.
+- Caching negotiated formats without distinguishing incompatible representations.
+- Allowing the service to fetch arbitrary untrusted source URLs.
+
+### References
+
+- [Image CDNs on web.dev](https://web.dev/articles/image-cdns)
+- [Responsive images in MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Responsive_images)
+- [HTTP caching in MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching)
+
+</DeepDive>

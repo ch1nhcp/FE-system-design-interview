@@ -1,0 +1,118 @@
+---
+description: Adapting image composition and optional quality to layout and explicit preferences while preserving essential visual meaning.
+visual: code
+related: [responsive-images, adaptive-loading, image-cdn, alt-text]
+---
+
+## TL;DR
+
+Adapt image composition and optional cost without losing meaning.
+Respect explicit preferences and define a useful fallback for unknown hints.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Art direction preserves the important subject while changing the crop for a narrow layout.
+
+```html
+<picture>
+  <source media="(max-width: 48rem)" srcset="/student-portrait.webp" width="600" height="800" />
+  <img
+    src="/student-wide.webp"
+    width="1600"
+    height="900"
+    style="max-width: 100%; height: auto"
+    alt="A student annotating a system design diagram"
+  />
+</picture>
+```
+
+For delivery policy, separate an explicit quality choice from optional hints:
+
+```ts
+function chooseQuality(preference: 'standard' | 'high' | null, saveData?: boolean) {
+  if (preference !== null) return preference;
+  return saveData === true ? 'reduced' : 'standard';
+}
+```
+
+An unknown hint uses standard quality, a data-saving hint selects a reduced variant, and an explicit choice takes priority.
+The image service must define useful representations for those policy names.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Adapt image delivery deliberately" steps={[
+  { title: 'Preserve essential content', note: 'Do not crop away information needed for the task' },
+  { title: 'Match layout and density', note: 'Use responsive candidates and justified art direction' },
+  { title: 'Respect preferences', note: 'Explicit quality choices take priority over coarse hints' },
+  { title: 'Validate the fallback', note: 'Unknown capability must still produce a useful image' },
+]} highlight={2} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Distinguish resolution selection from art direction.
+- Preserve meaningful subjects and text alternatives.
+- Treat network signals as optional, coarse hints.
+- Respect explicit quality and data-saving preferences.
+- Keep source selection, dimensions and caching aligned.
+
+## Trade-offs
+
+| Technique        | Strengths           | Weaknesses          |
+| ---------------- | ------------------- | ------------------- |
+| Alternate crop   | Useful composition  | Editorial work      |
+| Quality policy   | Lower optional cost | Perceived artifacts |
+| Explicit control | Respects intent     | Extra UI decisions  |
+
+## Interview questions
+
+<InterviewQuestion question="Is a smaller viewport always a slower device?">
+
+No: viewport geometry does not establish network speed, processing power or the user's quality preference.
+Use media conditions for composition and a separate policy for optional resource cost.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What if connection hints are unavailable?">
+
+Serve the defined useful baseline and let the user request another quality level when appropriate.
+Do not make essential content depend on a browser API with incomplete support or an inferred device label.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can art direction change the image's meaning?">
+
+It can if cropping removes a relevant person, label or relationship.
+Review each crop and alternative in context; use a different description or another presentation when the information genuinely differs.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+An adaptive pipeline combines editorial crops, responsive source selection and optional quality policy.
+Media conditions select composition, while candidate dimensions help the browser choose sufficient pixels for the slot.
+When a policy uses capability hints, feature-detect them and define behavior for unknown values and later changes.
+
+### Edge cases
+
+- Different aspect ratios need appropriate geometry to avoid layout shifts during selection or resizing.
+- A cached high-quality image can be preferable to downloading another lower-quality version purely for a nominal policy change.
+- A user's deliberate high-quality request should not be silently reversed by a later hint update.
+
+### Common mistakes
+
+- Treating viewport width as a universal bandwidth test.
+- Changing src after a large initial download has already started.
+- Cropping away essential content while retaining a now-inaccurate alternative.
+
+### References
+
+- [Responsive images and art direction in MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Responsive_images)
+- [Adaptive loading on web.dev](https://web.dev/articles/adaptive-loading-cds-2019)
+- [NetworkInformation.saveData in MDN](https://developer.mozilla.org/en-US/docs/Web/API/NetworkInformation/saveData)
+
+</DeepDive>
