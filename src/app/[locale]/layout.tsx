@@ -42,12 +42,7 @@ export default async function RootLayout({ children, params }: Props) {
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className={`${geistSans.variable}`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <NextIntlClientProvider>
             <QueryProvider>{children}</QueryProvider>
           </NextIntlClientProvider>

@@ -30,7 +30,7 @@
       "@/public/*": ["./public/*"]
     }
   },
-  "exclude": ["node_modules"],
+  "exclude": ["node_modules", "coverage", "test-results", "playwright-report", "blob-report"],
   "include": [
     "next-env.d.ts",
     "**/*.ts",

@@ -1,6 +1,6 @@
-# Multo
+# Front End System Design Checklist
 
-Next.js 16 web application with internationalization (English and Japanese).
+An interactive checklist of front end system design interview topics, built with Next.js 16 and available in English and Vietnamese.
 
 ## Tech Stack
 
@@ -8,7 +8,7 @@ Next.js 16 web application with internationalization (English and Japanese).
 - **Language** — TypeScript (strict, `noUncheckedIndexedAccess`)
 - **Styling** — Tailwind CSS v4, `tw-animate-css`
 - **UI** — shadcn/ui (radix-nova style), Lucide icons, Sonner toasts, next-themes
-- **i18n** — next-intl (`/` for English default, `/ja` for Japanese)
+- **i18n** — next-intl (`/` for English default, `/vi` for Vietnamese)
 - **Client state** — Zustand
 - **Server state / data fetching** — TanStack Query v5 (+ devtools)
 - **Forms** — React Hook Form + `@hookform/resolvers` (Zod)
@@ -28,7 +28,7 @@ pnpm install
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). English is served at `/`, Japanese at `/ja`.
+Open [http://localhost:3000](http://localhost:3000). English is served at `/`, Vietnamese at `/vi`.
 
 ## Docker
 
@@ -61,7 +61,7 @@ Pass runtime environment variables with `-e` or `--env-file .env.local`; see [`.
 - [`src/components/`](./src/components) — Shared React components.
 - [`src/components/ui/`](./src/components/ui) — shadcn/ui primitives.
 - [`src/i18n/`](./src/i18n) — next-intl routing, navigation, and request config.
-- [`src/messages/`](./src/messages) — Translation files (`en.json`, `ja.json`).
+- [`src/messages/`](./src/messages) — Translation files (`en.json`, `vi.json`).
 - [`src/stores/`](./src/stores) — Zustand stores.
 - [`src/lib/query/`](./src/lib/query) — TanStack Query client factory and provider.
 - [`src/lib/env/`](./src/lib/env) — T3 Env schemas for client/server variables.
@@ -74,7 +74,7 @@ Pass runtime environment variables with `-e` or `--env-file .env.local`; see [`.
 Locales are declared in [`src/i18n/routing.ts`](./src/i18n/routing.ts):
 
 - Default locale (English) is served without a URL prefix (`localePrefix: 'as-needed'`).
-- Japanese is served under `/ja`.
+- Vietnamese is served under `/vi`.
 - Browser language auto-detection is disabled — users switch languages explicitly via the locale switcher.
 
 To add a new locale:
@@ -82,7 +82,7 @@ To add a new locale:
 1. Add its code to `routing.locales` in [`src/i18n/routing.ts`](./src/i18n/routing.ts).
 2. Add a matching `src/messages/<locale>.json`.
 3. Add a label to `localeLabels` in [`src/components/locale-switcher.tsx`](./src/components/locale-switcher.tsx).
-4. If the locale needs locale-prefixed redirects (like `/ja/index` → `/ja`), add them to [`redirects.ts`](./redirects.ts).
+4. If the locale needs locale-prefixed redirects (like `/vi/index` → `/vi`), add them to [`redirects.ts`](./redirects.ts).
 
 ## Data Fetching (TanStack Query)
 
