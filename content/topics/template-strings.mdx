@@ -1,0 +1,122 @@
+---
+description: Translating complete parameterized messages with locale-aware plural and selection rules instead of assembling language fragments in application code.
+visual: code
+related: [locale-formatting, lang-and-hreflang, long-strings, right-to-left]
+---
+
+## TL;DR
+
+Translate complete messages with named parameters and locale-aware grammar.
+JavaScript interpolation alone cannot supply plural rules or word order.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+An ICU message lets the translator control the complete sentence and plural categories.
+
+```json
+{
+  "lessonCount": "{count, plural, =0 {No lessons} one {# lesson} other {# lessons}}",
+  "savedBy": "Saved by {name}"
+}
+```
+
+```tsx
+const t = useTranslations('Library');
+return <p>{t('lessonCount', { count })}</p>;
+```
+
+The namespace and keys are illustrative.
+Translate each complete message, including the plural categories needed by the target language.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Message formatting boundary" steps={[
+  {
+    "title": "Name a user-visible intent",
+    "note": "Keep a stable key for a complete message"
+  },
+  {
+    "title": "Provide structured values",
+    "note": "Use named parameters and domain values"
+  },
+  {
+    "title": "Apply locale grammar",
+    "note": "Let the message choose order, plural and selection forms"
+  },
+  {
+    "title": "Render through a safe API",
+    "note": "Use explicit rich-text placeholders instead of arbitrary HTML"
+  }
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Translate whole messages instead of fragments.
+- Use named placeholders with clear meaning.
+- Apply locale plural rules, not count equals one.
+- Keep rich text explicit and safely rendered.
+- Test missing keys and expanded translations.
+
+## Trade-offs
+
+| Approach          | Strengths           | Weaknesses         |
+| ----------------- | ------------------- | ------------------ |
+| Concatenation     | Easy prototype      | Grammar coupling   |
+| Message catalog   | Translator control  | Key maintenance    |
+| Rich placeholders | Structured emphasis | Rendering contract |
+
+## Interview questions
+
+<InterviewQuestion question="Why not concatenate a translated noun with a count?">
+
+Languages can change word order, inflection and plural categories beyond singular and plural.
+Translate the complete message and let the locale-specific formatter select its form.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Is a JavaScript template literal an i18n solution?">
+
+It interpolates values into a string but does not choose language grammar or a translated sentence.
+Use a message system with a clear placeholder and plural contract.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How should links inside translated text work?">
+
+Expose named rich-text placeholders that the translator can position within the message.
+Map them to trusted components rather than asking translators or user data to supply unrestricted HTML.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Message keys express product meaning while the catalog owns the full sentence structure for each locale.
+The formatting library resolves named values, plural categories and optional selection branches before producing text or trusted rich components.
+A literal count=0 branch is a product decision; other counts should follow the locale's relevant plural rules.
+Give translators context about what a value means and where the message appears, including whether it is a button, heading or status.
+Keep user-provided values as data throughout the interpolation and rendering path.
+
+### Edge cases
+
+- Some languages need more plural categories than English, and zero may have a deliberate custom message.
+- A translated action can be substantially longer than its source and needs layout room.
+- A missing message key should have a visible development failure or a defined fallback instead of silent mixed-language fragments.
+
+### Common mistakes
+
+- Building sentences from individually translated words.
+- Using numeric equality rules copied from English for every locale.
+- Rendering translated strings through an unrestricted raw HTML sink.
+
+### References
+
+- [ICU message formatting](https://unicode-org.github.io/icu/userguide/format_parse/messages/)
+- [next-intl messages](https://next-intl.dev/docs/usage/translations)
+- [MDN Intl.PluralRules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/PluralRules)
+
+</DeepDive>

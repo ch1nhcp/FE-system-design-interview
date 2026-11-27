@@ -1,0 +1,137 @@
+---
+description: Modeling reversible local edits with bounded history while distinguishing state restoration from compensating external side effects and collaborative intent.
+visual: code
+related: [reducer-pattern, event-sourcing, conflict-resolution, normalized-state]
+---
+
+## TL;DR
+
+Undo and redo move through meaningful edit history.
+Bound memory, group related changes and separate local restoration from external compensation.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A snapshot history keeps past states, the current value and redo candidates.
+
+```ts
+type History<T> = { past: T[]; present: T; future: T[] };
+
+function commit<T>(history: History<T>, next: T): History<T> {
+  if (Object.is(history.present, next)) return history;
+  return { past: [...history.past.slice(-49), history.present], present: next, future: [] };
+}
+
+function undo<T>(history: History<T>): History<T> {
+  if (history.past.length === 0) return history;
+  return {
+    past: history.past.slice(0, -1),
+    present: history.past[history.past.length - 1]!,
+    future: [history.present, ...history.future],
+  };
+}
+
+function redo<T>(history: History<T>): History<T> {
+  if (history.future.length === 0) return history;
+  return {
+    past: [...history.past, history.present],
+    present: history.future[0]!,
+    future: history.future.slice(1),
+  };
+}
+```
+
+Snapshots must remain immutable.
+This example retains at most 50 past entries through commit; it does not implement edit grouping, persistence or server compensation.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Reversible local edit history" steps={[
+  {
+    "title": "Capture a meaningful edit",
+    "note": "Group typing or a gesture according to user intent"
+  },
+  {
+    "title": "Commit the next state",
+    "note": "Push the old present and discard the abandoned redo branch"
+  },
+  {
+    "title": "Move through history",
+    "note": "Undo and redo exchange snapshots without rerunning effects"
+  },
+  {
+    "title": "Handle external consequences",
+    "note": "Use explicit compensating operations when a server action must change"
+  }
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Group history around meaningful user edits.
+- Clear redo when a new branch is committed.
+- Keep retained snapshots immutable.
+- Bound history by entries and actual memory use.
+- Treat server side effects as separate operations.
+
+## Trade-offs
+
+| Approach         | Strengths          | Weaknesses          |
+| ---------------- | ------------------ | ------------------- |
+| Snapshots        | Simple restoration | Memory cost         |
+| Inverse commands | Compact intent     | Inverse correctness |
+| Compensation     | External recovery  | New fallible action |
+
+## Interview questions
+
+<InterviewQuestion question="Why should a new edit clear redo?">
+
+The old redo states describe the branch that followed the previous present.
+A new committed edit creates another branch, so replaying the abandoned future would need a different explicit history model.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can undo reverse a sent email or payment?">
+
+Restoring a local snapshot cannot retract an external side effect.
+Offer a real cancellation or compensating operation only when the external system supports it, and explain its actual outcome.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What belongs in history?">
+
+Usually meaningful document edits rather than hover, loading or incidental focus state.
+Choose the user-visible transaction boundary and restore relevant selection context without recording every transient UI update.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+A linear snapshot model represents previous states and the possible forward branch from the current state.
+Undo and redo move existing values between those collections; ordinary edits create a new present and invalidate the old forward branch.
+Immutability prevents a later change from silently rewriting several historical snapshots at once.
+Group continuous typing or a drag operation into useful transactions, with an explicit policy for time gaps and selection changes.
+Collaborative editing needs an intent-aware model so one user's undo does not erase another user's accepted work indiscriminately.
+
+### Edge cases
+
+- A no-op edit should not necessarily create another history step.
+- Large media or document snapshots can exceed memory budgets even when the entry count is bounded.
+- A server rejection after local undo may require reconciliation rather than another blind snapshot restore.
+
+### Common mistakes
+
+- Reissuing external effects while replaying UI history.
+- Retaining mutable references to old state.
+- Promising global collaborative undo using only a local past/present/future array.
+
+### References
+
+- [Redux undo history](https://redux.js.org/usage/implementing-undo-history)
+- [React immutable object updates](https://react.dev/learn/updating-objects-in-state)
+- [Yjs selective undo](https://docs.yjs.dev/api/undo-manager)
+
+</DeepDive>

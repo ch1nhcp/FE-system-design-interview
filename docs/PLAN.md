@@ -8,7 +8,8 @@ Every checklist topic gets its own cheatsheet page with examples, diagrams and a
 - Depth: each topic is a one-screen cheatsheet, followed by a collapsed "Deep dive" section.
 - Visuals: every topic page has a visual panel next to the cheatsheet with an animation, a diagram or a code example.
 - Language: English content first. Vietnamese UI stays; topic pages without a Vietnamese translation show the English content with a notice.
-- Case studies are out of scope for now.
+- The full completion goal includes Vietnamese topic content and section overviews after the core phases.
+- Case studies remain out of scope.
 - Content is original. The GreatFrontEnd cheatsheet only provides the checklist structure and is credited as the source.
 
 ## Information architecture
@@ -50,15 +51,16 @@ Other topics use a static diagram or a code example, declared in the topic front
 
 ## Phases
 
-| Phase                 | Work                                                                                                        | Done when                                                      |
-| --------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| 0. Foundations        | Commit current work, this plan, Vitest and Playwright in CI, Fumadocs spike, one animation prototype (done) | Tests run in CI, content pipeline and visual approach decided  |
-| 1. Site skeleton      | Layout, routes, topic registry, progress store v2, dashboard (done)                                         | Every route renders with placeholder content and tests pass    |
-| 2. Template and pilot | Two-column topic layout, visual components, the full Real-time updates section                              | The user reviews depth and tone before more content is written |
-| 3. English content    | The remaining 13 sections, one or two sections per PR                                                       | All 14 sections are written                                    |
-| 4. Study tools        | Cmd+K search, flashcards, "review again" filter                                                             |                                                                |
-| 5. Polish             | Core Web Vitals, accessibility audit, Open Graph images                                                     |                                                                |
-| Later                 | Vietnamese content, case studies                                                                            |                                                                |
+| Phase                 | Work                                                                                                        | Done when                                                                       |
+| --------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 0. Foundations        | Commit current work, this plan, Vitest and Playwright in CI, Fumadocs spike, one animation prototype (done) | Tests run in CI, content pipeline and visual approach decided                   |
+| 1. Site skeleton      | Layout, routes, topic registry, progress store v2, dashboard (done)                                         | Every route renders with placeholder content and tests pass                     |
+| 2. Template and pilot | Two-column topic layout, visual components, the full Real-time updates section                              | The user reviews depth and tone before more content is written                  |
+| 3. English content    | The remaining 13 sections, one or two sections per PR                                                       | All 14 sections are written                                                     |
+| 4. Study tools        | RADIO guide, Cmd+K search, flashcards, "review again" filter                                                | All study flows work in both UI locales with keyboard and mobile coverage       |
+| 5. Polish             | Core Web Vitals, accessibility audit, production SEO and Open Graph images                                  | Documented performance/accessibility evidence and validated production metadata |
+| 6. Vietnamese content | Vietnamese topic pages and section overviews                                                                | All 81 topics and 14 overviews translated, with language and layout checks      |
+| Later                 | Case studies                                                                                                | Outside the current completion goal                                             |
 
 ## Phase 0 findings
 
@@ -120,21 +122,21 @@ Decision: animations are React SVG rendered from a pure model at a point in time
 
 ## Phase 3 progress
 
-| Batch | Sections                        | Topics | Status      |
-| ----- | ------------------------------- | ------ | ----------- |
-| 1     | Architecture, State management  | 9      | Merged      |
-| 2     | Back end APIs, Component APIs   | 9      | Merged      |
-| 3     | Networking techniques           | 8      | Merged      |
-| 4     | Performance                     | 14     | Merged      |
-| 5     | Images, Accessibility           | 12     | Merged      |
-| 6     | SEO, User experience            | 10     | In review   |
-| 7     | Security, i18n, Common patterns | 15     | Not started |
+| Batch | Sections                        | Topics | Status    |
+| ----- | ------------------------------- | ------ | --------- |
+| 1     | Architecture, State management  | 9      | Merged    |
+| 2     | Back end APIs, Component APIs   | 9      | Merged    |
+| 3     | Networking techniques           | 8      | Merged    |
+| 4     | Performance                     | 14     | Merged    |
+| 5     | Images, Accessibility           | 12     | Merged    |
+| 6     | SEO, User experience            | 10     | Merged    |
+| 7     | Security, i18n, Common patterns | 15     | In review |
 
 Topics already written in an earlier section are not counted again, such as Optimistic updates under Performance.
 
 Batch 2 adds all five Back end APIs topics and all four Component APIs topics, with a comparison overview for each section.
-There are now 66 English topic pages out of 81 unique topics.
-Content tests require every topic and the overview of each completed section to remain present, while unfinished sections can still use placeholders.
+There are now 81 English topic pages out of 81 unique topics.
+Content tests require every registered topic and all fourteen section overviews to remain present.
 The new topics reuse `FlowDiagram` and code panels because their main concepts are contracts, ownership and request structure rather than timing.
 Batch 2 summaries are checked at a 1440 by 900 desktop viewport with answers and the deep dive collapsed.
 From the TL;DR heading to the deep dive, the summary must fit within 820 pixels, leaving space for the sticky header when scrolled into view.
@@ -167,6 +169,11 @@ The new content reuses code panels and `FlowDiagram` for document contracts, req
 SEO examples distinguish discovery, indexing, metadata, structured-data eligibility and rendering rather than promising ranking outcomes.
 User experience examples distinguish initial loading from refresh, ambiguous writes from confirmed failures, and incremental loading from virtualization.
 E2E coverage includes all ten reading flows, delivered descriptions, locale fallbacks, the 820-pixel desktop summary limit, shared Infinite scrolling progress and 320-pixel reading layout.
+
+Batch 7 completes Security, i18n and Common patterns with fifteen new topics and three overviews.
+All registered English content is now mandatory, and the topic and section-list placeholder paths are removed.
+Common patterns reuses Infinite scrolling and Event sourcing without duplicating their URLs or progress.
+The new topics use code and diagrams to explain trust boundaries, language-sensitive presentation, state history, playback and concurrent writes.
 
 ### Visual building blocks
 

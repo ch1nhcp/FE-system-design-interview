@@ -8,7 +8,6 @@ import { resolveLocale } from '@/i18n/resolve-locale';
 import { routing } from '@/i18n/routing';
 import { getSectionOverview, getTopicContent } from '@/lib/content/topic-source';
 import { SECTIONS, getSection } from '@/lib/topics/registry';
-import type { TopicSlug } from '@/lib/topics/registry';
 
 type Props = {
   params: Promise<{ locale: string; section: string }>;
@@ -39,12 +38,13 @@ export default async function SectionPage({ params }: Props) {
   setRequestLocale(locale);
 
   const t = await getTranslations('Sections');
-  const summaries: Partial<Record<TopicSlug, string>> = Object.fromEntries(
-    section.topics.flatMap((topic: TopicSlug) => {
-      const summary = getTopicContent(topic, locale)?.page.data.description;
-      return summary ? [[topic, summary]] : [];
-    }),
-  );
+  const topics = section.topics.map((topic) => {
+    const content = getTopicContent(topic, locale);
+    if (!content) {
+      notFound();
+    }
+    return { topic, summary: content.page.data.description };
+  });
 
   const Overview = getSectionOverview(section.slug, locale)?.data.body;
 
@@ -54,7 +54,7 @@ export default async function SectionPage({ params }: Props) {
         <h1 className="text-2xl font-semibold">{t(`${section.slug}.title`)}</h1>
         <p className="text-muted-foreground">{t(`${section.slug}.description`)}</p>
       </header>
-      <SectionTopicList section={section} summaries={summaries} />
+      <SectionTopicList topics={topics} />
       {Overview && <Overview components={topicMdxComponents} />}
     </div>
   );

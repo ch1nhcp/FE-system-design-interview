@@ -53,8 +53,11 @@ export default async function TopicPage({ params }: Props) {
   const primarySection = sections[0];
   const { previous, next } = getAdjacentTopics(topic);
   const content = getTopicContent(topic, locale);
-  const Body = content?.page.data.body;
-  const related = (content?.page.data.related ?? []).filter(isTopicSlug);
+  if (!content) {
+    notFound();
+  }
+  const Body = content.page.data.body;
+  const related = content.page.data.related.filter(isTopicSlug);
 
   return (
     <article className="flex flex-col gap-6">
@@ -80,11 +83,9 @@ export default async function TopicPage({ params }: Props) {
         <h1 className="text-2xl font-semibold sm:text-3xl">
           <TopicLabel slug={topic} />
         </h1>
-        {content && (
-          <p lang={content.isFallback ? routing.defaultLocale : undefined} className="text-muted-foreground text-lg">
-            {content.page.data.description}
-          </p>
-        )}
+        <p lang={content.isFallback ? routing.defaultLocale : undefined} className="text-muted-foreground text-lg">
+          {content.page.data.description}
+        </p>
         <p className="text-muted-foreground text-sm">
           {t('partOf')}{' '}
           {sections.map((section, index) => (
@@ -99,23 +100,16 @@ export default async function TopicPage({ params }: Props) {
         <TopicProgressControls topic={topic} />
       </header>
 
-      {content?.isFallback && (
+      {content.isFallback && (
         <p role="note" className="bg-muted flex max-w-3xl items-start gap-2 rounded-xl p-3 text-sm">
           <InfoIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
           {t('translationMissing')}
         </p>
       )}
 
-      {Body ? (
-        <div lang={content.isFallback ? routing.defaultLocale : undefined}>
-          <Body components={topicMdxComponents} />
-        </div>
-      ) : (
-        <section className="bg-muted flex max-w-3xl flex-col gap-1 rounded-xl p-4">
-          <h2 className="font-medium">{t('comingSoonTitle')}</h2>
-          <p className="text-muted-foreground text-sm">{t('comingSoonBody')}</p>
-        </section>
-      )}
+      <div lang={content.isFallback ? routing.defaultLocale : undefined}>
+        <Body components={topicMdxComponents} />
+      </div>
 
       {related.length > 0 && (
         <section aria-labelledby="related-topics" className="flex flex-col gap-2">

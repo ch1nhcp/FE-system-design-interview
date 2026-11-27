@@ -1,0 +1,118 @@
+---
+description: Restricting executable and embedded resources with Content Security Policy while planning nonce integrity, deployment compatibility and violation reporting.
+visual: code
+related: [xss, https, cors, server-side-rendering]
+---
+
+## TL;DR
+
+CSP constrains which resources and scripts a document may use.
+Deploy a tested policy as defense in depth; keep safe rendering and server checks.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+This illustrative response policy permits only scripts carrying a fresh response-specific nonce.
+
+```http
+Content-Security-Policy: default-src 'self'; script-src 'nonce-RANDOM_PER_RESPONSE'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'
+```
+
+```html
+<script nonce="RANDOM_PER_RESPONSE" src="/app.js"></script>
+```
+
+Generate an unpredictable nonce on the server for each response and use the same value in its policy and intended script tags.
+The placeholder is not a production nonce; assess styles, connections, images and framework-generated scripts before enforcing this example.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Roll out a restrictive policy" steps={[
+  {
+    "title": "Inventory resource requirements",
+    "note": "Include framework scripts, APIs and embedded content"
+  },
+  {
+    "title": "Define narrow trust rules",
+    "note": "Use trustworthy nonce or hash handling for intended scripts"
+  },
+  {
+    "title": "Observe violations",
+    "note": "Test report-only output and real application flows"
+  },
+  {
+    "title": "Enforce and maintain",
+    "note": "Monitor changes without weakening the policy indiscriminately"
+  }
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Treat CSP as an additional execution boundary.
+- Use fresh unpredictable nonces or verified hashes.
+- Test policy against real application flows.
+- Keep policy and cached HTML consistent.
+- Monitor reports without exposing sensitive data.
+
+## Trade-offs
+
+| Approach     | Strengths          | Weaknesses             |
+| ------------ | ------------------ | ---------------------- |
+| Nonce policy | Dynamic scripts    | Per-response plumbing  |
+| Hash policy  | Stable inline code | Exact content coupling |
+| Report-only  | Rollout evidence   | Does not block         |
+
+## Interview questions
+
+<InterviewQuestion question="Does report-only mode stop an injected script?">
+
+No: it reports policy violations without enforcing the blocking policy.
+Use it to gather rollout evidence, then verify the actual enforced header and test both intended and disallowed behavior.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can a cached static nonce be reused safely?">
+
+A nonce must remain unpredictable for each response and match only the intended scripts.
+Reusing a published value or automatically adding it to all markup can defeat the intended boundary; choose a cache-compatible nonce or hash design.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does CSP replace XSS prevention?">
+
+No: keep safe output handling and sanitization where HTML is intentionally supported.
+A policy can limit some execution paths but should not justify unsafe rendering or broad unsafe-inline allowances.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Browsers apply CSP directives from a response header to the protected document and its relevant resource actions.
+Different directives govern script execution, connections, embedding and other contexts, so a single host list is not a complete policy design.
+A restrictive script policy needs a precise mechanism for trusting intended scripts, including framework bootstrap and lazy-loaded behavior.
+Hash-based policies bind to exact content, while nonce policies need response-time generation and correct propagation through HTML delivery.
+Use a response header for the full policy; a meta-delivered policy has limitations, including unsupported frame-ancestors and report-only delivery.
+
+### Edge cases
+
+- Multiple enforced policies combine restrictively rather than letting one permissive header override another.
+- A policy can break analytics, workers or dynamic imports that a shallow home-page test never exercises.
+- Violation reports may contain URL or content information that needs appropriate handling.
+
+### Common mistakes
+
+- Using a literal example nonce in production.
+- Automatically blessing every script tag, including untrusted markup.
+- Treating a report-only deployment as an enforced defense.
+
+### References
+
+- [OWASP CSP guidance](https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html)
+- [MDN CSP guide](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP)
+- [MDN CSP header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy)
+
+</DeepDive>

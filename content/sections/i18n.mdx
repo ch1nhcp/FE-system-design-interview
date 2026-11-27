@@ -1,0 +1,36 @@
+## Preserve meaning across languages
+
+Internationalization separates domain values and product intent from language-specific presentation.
+Translate complete messages, describe the language actually delivered and keep text entry and layout usable for more than one writing system.
+
+| Topic                | Starting point                                     | Verify                                                        |
+| -------------------- | -------------------------------------------------- | ------------------------------------------------------------- |
+| lang and hreflang    | Actual content language and genuine alternate URLs | Pronunciation context, reciprocal links and fallback honesty  |
+| Right-to-left        | Semantic direction and logical layout              | Mixed values, punctuation, focus order and icons              |
+| Template strings     | Complete parameterized messages                    | Word order, plural categories and safe rich placeholders      |
+| Locale formatting    | Explicit value semantics and display preferences   | Currency, time zone, precision and initial-render consistency |
+| Text in images       | Real text for essential copy                       | Translation, reflow, contrast and image alternatives          |
+| Input method editors | Composition-aware input behavior                   | Candidate entry, cancellation, shortcuts and final values     |
+
+## Keep independent concepts independent
+
+A language preference does not identify a currency, a time zone or a text direction by itself.
+Model those choices explicitly where the task depends on them, and store domain values separately from formatted strings.
+Likewise, a localized navigation shell does not make an English fallback article a translated article.
+
+Message catalogs should own complete grammatical units and named parameters rather than fragments assembled in code.
+Give translators enough context to preserve meaning, and test longer translations in the actual interface.
+Keep user-provided interpolation values as data instead of unrestricted markup.
+
+## Test language-sensitive workflows
+
+| Workflow                     | Check                                                                  |
+| ---------------------------- | ---------------------------------------------------------------------- |
+| Locale change on a deep link | Matching destination, retained task context and honest language markup |
+| Plural and numeric messages  | Relevant locale categories and meaningful zero-state wording           |
+| RTL with embedded names      | Isolation, punctuation, selection and logical layout                   |
+| Date or price display        | Correct domain value, locale, currency and time-zone choices           |
+| Composition input            | No accidental submit, destructive normalization or stale search result |
+
+Use representative real input methods and language content alongside automated checks.
+Keep language publication, metadata and translation completeness in one consistent inventory so discovery signals and visible content agree.

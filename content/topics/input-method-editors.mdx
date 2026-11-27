@@ -1,0 +1,132 @@
+---
+description: Keeping composition-based text entry intact while coordinating controlled values, validation, search and keyboard shortcuts with committed input.
+visual: code
+related: [keyboard-interactions, debouncing-updates, template-strings, error-handling]
+---
+
+## TL;DR
+
+An IME composes text before the final value is committed.
+Preserve composition and defer disruptive search, validation or shortcuts until appropriate.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Keep the input value current while treating composition and application shortcuts as different interactions.
+
+```tsx
+const composing = useRef(false);
+const [value, setValue] = useState('');
+
+<input
+  value={value}
+  onChange={(event) => setValue(event.currentTarget.value)}
+  onCompositionStart={() => {
+    composing.current = true;
+  }}
+  onCompositionEnd={() => {
+    composing.current = false;
+  }}
+  onKeyDown={(event) => {
+    if (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+    if (event.key === 'Enter') commitSearch(value);
+  }}
+/>;
+```
+
+This fragment belongs inside a React component with useRef and useState imported.
+The deprecated keyCode check is a narrow IME compatibility guard for a confirming keydown that arrives after compositionend with isComposing already false.
+commitSearch owns request scheduling and recovery; test composition and Enter event ordering on the actual supported browsers and input methods.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Composition-aware input flow" steps={[
+  {
+    "title": "Composition begins",
+    "note": "Let the input method build a candidate"
+  },
+  {
+    "title": "Intermediate input changes",
+    "note": "Keep the displayed value without disruptive normalization"
+  },
+  {
+    "title": "Composition commits or cancels",
+    "note": "Observe the resulting value and event sequence"
+  },
+  {
+    "title": "Apply the product action",
+    "note": "Coordinate search, validation and shortcuts without stealing IME keys"
+  }
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Keep controlled values synchronized while composing.
+- Do not use Enter blindly as an app shortcut.
+- Defer disruptive normalization and validation.
+- Coalesce searches around committed values.
+- Test real input methods and browser event order.
+
+## Trade-offs
+
+| Approach          | Strengths           | Weaknesses              |
+| ----------------- | ------------------- | ----------------------- |
+| Per-input search  | Fast feedback       | Can disrupt composition |
+| Commit-aware work | Respects text entry | More event state        |
+| Submit action     | Clear user intent   | Extra activation        |
+
+## Interview questions
+
+<InterviewQuestion question="Should onChange be ignored during composition?">
+
+Not when that would leave a controlled input value stale or overwrite what the user is composing.
+Keep the visible value synchronized and decide separately whether validation or network work should run.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can Enter mean something other than submit?">
+
+Yes: it can confirm an IME candidate while text composition is active.
+Check composition state and design the form or shortcut boundary so accepting a candidate does not accidentally activate the product action.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Is an automated keypress test enough?">
+
+It can cover the application's event-state handling, but it does not reproduce every operating-system candidate window or browser sequence.
+Include representative real IME tasks, including cancellation and mobile entry, in the validation matrix.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Composition events describe an input session in which several interactions can contribute to a final string.
+Intermediate input is meaningful to the input method, so replacing it with normalized or validated text can destroy the user's current candidate.
+Keep display state, composition state and expensive application effects as separate responsibilities.
+Browser and input-method event ordering can differ, including the timing of the final input event relative to compositionend and Enter.
+Debounced or committed search should deduplicate equivalent requests, retain the final value and ignore stale results rather than depending on one assumed event count.
+
+### Edge cases
+
+- Cancelling composition is not the same as submitting the current draft.
+- A final input event after compositionend can schedule duplicate work unless the request layer coalesces it.
+- Blur, navigation and programmatic value replacement need an explicit policy for unfinished composition.
+
+### Common mistakes
+
+- Submitting every Enter key without checking composition.
+- Reformatting the entire input value on every intermediate keystroke.
+- Treating composition as a language-specific feature that can be ignored for the rest of the audience.
+
+### References
+
+- [MDN composition events](https://developer.mozilla.org/en-US/docs/Web/API/Element/compositionstart_event)
+- [MDN isComposing](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/isComposing)
+- [MDN keydown with IME](https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event#keydown_events_with_ime)
+- [React input behavior](https://react.dev/reference/react-dom/components/input)
+
+</DeepDive>

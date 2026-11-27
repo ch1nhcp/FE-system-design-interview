@@ -1,0 +1,35 @@
+## Protect the right boundary
+
+Separate transport protection, trusted rendering, request authenticity and resource permissions.
+Each defense addresses a different boundary, so a successful HTTPS connection or CORS preflight is not proof that an operation is safe.
+
+| Topic | Boundary                                       | Verify                                                    |
+| ----- | ---------------------------------------------- | --------------------------------------------------------- |
+| HTTPS | Connection integrity and confidentiality       | Certificates, secure dependencies and proxy hops          |
+| XSS   | Untrusted content entering executable contexts | Sources, sinks, safe rendering and rich HTML policies     |
+| CSRF  | Forged actions using ambient credentials       | Server token validation, origin policy and cookie scope   |
+| CORS  | Browser sharing of cross-origin responses      | Exact origins, credentials, preflight and caches          |
+| CSP   | Permitted execution and resource loading       | Real enforced policy, nonce or hash integrity and reports |
+
+## Layer controls without confusing their roles
+
+Every authenticated operation still needs server-side authorization for its resource and action.
+Use safe rendering and maintained sanitization where rich content is intentionally supported; a restrictive CSP adds a layer rather than replacing that work.
+Validate state-changing request authenticity independently from the rules that let a browser read a cross-origin response.
+
+Cookie settings need a deliberate site and origin threat model.
+HttpOnly limits direct script access to a cookie, Secure restricts its transport, and SameSite changes cross-site transmission behavior.
+None of those attributes alone implements all the application's access controls.
+
+## Validate the deployed policy
+
+| Scenario                         | Evidence to inspect                                                   |
+| -------------------------------- | --------------------------------------------------------------------- |
+| Direct and proxied HTTPS         | Correct certificate, redirects and trusted forwarding configuration   |
+| Untrusted text and rich HTML     | No unintended execution through the supported rendering paths         |
+| Missing or forged mutation token | Server rejects the operation without a side effect                    |
+| Disallowed cross-origin client   | Browser policy behaves as intended and server permissions still apply |
+| CSP rollout                      | Intended flows work while disallowed execution is blocked             |
+
+Check actual production headers and representative failure cases rather than relying on configuration files alone.
+Keep operational exceptions explicit, narrowly scoped and covered by the same review and validation process as normal paths.

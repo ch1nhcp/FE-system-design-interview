@@ -1,0 +1,123 @@
+---
+description: Formatting dates, numbers and currencies from explicit locale and domain semantics while keeping storage, time zones and display separate.
+visual: code
+related: [template-strings, lang-and-hreflang, long-strings]
+---
+
+## TL;DR
+
+Store domain values independently from their localized display.
+Format with explicit locale, currency and time-zone intent; never guess them from punctuation.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+The locale, currency and time zone are separate choices in the display contract.
+
+```ts
+const price = new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND',
+}).format(120000);
+
+const appointment = new Intl.DateTimeFormat('vi-VN', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+  timeZone: 'Asia/Ho_Chi_Minh',
+}).format(new Date('2026-10-20T09:00:00Z'));
+```
+
+This date represents an instant; a birthday or calendar-only deadline may need a different domain model.
+Intl formatting is not a general parser for localized user input.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Value to localized presentation" steps={[
+  {
+    "title": "Model the domain value",
+    "note": "Separate an instant, calendar date and monetary amount"
+  },
+  {
+    "title": "Choose display preferences",
+    "note": "Locale, currency and time zone are independent inputs"
+  },
+  {
+    "title": "Format with a supported API",
+    "note": "Use Intl options rather than manual separators"
+  },
+  {
+    "title": "Verify storage and hydration",
+    "note": "Keep serialized values and initial display consistent"
+  }
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Separate stored values from formatted strings.
+- Choose time zones explicitly when they matter.
+- Choose currency from the domain, not language.
+- Use a deliberate money precision policy.
+- Test locale differences and hydration output.
+
+## Trade-offs
+
+| Approach        | Strengths            | Weaknesses           |
+| --------------- | -------------------- | -------------------- |
+| Intl formatting | Locale conventions   | Not a parser         |
+| UTC instant     | Unambiguous point    | Needs display zone   |
+| Calendar date   | Preserves day intent | Different arithmetic |
+
+## Interview questions
+
+<InterviewQuestion question="Does a locale determine the currency?">
+
+No: language and region preferences do not identify the currency of an actual transaction.
+Specify currency from the domain and locale from display preferences.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why can the same timestamp show different dates?">
+
+An instant can fall on different calendar days in different time zones.
+Specify the intended display zone and distinguish an instant from a date-only value before formatting.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can formatted prices be stored as the source value?">
+
+They lose a clean separation between amount, currency and presentation.
+Use an appropriate exact amount representation and rounding policy, then format for display at the boundary.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Intl formatters apply locale data to structured values and options without redefining the underlying domain meaning.
+For money, choose integer minor units or a suitable decimal representation according to the currency and calculation requirements.
+For time, decide whether the value is an instant, a local scheduled time or a calendar date before selecting serialization and formatting.
+Server and browser environments can differ in locale defaults, time zones or supported locale data, so make the initial render contract explicit.
+Use formatToParts when custom layout needs semantic pieces instead of splitting formatted strings on assumed punctuation.
+
+### Edge cases
+
+- Currency minor units vary; assuming every currency has exactly two decimal places is incorrect.
+- Daylight-saving changes can make local scheduled times ambiguous or nonexistent.
+- Localized output can include nonbreaking spaces or distinct digits, so exact string assumptions need care.
+
+### Common mistakes
+
+- Inferring a currency from the UI language.
+- Parsing every formatted number by removing commas.
+- Letting server and browser default time zones silently disagree.
+
+### References
+
+- [MDN Intl.NumberFormat](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat)
+- [MDN Intl.DateTimeFormat](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat)
+- [MDN formatToParts](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat/formatToParts)
+
+</DeepDive>

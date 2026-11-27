@@ -1,0 +1,35 @@
+## Choose the state and interaction contract
+
+These patterns solve different problems: acquiring more data, deriving state, reversing edits, playing media and reconciling concurrent intent.
+Choose the contract required by the task instead of treating the pattern name as a complete architecture.
+
+| Pattern             | Useful when                                          | Main obligation                                                |
+| ------------------- | ---------------------------------------------------- | -------------------------------------------------------------- |
+| Infinite scrolling  | Readers scan an expanding collection                 | Request guards, focus, bounded resources and return navigation |
+| Event sourcing      | Durable accepted events define authoritative history | Event schema, ordering, replay and projections                 |
+| Reducer pattern     | Related local transitions need one explicit owner    | Pure transitions and separate effects                          |
+| Undo/redo           | Users reverse meaningful edits                       | History scope, immutability and external compensation          |
+| Media streaming     | Playback must balance delivery and decoding          | Compatibility, buffering, accessibility and recovery           |
+| Conflict resolution | Several writers act on changing state                | Version checks, domain policy and preserved intent             |
+
+## Make ownership explicit
+
+A reducer does not imply a global store or a durable event log.
+Undoing a local snapshot does not reverse an external payment or erase another collaborator's accepted edit safely.
+Incremental loading does not bound the DOM or memory by itself, and MSE does not supply a complete adaptive player.
+
+Keep authoritative state and client presentation responsibilities clear.
+For concurrent writes, check assumptions atomically at the authoritative boundary and preserve local work during reconciliation.
+For asynchronous interfaces, attach enough operation identity to reject stale results without hiding unresolved outcomes.
+
+## Verify the failure path
+
+| Change                      | Useful checks                                                         |
+| --------------------------- | --------------------------------------------------------------------- |
+| Append another page         | Duplicate triggers, exhausted cursors, keyboard recovery and Back     |
+| Replay or undo a transition | Immutable history, deterministic state and no duplicate side effects  |
+| Switch a media rendition    | Codec support, segment alignment, buffers and caption continuity      |
+| Save a stale draft          | Conditional rejection, current remote state and a safe merge decision |
+
+Infinite scrolling and Event sourcing reuse their existing pages and progress states.
+Evaluate patterns with realistic resource limits and interruption scenarios, including long sessions, offline changes and failed external actions.

@@ -1,0 +1,116 @@
+---
+description: Preventing untrusted values from becoming executable page content through safe rendering, context-aware encoding and controlled rich HTML.
+visual: code
+related: [csp, csrf, authentication, text-in-images]
+---
+
+## TL;DR
+
+XSS occurs when untrusted content executes with the page's privileges.
+Keep data out of executable contexts and sanitize intentionally supported rich HTML.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+For ordinary element text, use textContent rather than interpreting the value as HTML.
+
+```ts
+const name = document.querySelector<HTMLElement>('#display-name');
+const untrustedName = new URLSearchParams(location.search).get('name') ?? 'Reader';
+if (name) name.textContent = untrustedName;
+```
+
+This is appropriate for an ordinary text container, not a script or style element.
+URLs, HTML attributes, JavaScript and CSS have different constraints; do not reuse a text-context defense blindly.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Keep untrusted values as data" steps={[
+  {
+    "title": "Identify every input source",
+    "note": "Stored content and URL values are both untrusted"
+  },
+  {
+    "title": "Choose the output context",
+    "note": "Text, URL and rich HTML require different handling"
+  },
+  {
+    "title": "Use a safe rendering boundary",
+    "note": "Prefer text rendering; sanitize allowed HTML with a maintained tool"
+  },
+  {
+    "title": "Add independent defenses",
+    "note": "Use CSP and limit credential exposure without relying on either alone"
+  }
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Default to rendering untrusted values as text.
+- Validate URL schemes before creating navigation.
+- Sanitize deliberately supported HTML at its boundary.
+- Keep libraries and sanitization rules maintained.
+- Use CSP as an additional layer of defense.
+
+## Trade-offs
+
+| Approach       | Strengths            | Weaknesses         |
+| -------------- | -------------------- | ------------------ |
+| Text rendering | Simple safe boundary | No rich formatting |
+| HTML sanitizer | Controlled markup    | Policy maintenance |
+| CSP            | Limits execution     | Not a complete fix |
+
+## Interview questions
+
+<InterviewQuestion question="Does framework escaping prevent all XSS?">
+
+No: escaping helps in the contexts the framework renders safely.
+Raw HTML APIs, dangerous URL schemes, third-party code and incorrect embedding in executable contexts can bypass that boundary.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Is input validation alone sufficient?">
+
+No: the same stored value can later be used in several output contexts with different rules.
+Constrain inputs for the domain, then use context-appropriate safe rendering or sanitization at the actual output boundary.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Do HttpOnly cookies remove the impact of XSS?">
+
+They limit direct JavaScript access to those cookie values.
+Injected code may still act through the user's session or read page data, so preventing execution remains necessary.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Reflected, stored and DOM-based XSS describe different paths by which untrusted data reaches an executable sink.
+Trace the source-to-sink flow instead of searching only for one suspicious input character.
+For supported rich HTML, use a maintained sanitizer with a narrow policy and verify that later transformations do not reintroduce unsafe markup.
+Avoid string-built inline script content; JSON serialization alone does not secure embedding inside an HTML script element.
+Security boundaries need representative malicious fixtures as well as normal content, including URL and markup variants.
+
+### Edge cases
+
+- A stored value can become dangerous only when a different view later interprets it as markup.
+- A trusted third-party script runs with substantial page privileges and can undermine other defenses.
+- Mutating sanitized HTML through an unsafe library can invalidate the original sanitization.
+
+### Common mistakes
+
+- Using a regular expression as a general-purpose HTML sanitizer.
+- Treating all encoding functions as interchangeable across contexts.
+- Assuming CSP makes unsafe innerHTML acceptable.
+
+### References
+
+- [OWASP XSS prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
+- [MDN XSS](https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/XSS)
+- [MDN textContent](https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent)
+
+</DeepDive>

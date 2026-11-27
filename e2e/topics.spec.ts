@@ -15,14 +15,15 @@ test.describe('sections and topics', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'TL;DR' })).toBeVisible();
   });
 
-  test('shows a placeholder for topics without a cheatsheet and links to neighbours', async ({ page }) => {
+  test('reads the completed security content and links to neighbours', async ({ page }) => {
     await page.goto('/topics/https');
 
     await expect(page.getByRole('heading', { level: 1, name: 'HTTPS', exact: true })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Cheatsheet coming soon' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'TL;DR', exact: true })).toBeVisible();
 
     await page.getByRole('navigation', { name: 'Topic navigation' }).getByRole('link', { name: /Next/ }).click();
     await expect(page).toHaveURL('/topics/xss');
+    await expect(page.getByRole('heading', { name: 'TL;DR', exact: true })).toBeVisible();
   });
 
   test('shares progress between the topic page and the dashboard', async ({ page }) => {
