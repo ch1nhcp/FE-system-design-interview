@@ -1,0 +1,37 @@
+## How to choose
+
+Start with the problem: request overhead, excessive input updates, uncertain failures, stale completions or disconnected work.
+These techniques solve different parts of a request's lifecycle and often need to be combined.
+
+| Technique             | Reach for it when                              | Guardrail                                        |
+| --------------------- | ---------------------------------------------- | ------------------------------------------------ |
+| Batching              | Independent operations repeat request overhead | Bound batch size and return per-item outcomes    |
+| Debouncing            | Intermediate input values do not need dispatch | Keep typing immediate and guard stale responses  |
+| Retries               | A repeatable operation fails transiently       | Bound attempts and use backoff with jitter       |
+| Timeouts              | The user needs a bounded wait                  | Preserve uncertainty about server-side writes    |
+| Race-condition guards | Responses can arrive out of order              | Accept only the active query or generation       |
+| Optimistic updates    | A reversible result is likely                  | Reconcile the specific pending operation         |
+| Offline usage         | Useful work must survive disconnection         | Persist intent and define replay/conflict policy |
+| Caching and expiry    | Repeated reads can reuse prior data            | Scope identity and define freshness/invalidation |
+
+## Compose the safeguards
+
+For search, update the input immediately, debounce request dispatch, key the request by the full query and ignore obsolete completions.
+Cache matching reads with an explicit freshness policy, then use bounded retries and timeouts for eligible transient failures.
+
+For an edit, preserve a draft, show provisional state only when the outcome is predictable and send a versioned or idempotent operation.
+If the connection drops, retain the operation's identity and reconcile its status before repeating it.
+Offline replay needs the same permission, ordering and duplicate-protection rules as an online write.
+
+## Interview checkpoints
+
+| Ask                        | Decide                                                 |
+| -------------------------- | ------------------------------------------------------ |
+| Can this work be repeated? | Read semantics or server-enforced idempotency          |
+| Which result is current?   | Query identity, generation or server version           |
+| How long may we wait?      | An overall deadline including retry delays             |
+| What does saved mean?      | Local persistence, pending sync or server confirmation |
+| Who may reuse this data?   | Cache scope, freshness and account transitions         |
+
+Reducing request count alone does not prove a faster interface.
+Compare time to useful content, tail latency, wasted work, service load and the user's recovery path.

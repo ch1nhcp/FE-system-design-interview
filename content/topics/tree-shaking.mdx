@@ -1,0 +1,112 @@
+---
+description: Removing provably unused module code while preserving imports that have observable side effects.
+visual: code
+related: [code-splitting, compression, loading-sequence]
+---
+
+## TL;DR
+
+Tree shaking removes code the production bundler can prove is unused.
+Static module structure and truthful side-effect metadata help, but the shipped bundle is the evidence.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Separate exports make usage visible to the bundler.
+
+```js
+// math.js
+export const add = (a, b) => a + b;
+export const multiply = (a, b) => a * b;
+
+// main.js
+import { add } from './math.js';
+console.log(add(2, 3));
+```
+
+A library can explicitly preserve files whose imports perform required work:
+
+```json
+{
+  "sideEffects": ["**/*.css", "./src/register.js"]
+}
+```
+
+The remaining library files must actually be safe to omit when their exports are unused.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Unused module elimination" steps={[
+  { title: 'Static imports and exports', note: 'The bundler can follow references' },
+  { title: 'Mark reachable behavior', note: 'Retain used exports and observable side effects' },
+  { title: 'Remove safe unused code', note: 'Production optimization drops unreachable work' },
+  { title: 'Inspect output', note: 'Confirm bytes and behavior in the built application' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Prefer statically analyzable ES module boundaries.
+- Required side effects must survive unused-export removal.
+- CSS imports and registration files can be side effects.
+- Production optimization determines the actual result.
+- Named imports alone do not guarantee a smaller bundle.
+
+## Trade-offs
+
+| Strengths                    | Weaknesses                  |
+| ---------------------------- | --------------------------- |
+| Removes unused shipping cost | Limited by static analysis  |
+| No runtime loading delay     | Metadata can break behavior |
+| Works with code splitting    | Dependency format matters   |
+
+## Interview questions
+
+<InterviewQuestion question="How is tree shaking different from splitting?">
+
+Tree shaking removes unnecessary code; splitting changes when retained code is loaded.
+A feature can be split into its own chunk and still contain unused code that should have been eliminated.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why is sideEffects false risky?">
+
+It tells the bundler that unused module imports may be discarded without affecting behavior.
+If those imports register plugins, install polyfills or load CSS, an incorrect declaration can remove essential work.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why might a small import pull in a large dependency?">
+
+The package can contain CommonJS wrappers, top-level side effects or opaque dynamic access that limits elimination.
+Inspect the module graph and production bundle rather than inferring retained size from the import statement.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The build tracks reachable exports and side effects from its entry points, then removes code that cannot contribute observable behavior.
+Minification can perform further statement-level elimination after that analysis.
+A barrel re-export is not automatically harmful; what matters is how the full graph and its side effects are understood by the bundler.
+
+### Edge cases
+
+- Transpiling ES modules into a less analyzable format before bundling can reduce optimization opportunities.
+- An unused function call cannot be removed safely if the optimizer cannot rule out its effects.
+- Debug and production builds may retain different code.
+
+### Common mistakes
+
+- Declaring every file side-effect-free to make a size report look better.
+- Treating minification, compression and tree shaking as the same operation.
+- Testing bundle behavior only in the development server.
+
+### References
+
+- [Tree shaking and side effects in webpack](https://webpack.js.org/guides/tree-shaking/)
+- [JavaScript modules in MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules)
+
+</DeepDive>

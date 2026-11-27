@@ -1,0 +1,105 @@
+---
+description: Choosing between waiting for settled input and limiting execution frequency while events continue.
+visual: animation
+related: [debouncing-updates, dom-batching, race-conditions, event-handlers]
+---
+
+## TL;DR
+
+Debounce waits for settled input; throttle limits execution frequency.
+Specify leading, trailing and cancellation semantics for the intended interaction.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RateAnimation />
+</VisualTab>
+<VisualTab kind="code">
+
+A leading-only throttle drops intermediate calls and schedules no trailing callback.
+
+```ts
+function throttleLeading<T extends unknown[]>(callback: (...args: T) => void, intervalMs: number) {
+  let last = -Infinity;
+  return (...args: T) => {
+    const now = performance.now();
+    if (now - last < intervalMs) return;
+    last = now;
+    callback(...args);
+  };
+}
+
+const reportPosition = throttleLeading((position: number) => console.log(position), 300);
+```
+
+Keep the throttled function stable for its intended lifetime.
+Use a trailing variant if the final value must be delivered.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Trailing debounce waits for a quiet interval.
+- Throttle can emit while activity continues.
+- Leading and trailing behavior are separate choices.
+- Define cancel, flush and maximum-wait requirements.
+- Rate limiting does not make async results arrive in order.
+
+## Trade-offs
+
+| Policy     | Strengths       | Weaknesses      |
+| ---------- | --------------- | --------------- |
+| Debounce   | Settled intent  | Waits for quiet |
+| Throttle   | Immediate work  | May drop final  |
+| Both edges | First and final | More scheduling |
+
+## Interview questions
+
+<InterviewQuestion question="Which policy fits search suggestions?">
+
+Trailing debounce is useful when only the settled query needs dispatch, while the input itself stays immediate.
+Still guard stale responses and define whether explicit submit bypasses the delay.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Which policy fits continuous pointer movement?">
+
+For visual work, coalescing to animation frames may align better with rendering than a coarse fixed timer.
+A timer throttle can suit lower-frequency reporting, but its leading/trailing semantics must preserve the values the workflow needs.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why can a debounced save never run?">
+
+A continuous stream of changes can keep resetting a trailing timer indefinitely.
+If periodic durability is required, add a maximum wait or explicit save policy and separately handle in-flight write ordering.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Trailing debounce replaces pending work until a quiet period elapses, while throttle admits work according to a frequency policy.
+The animation uses a 300 ms trailing debounce and a 300 ms leading-only throttle on identical inputs, labeling each retained value.
+Other libraries can implement different throttle contracts, so discuss semantics before comparing results.
+
+### Edge cases
+
+- A leading-only throttle intentionally drops a last call that arrives inside its current interval.
+- Timers can be delayed by main-thread work or background-tab policy.
+- A queued callback may retain stale component data unless its lifetime and captured state are deliberate.
+
+### Common mistakes
+
+- Delaying visible input updates instead of expensive work.
+- Adding a new timer wrapper on each render without clearing old work.
+- Assuming throttle or debounce cancels requests already in flight.
+
+### References
+
+- [Debounce in MDN](https://developer.mozilla.org/en-US/docs/Glossary/Debounce)
+- [Throttle in MDN](https://developer.mozilla.org/en-US/docs/Glossary/Throttle)
+- [requestAnimationFrame in MDN](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame)
+
+</DeepDive>

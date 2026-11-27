@@ -1,0 +1,124 @@
+---
+description: Measuring real-user loading, responsiveness and visual stability with LCP, INP and CLS.
+visual: code
+related: [loading-sequence, above-the-fold, reflows-and-repaints, dom-batching]
+---
+
+## TL;DR
+
+Core Web Vitals track loading, responsiveness and visual stability through LCP, INP and CLS.
+Evaluate real-user distributions, then use lab traces to diagnose the work behind poor results.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A maintained metrics library handles lifecycle details that a raw observer sketch can miss.
+This example assumes the `web-vitals` package is installed in the application being measured.
+
+```ts
+import { onCLS, onINP, onLCP } from 'web-vitals';
+import type { Metric } from 'web-vitals';
+
+function report(metric: Metric) {
+  const payload = JSON.stringify({
+    id: metric.id,
+    name: metric.name,
+    value: metric.value,
+    rating: metric.rating,
+  });
+  // Use a first-party endpoint with a defined analytics/privacy policy.
+  navigator.sendBeacon('/analytics/vitals', new Blob([payload], { type: 'application/json' }));
+}
+
+onCLS(report);
+onINP(report);
+onLCP(report);
+```
+
+Register once per page lifecycle; reporting, sampling and aggregation need their own design.
+This study site does not send this example telemetry.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Measure and diagnose" steps={[
+  { title: 'Collect field experience', note: 'Use real page visits with appropriate lifecycle handling' },
+  { title: 'Segment and aggregate', note: 'Inspect the 75th percentile by device and relevant page groups' },
+  { title: 'Reproduce in the lab', note: 'Trace the critical load or interaction under realistic constraints' },
+  { title: 'Validate the change', note: 'Confirm field improvement and watch other metrics' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- LCP measures when the largest eligible content is painted.
+- INP tracks interaction latency through the next paint.
+- CLS measures unexpected layout instability.
+- Assess the 75th percentile, segmented by device class.
+- Lab scores diagnose scenarios, not all real-user sessions.
+
+## Trade-offs
+
+| Metric | Good threshold | Typical focus                   |
+| ------ | -------------- | ------------------------------- |
+| LCP    | ≤ 2.5 s        | Critical resource path          |
+| INP    | ≤ 200 ms       | Input, handler and render delay |
+| CLS    | ≤ 0.1          | Stable content geometry         |
+
+## Interview questions
+
+<InterviewQuestion question="Why can field and lab results disagree?">
+
+Real visitors use varied devices, caches, networks and interaction paths over a page's lifetime.
+A lab run exercises a specific controlled scenario, so use it to diagnose a field problem rather than treating its score as a complete population measurement.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What should you inspect for a slow interaction?">
+
+Separate the delay before the handler can run, the handler's processing work and the time until the next presentation.
+Reducing network latency alone may not help when the main thread or a large render blocks feedback.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does a Lighthouse run directly measure field INP?">
+
+No: real INP depends on interactions across the page lifecycle, and a default navigation audit is not that field dataset.
+Use field measurement and targeted lab interactions, with lab diagnostics such as blocking work as supporting evidence.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Browser performance entries and lifecycle events feed metric calculations, with special handling for visibility, navigation and page restoration.
+Aggregate valid observations at the 75th percentile rather than averaging scores, and compare representative mobile and desktop populations.
+The current good thresholds are LCP at most 2.5 seconds, INP at most 200 milliseconds and CLS at most 0.1.
+
+### Design details
+
+LCP describes loading a large eligible content element; INP describes responsiveness to supported user interactions; CLS uses defined layout-shift session windows.
+Use a maintained implementation instead of inventing a simplified formula that ignores those eligibility and lifecycle rules.
+Associate measurements with useful page groups and release information without sending personal content or unbounded raw URLs.
+
+### Edge cases
+
+- A visit without a qualifying interaction may not produce an INP value.
+- Back-forward cache restoration and backgrounding affect metric lifecycle and reporting.
+- Field changes need enough representative observations to distinguish a regression from sampling noise.
+
+### Common mistakes
+
+- Using FID as the current Core Web Vitals responsiveness metric.
+- Averaging per-page metric values and calling the result a 75th percentile.
+- Optimizing one metric while degrading another or breaking the primary task.
+
+### References
+
+- [Web Vitals definitions and thresholds](https://web.dev/articles/vitals)
+- [Optimize INP](https://web.dev/articles/optimize-inp)
+- [The web-vitals library](https://github.com/GoogleChrome/web-vitals)
+- [Why lab and field data differ](https://web.dev/articles/lab-and-field-data-differences)
+
+</DeepDive>

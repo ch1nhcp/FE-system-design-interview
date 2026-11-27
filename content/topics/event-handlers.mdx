@@ -1,0 +1,140 @@
+---
+description: Designing callback props that communicate user intent while preserving native interaction behavior.
+visual: code
+related: [composition, render-props, keyboard-interactions]
+---
+
+## TL;DR
+
+Callback props report user intent while callers decide what happens next.
+Choose domain values or native events deliberately, with one clear owner for state and async work.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A controlled stepper reports the next quantity without owning a second copy of it.
+
+```tsx
+type QuantityStepperProps = {
+  quantity: number;
+  disabled?: boolean;
+  onQuantityChange: (next: number) => void;
+};
+
+export function QuantityStepper({ quantity, disabled = false, onQuantityChange }: QuantityStepperProps) {
+  return (
+    <div role="group" aria-label="Quantity">
+      <button
+        type="button"
+        aria-label="Decrease quantity"
+        disabled={disabled || quantity <= 1}
+        onClick={() => onQuantityChange(quantity - 1)}
+      >
+        −
+      </button>
+      <output aria-live="polite">{quantity}</output>
+      <button
+        type="button"
+        aria-label="Increase quantity"
+        disabled={disabled}
+        onClick={() => onQuantityChange(quantity + 1)}
+      >
+        +
+      </button>
+    </div>
+  );
+}
+```
+
+The parent supplies a positive integer and updates `quantity` when it accepts the change.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Controlled component event flow"
+  steps={[
+    { title: 'Native interaction', note: 'A button supports pointer and keyboard activation' },
+    { title: 'Intent callback', note: 'onQuantityChange reports the proposed next value' },
+    { title: 'Parent decision', note: 'Validate and update the source of truth' },
+    { title: 'New props', note: 'The component renders the accepted quantity' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Name callback props with `on` and local handlers with `handle`.
+- Choose a domain value, a native event or both as the payload.
+- Controlled components report changes; parents supply values.
+- Preserve native keyboard, form and disabled behavior.
+- Define handler order, cancellation and async error ownership.
+
+## Trade-offs
+
+| API choice     | Strengths               | Weaknesses             |
+| -------------- | ----------------------- | ---------------------- |
+| Domain value   | DOM independence        | Less event control     |
+| Native event   | Browser capabilities    | DOM coupling           |
+| Async callback | Pending-state ownership | Error and retry policy |
+
+## Interview questions
+
+<InterviewQuestion question="Why report quantity changes instead of clicks?">
+
+The caller cares about the next quantity, not whether the user used a pointer, keyboard or a future input control.
+A domain callback separates that intent from implementation details; low-level primitives can still forward native events where appropriate.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do cancellation and propagation differ?">
+
+`preventDefault` cancels a cancelable browser default, such as form submission, while `stopPropagation` stops the event reaching ancestor handlers.
+Neither automatically implies the other, and a custom callback is only cancelable if its contract provides that behavior.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Who owns pending state and async errors?">
+
+Choose one owner: the parent can expose pending and error props, or the component can await a documented promise-returning callback and handle rejection.
+Avoid two independent pending states, and disable or deduplicate repeated actions while the operation is in progress.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+React receives a native interaction and invokes the handler attached to the relevant element.
+The component translates it to a callback payload, and its parent decides whether to update state or start an effect such as a save.
+Passing a handler function defers execution until the interaction; calling it while rendering does not.
+
+### Design details
+
+- Name callback props with `on` and local implementations with `handle`; describe the event or intent precisely.
+- Choose a payload deliberately: a domain value, a native event, or a documented combination.
+- Controlled components report changes; their parent supplies the authoritative value on the next render.
+- Native buttons and inputs preserve keyboard and disabled semantics; event handlers do not replace them.
+- Define how composed handlers, `preventDefault`, propagation and pending async actions interact.
+
+### Edge cases
+
+- A button inside a form submits by default; non-submit controls need `type="button"`.
+- A callback can close over an older render's state; use state update functions when the next value depends on pending updates.
+- When internal and caller handlers are combined, document their order and whether `defaultPrevented` skips the internal action.
+
+### Common mistakes
+
+- Calling `onClick={handleClick()}` instead of passing the handler.
+- Updating local state and a controlled prop independently, so they drift apart.
+- Using a clickable `div` and adding only a mouse handler, leaving keyboard behavior undefined.
+
+### References
+
+- [Responding to events in React](https://react.dev/learn/responding-to-events)
+- [Sharing state between components in React](https://react.dev/learn/sharing-state-between-components)
+- [Event.preventDefault in MDN](https://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault)
+- [Event.stopPropagation in MDN](https://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation)
+
+</DeepDive>

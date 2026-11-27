@@ -1,0 +1,115 @@
+---
+description: Finding unintended retained objects and releasing subscriptions, timers and other resources when their owner ends.
+visual: code
+related: [memoization, list-virtualization, event-handlers]
+---
+
+## TL;DR
+
+A memory leak retains objects after the application no longer needs them.
+Pair resource creation with cleanup, then verify retained growth across repeated real user workflows.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+This clock releases both its timer and its document subscription when unmounted.
+
+```tsx
+import { useEffect, useState } from 'react';
+
+export function useLiveClock() {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    const update = () => setNow(Date.now());
+    update();
+    const timer = window.setInterval(update, 1000);
+    document.addEventListener('visibilitychange', update, {
+      signal: controller.signal,
+    });
+    return () => {
+      window.clearInterval(timer);
+      controller.abort();
+    };
+  }, []);
+  return now;
+}
+```
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Find a retained resource" steps={[
+  { title: 'Repeat a user workflow', note: 'Open, use and close the same feature several times' },
+  { title: 'Compare retained objects', note: 'Look past temporary allocation and garbage collection' },
+  { title: 'Follow retaining paths', note: 'Find the owner keeping obsolete objects reachable' },
+  { title: 'Release and verify', note: 'Fix ownership, then repeat the workflow' },
+]} highlight={2} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Garbage collection removes unreachable, not unwanted, objects.
+- Clean up timers, listeners, observers and subscriptions.
+- Bound caches and release obsolete references.
+- Detached DOM nodes can remain reachable through closures.
+- Confirm leaks with retained-object evidence over time.
+
+## Trade-offs
+
+| Technique      | Strengths         | Weaknesses     |
+| -------------- | ----------------- | -------------- |
+| Cleanup        | Clear ownership   | Exit paths     |
+| Bounded caches | Limited retention | Eviction work  |
+| Heap snapshots | Retaining paths   | Workflow setup |
+
+## Interview questions
+
+<InterviewQuestion question="Is every increase in heap size a leak?">
+
+No: legitimate caches, temporary allocations and garbage-collection timing can all increase a sample.
+Repeat the same lifecycle, allow cleanup, and inspect which obsolete objects remain reachable instead of relying on one memory number.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How can a removed DOM node still use memory?">
+
+A global collection, listener or closure can retain a reference to it or its descendants.
+Removing it from the document does not make it collectible until those retaining references are released.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does aborting a fetch fix every async leak?">
+
+No: it can release request work, but subscriptions, timers, retained caches and custom callbacks have their own lifetimes.
+Inspect ownership and cleanup for each resource, including work that continues after the fetch has completed.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Garbage collectors trace reachability from roots such as globals, active callbacks and browser-managed resources.
+Heap snapshots and allocation timelines help identify objects that survive after their expected owner is gone.
+Use setup and teardown that tolerate repeated mounting, including React's development checks, rather than hiding repeated setup behind a flag.
+
+### Edge cases
+
+- A cache can be intentional yet still grow without a useful bound.
+- Debug tools and console references can themselves keep inspected objects reachable.
+- Workers, sockets and observers may retain resources beyond ordinary DOM removal.
+
+### Common mistakes
+
+- Removing a listener with a different function reference or incompatible capture setting.
+- Treating a component unmount as automatic cleanup for all external resources.
+- Using weak references to disguise unclear ownership instead of fixing it.
+
+### References
+
+- [Fix memory problems with Chrome DevTools](https://developer.chrome.com/docs/devtools/memory-problems)
+- [Effect cleanup in React](https://react.dev/reference/react/useEffect)
+- [Memory management in MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Memory_management)
+
+</DeepDive>

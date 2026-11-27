@@ -1,0 +1,140 @@
+---
+description: Building flexible component APIs with children, named slots and focused cooperating parts.
+visual: code
+related: [render-props, event-handlers, theming, server-components]
+---
+
+## TL;DR
+
+Composition combines focused components through children and named slots.
+Let containers own structure and behavior while callers supply content, with explicit state and accessibility contracts.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A container owns semantic structure while callers supply its title, body and optional actions.
+
+```tsx
+import { useId } from 'react';
+import type { ReactNode } from 'react';
+
+type StudyPanelProps = {
+  title: string;
+  children: ReactNode;
+  actions?: ReactNode;
+};
+
+export function StudyPanel({ title, children, actions }: StudyPanelProps) {
+  const titleId = useId();
+  return (
+    <section aria-labelledby={titleId}>
+      <header>
+        <h2 id={titleId}>{title}</h2>
+        {actions}
+      </header>
+      <div>{children}</div>
+    </section>
+  );
+}
+
+export function RestSummary() {
+  return (
+    <StudyPanel title="REST" actions={<a href="/topics/rest">Read cheatsheet</a>}>
+      <p>Resource-oriented HTTP APIs with predictable method semantics.</p>
+    </StudyPanel>
+  );
+}
+```
+
+This example assumes the panel sits beneath a page's `h1`; heading level is part of its documented usage.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Component composition"
+  steps={[
+    { title: 'Caller content', note: 'Title, body and optional actions' },
+    { title: 'Named slots', note: 'Describe where each piece belongs' },
+    { title: 'Container contract', note: 'Own layout, semantics and consistent behavior' },
+    { title: 'Composed interface', note: 'New content without a new container variant' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Use children for the body and named slots for other regions.
+- Choose controlled or uncontrolled state with a clear owner.
+- Prefer meaningful variants over overlapping boolean flags.
+- Compound parts coordinate context, ids and keyboard behavior.
+- Document valid nesting and required semantic structure.
+
+## Trade-offs
+
+| API style      | Strengths            | Weaknesses           |
+| -------------- | -------------------- | -------------------- |
+| Configuration  | Predictable defaults | Can become rigid     |
+| JSX slots      | Flexible content     | Invalid nesting      |
+| Compound parts | Shared behavior      | Context coordination |
+
+## Interview questions
+
+<InterviewQuestion question="When should a prop accept JSX?">
+
+Use configuration for a finite semantic choice, such as size, and JSX for content callers need to arrange or enrich.
+A named `actions` slot is clearer than a growing list of flags for every combination of links, menus and buttons.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="When would you use compound components?">
+
+When multiple pieces share behavior but callers need some layout freedom, such as a tab list and its panels.
+Use a proven accessible primitive to coordinate selection, focus and ids rather than expecting callers to wire the interaction contract themselves.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do slots cross the server/client boundary?">
+
+A Server Component can create server-rendered content and pass it as a JSX slot into a Client Component.
+The client wrapper can add interactivity without importing the server-only implementation; an ordinary function render prop cannot be serialized across that boundary.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+React passes elements through props, and the receiving component places them without needing to inspect their implementation.
+Named slots make layout ownership explicit; shared context can coordinate compound parts when props alone become awkward.
+Keep that context close to the cooperating parts, and provide a clear error when a required part is used outside its provider.
+
+### Design details
+
+- Use `children` for primary content and named slots for distinct regions such as actions or a footer.
+- Keep state ownership explicit: controlled state lives with the caller, while uncontrolled state lives inside the component.
+- Prefer a small set of meaningful variants over overlapping booleans that allow invalid combinations.
+- Compound parts can share context, but the parent must coordinate ids, focus and keyboard behavior when needed.
+- Document required structure and valid nesting; visual flexibility must preserve semantic HTML.
+
+### Edge cases
+
+- Multiple instances need unique label and control ids; hard-coded ids create incorrect accessible relationships.
+- A slot can introduce nested buttons, links or headings of the wrong level, so its allowed content should be clear.
+- `Children` traversal and `cloneElement` cannot reliably inspect the rendered output of arbitrary child components; prefer explicit slots and contracts.
+
+### Common mistakes
+
+- Adding a boolean for each new design until combinations contradict one another.
+- Creating a new compound-component framework for a simple card that only needs `children`.
+- Assuming all descendants inherit client execution just because a client wrapper receives them as a slot.
+
+### References
+
+- [Passing JSX as children in React](https://react.dev/learn/passing-props-to-a-component#passing-jsx-as-children)
+- [Alternatives to manipulating children](https://react.dev/reference/react/Children#alternatives)
+- [Sharing state between components](https://react.dev/learn/sharing-state-between-components)
+- [Interleaving server and client components in Next.js](https://nextjs.org/docs/app/getting-started/server-and-client-components#interleaving-server-and-client-components)
+
+</DeepDive>

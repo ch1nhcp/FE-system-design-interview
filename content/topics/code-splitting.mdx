@@ -1,0 +1,118 @@
+---
+description: Loading JavaScript at useful route or interaction boundaries instead of shipping every feature up front.
+visual: code
+related: [tree-shaking, preloading-and-prefetching, loading-sequence, server-components]
+---
+
+## TL;DR
+
+Code splitting moves optional JavaScript into separately loaded chunks.
+Split at useful feature boundaries, then measure initial load and the first interaction with the deferred feature.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+`Report.tsx` exports a default component; its code loads when the feature is first rendered.
+
+```tsx
+'use client';
+import { lazy, Suspense, useState } from 'react';
+
+const Report = lazy(() => import('./Report'));
+
+export function ReportLauncher() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open report
+      </button>
+      {open && (
+        <Suspense fallback={<p role="status">Loading report…</p>}>
+          <Report />
+        </Suspense>
+      )}
+    </>
+  );
+}
+```
+
+Suspense covers loading; an error boundary should handle a rejected chunk load.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Feature chunk boundary" steps={[
+  { title: 'Initial route', note: 'Load code needed for the current screen' },
+  { title: 'Feature intent', note: 'Render or deliberately prefetch optional code' },
+  { title: 'Chunk arrives', note: 'Parse and evaluate the deferred module' },
+  { title: 'Feature ready', note: 'Replace its loading fallback' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Split optional routes, editors and heavy feature panels.
+- Dynamic import creates a potential asynchronous boundary.
+- Keep lazy declarations outside component render functions.
+- Provide loading and chunk-failure recovery states.
+- Measure deferred interaction latency as well as initial bytes.
+
+## Trade-offs
+
+| Strengths               | Weaknesses              |
+| ----------------------- | ----------------------- |
+| Smaller initial payload | First-use delay         |
+| Less startup evaluation | Chunk orchestration     |
+| Feature-based caching   | Deployment version skew |
+
+## Interview questions
+
+<InterviewQuestion question="Where would you put a split boundary?">
+
+At a feature with meaningful optional code and an understandable loading state, such as an editor or secondary route.
+Avoid splitting every tiny component, which adds scheduling overhead without removing much startup work.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can splitting create a new waterfall?">
+
+Yes: the user can wait for a chunk, then its code starts a data request, then data reveals an image.
+Discover independent resources earlier or preload on likely intent when the benefit outweighs wasted work.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What happens when an old chunk URL disappears?">
+
+A long-lived tab may reference an asset removed by a new deployment.
+Retain versioned assets long enough and provide bounded recovery that preserves user work instead of an infinite reload loop.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The bundler builds a module graph and emits asynchronous entry points for supported dynamic imports.
+Framework route splitting may already provide useful boundaries, so inspect production output before adding manual ones.
+Moving code into a chunk does not eliminate its download, parsing or evaluation when it is eventually used.
+
+### Edge cases
+
+- A shared dependency can remain in a common initial chunk even if one feature is lazy.
+- Recreating a lazy component type during rendering can reset child state.
+- A loading fallback without reserved space can shift nearby content.
+
+### Common mistakes
+
+- Deferring the code that reveals the initial page's critical content.
+- Reporting fewer bytes without measuring first-use responsiveness.
+- Assuming Suspense also handles rejected imports.
+
+### References
+
+- [React lazy](https://react.dev/reference/react/lazy)
+- [Code splitting in webpack](https://webpack.js.org/guides/code-splitting/)
+- [Next.js lazy loading](https://nextjs.org/docs/app/guides/lazy-loading)
+
+</DeepDive>

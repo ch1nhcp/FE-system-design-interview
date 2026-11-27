@@ -1,0 +1,143 @@
+---
+description: Letting callers customize rendered output with a function that receives component-owned data.
+visual: code
+related: [composition, event-handlers, memoization, server-components]
+---
+
+## TL;DR
+
+A render prop turns component-owned data into caller-defined UI.
+Use it when a plain JSX slot cannot supply the data its caller needs.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+The collection owns list structure and keys; the caller owns each item's content.
+
+```tsx
+import type { ReactNode } from 'react';
+
+type ItemListProps<T> = {
+  items: readonly T[];
+  getKey: (item: T) => string;
+  renderItem: (item: T) => ReactNode;
+};
+
+export function ItemList<T>({ items, getKey, renderItem }: ItemListProps<T>) {
+  return (
+    <ul>
+      {items.map((item) => (
+        <li key={getKey(item)}>{renderItem(item)}</li>
+      ))}
+    </ul>
+  );
+}
+
+const lessons = [{ id: 'rest', title: 'REST', learned: false }];
+
+export function LessonList() {
+  return (
+    <ItemList
+      items={lessons}
+      getKey={(lesson) => lesson.id}
+      renderItem={(lesson) => (
+        <a href={`/topics/${lesson.id}`}>
+          {lesson.title}
+          {lesson.learned ? ' (learned)' : ''}
+        </a>
+      )}
+    />
+  );
+}
+```
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Render prop ownership"
+  steps={[
+    { title: 'Caller supplies data and a renderer', note: 'Typed items plus renderItem(item)' },
+    { title: 'List owns structure', note: 'Choose item order and apply stable keys' },
+    { title: 'Renderer receives an item', note: 'Return JSX without effects or state updates' },
+    { title: 'Caller-defined content', note: 'The list keeps its semantic wrapper' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Render props return UI; event callbacks report interactions.
+- Expose a small typed payload and return `ReactNode`.
+- Keep rendering pure; call Hooks inside separate components.
+- Let the collection own stable keys and semantic wrappers.
+- Ordinary functions cannot cross a server/client boundary.
+
+## Trade-offs
+
+| Pattern     | Strengths             | Weaknesses         |
+| ----------- | --------------------- | ------------------ |
+| JSX slot    | Simple composition    | No internal data   |
+| Render prop | Data-driven rendering | Callback coupling  |
+| Custom Hook | Independent behavior  | Caller owns markup |
+
+## Interview questions
+
+<InterviewQuestion question="When is a render prop better than children?">
+
+When the caller's output depends on data the receiving component supplies, such as an item, selection state or validation status.
+If the caller already has everything it needs, pass ordinary JSX as `children` or a named slot instead.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can you call a Hook inside renderItem?">
+
+No: a list can invoke the callback a variable number of times, which would break Hook ordering.
+Return a separate component from the render function and let that component call its own Hooks at the top level.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Do render props always cause a performance problem?">
+
+No: a fresh function mainly matters when referential equality is used to skip work, and a cheap render may need no optimization.
+Measure first, keep payloads small and stabilize a function only when it enables a useful memoization boundary.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The component invokes a caller-provided function as part of producing its render output.
+The function receives a view of component-owned data and returns a node; the receiving component decides where that node is placed.
+A function-valued `children` prop is the same pattern under another prop name, and can be convenient for a single customization point.
+
+### Design details
+
+- A render prop returns UI during rendering; an event callback reports an interaction later.
+- Use `ReactNode` for general output and a typed payload containing only the data callers need.
+- Render functions must stay pure; Hooks belong in components or custom Hooks, not a callback invoked in a loop.
+- Keep stable item keys and accessible structural elements owned by the collection component.
+- A normal render function cannot cross from a Server Component into a Client Component as a serialized prop.
+
+### Edge cases
+
+- The returned content must fit its wrapper's semantics; a list item renderer should not add another `li` around itself.
+- Passing an inline component definition as an element type can remount it on parent renders; passing a render callback is a different contract.
+- Shared generic payloads can accidentally expose internal mutable objects; offer a narrow read-only view when mutation is not intended.
+
+### Common mistakes
+
+- Starting requests or updating state inside a render function.
+- Adding many render props where a few named JSX slots would be clearer.
+- Moving all behavior into a Hook and assuming that also provides keyboard interactions and accessible markup.
+
+### References
+
+- [Calling a render prop in the React docs](https://react.dev/reference/react/Children#calling-a-render-prop-to-customize-rendering)
+- [Rules of Hooks](https://react.dev/reference/rules/rules-of-hooks)
+- [React components and Hooks must be pure](https://react.dev/reference/rules/components-and-hooks-must-be-pure)
+- [Serializable props at the use client boundary](https://react.dev/reference/rsc/use-client#serializable-types-returned-by-server-components)
+
+</DeepDive>

@@ -1,0 +1,134 @@
+---
+description: Styling reusable components through semantic tokens, scoped overrides and consistent theme selection.
+visual: code
+related: [composition, visual-accessibility, server-side-rendering]
+---
+
+## TL;DR
+
+Themes map semantic tokens such as surface and text to concrete values.
+Components consume those tokens, with initial theme selection coordinated before paint.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Components depend on meaning, while theme scopes supply the values.
+
+```css
+:root {
+  color-scheme: light;
+  --surface: #ffffff;
+  --text: #171717;
+  --border: #737373;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --surface: #171717;
+  --text: #fafafa;
+  --border: #a3a3a3;
+}
+
+.study-card {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+```
+
+```html
+<section data-theme="dark" aria-label="Dark theme preview">
+  <article class="study-card">Tokens follow the nearest theme scope.</article>
+</section>
+```
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Theme token resolution"
+  steps={[
+    { title: 'Preference', note: 'Explicit light or dark, or follow the operating system' },
+    { title: 'Resolved theme scope', note: 'Apply the mode to the root or a local subtree' },
+    { title: 'Semantic tokens', note: 'Surface, text, border, focus and status values' },
+    { title: 'Component styles', note: 'The same component consumes the active values' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Name tokens by purpose, not by a fixed color palette.
+- Scope CSS custom properties; use context for JS behavior.
+- Keep system preference separate from the resolved mode.
+- Align early theme selection with server-rendered markup.
+- Check contrast, focus and native controls in every theme.
+
+## Trade-offs
+
+| Approach        | Strengths          | Weaknesses           |
+| --------------- | ------------------ | -------------------- |
+| CSS tokens      | Scoped inheritance | Token ownership      |
+| JS theme state  | Non-CSS behavior   | Hydration setup      |
+| Instance styles | Precise overrides  | Visual inconsistency |
+
+## Interview questions
+
+<InterviewQuestion question="Why use semantic theme tokens?">
+
+Callers should request a role such as destructive or muted rather than know each theme's palette.
+A semantic layer lets one theme change update many components consistently, and keeps contrast decisions in a smaller set of token pairs.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you prevent a wrong-theme flash?">
+
+Resolve the preference before the first visible paint using a maintained theme integration or a server-readable preference with an early system-mode fallback.
+Keep server and client markup compatible, account for CSP, and do not render a mode-dependent control label until its mode is known.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What can break with a locally scoped theme?">
+
+Portals often render under the document body, outside the themed subtree, so their content may inherit different tokens.
+Place the portal inside the intended scope when supported, or explicitly apply the same resolved theme to the portal container.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Design tokens form a contract between the theme author and component author.
+CSS resolves custom properties through the cascade and inheritance, allowing a page or subtree to override values without changing component code.
+If a picker offers system mode, listen for operating-system changes only while that preference is active and persist explicit choices when storage is available.
+
+### Design details
+
+- Name tokens by purpose, such as surface and text, so components work across brands and light/dark modes.
+- Use inherited CSS custom properties for scoped overrides; use context when JavaScript also needs theme state.
+- Store the preference separately from the resolved mode so system-theme changes still work in system mode.
+- Coordinate server markup and early theme selection; browser storage is unavailable during server rendering.
+- Validate contrast, focus indicators, native controls, charts and images in every supported theme.
+
+### Edge cases
+
+- Browser storage can be unavailable; retain a usable system or default theme without crashing.
+- Setting background and text colors alone leaves native inputs and scrollbars inconsistent; declare the supported `color-scheme`.
+- Forced-colors mode and print styles need deliberate behavior beyond a light/dark palette.
+
+### Common mistakes
+
+- Hard-coding theme colors inside reusable components instead of their semantic token definitions.
+- Treating dark mode as a mechanical inversion of every color and image.
+- Persisting the resolved system mode as an explicit preference, so later OS changes stop being followed.
+
+### References
+
+- [CSS custom properties in MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties)
+- [color-scheme in MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme)
+- [prefers-color-scheme in MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-color-scheme)
+- [React createPortal](https://react.dev/reference/react-dom/createPortal)
+
+</DeepDive>

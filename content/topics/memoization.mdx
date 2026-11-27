@@ -1,0 +1,116 @@
+---
+description: Reusing calculations or render work when their inputs remain unchanged, guided by production measurements.
+visual: code
+related: [normalized-state, render-props, memory-leaks, core-web-vitals]
+---
+
+## TL;DR
+
+Memoization reuses work when its relevant inputs are unchanged.
+Apply it to measured repeated costs, with correct dependencies and a bounded cache lifetime.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Manual calculation memoization can help when a measured filter is expensive and inputs are stable.
+
+```tsx
+import { useMemo } from 'react';
+
+type Product = { id: string; name: string };
+
+export function ProductList({ products, query }: { products: readonly Product[]; query: string }) {
+  const matching = useMemo(() => {
+    const normalized = query.toLocaleLowerCase('en');
+    return products.filter((product) => product.name.toLocaleLowerCase('en').includes(normalized));
+  }, [products, query]);
+
+  return (
+    <ul>
+      {matching.map((product) => (
+        <li key={product.id}>{product.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+React Compiler can automate much of this work when enabled; measure before adding manual layers.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Memoized calculation" steps={[
+  { title: 'Observe inputs', note: 'Include every value that affects the result' },
+  { title: 'Compare with cached inputs', note: 'Reference identity matters for objects' },
+  { title: 'Reuse or calculate', note: 'Cache hits skip only the covered work' },
+  { title: 'Validate the benefit', note: 'Account for comparison and retained-memory costs' },
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Memoize measured repeated work, not every expression.
+- Include complete dependencies and keep calculations pure.
+- Stable object identity enables reference-based cache hits.
+- Component memoization still allows local state updates.
+- Treat caches as optimizations, not correctness guarantees.
+
+## Trade-offs
+
+| Strengths                   | Weaknesses          |
+| --------------------------- | ------------------- |
+| Skips repeated calculation  | Comparison overhead |
+| Reuses stable render inputs | Retained memory     |
+| Helps expensive updates     | Dependency mistakes |
+
+## Interview questions
+
+<InterviewQuestion question="Does useMemo make the first render faster?">
+
+It still runs the calculation on the first render, so its main opportunity is avoiding repeated work later.
+If first-render cost is the problem, reduce the work, move it off the critical path or use a more suitable algorithm.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why can memoization keep missing the cache?">
+
+A parent may create a fresh array, object or function on every render even when its semantic content is unchanged.
+Trace identities and actual costs before stabilizing inputs, since a cheap render may be simpler than maintaining extra caches.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does memo stop all component renders?">
+
+No: a component can still render when its own state or a consumed context changes.
+A custom equality function must compare every behaviorally relevant prop, including callbacks, or it can preserve stale behavior.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+A memoized boundary associates previous inputs with a reusable result and compares later inputs against them.
+React's calculation and component caches serve different boundaries, and React Compiler can infer many such optimizations automatically.
+Profile a production-like interaction because development diagnostics can perform extra renders.
+
+### Edge cases
+
+- Mutating a referenced object can leave a cache appearing unchanged while its contents have changed.
+- An unbounded general-purpose memoization map can retain data long after it is useful.
+- Caching only the filtered array does not remove rendering cost for a large visible result set.
+
+### Common mistakes
+
+- Omitting dependencies to force cache hits.
+- Adding deep comparisons that cost more than the work they avoid.
+- Depending on a memoized result's continued existence for application correctness.
+
+### References
+
+- [React useMemo](https://react.dev/reference/react/useMemo)
+- [React memo](https://react.dev/reference/react/memo)
+- [React Compiler introduction](https://react.dev/learn/react-compiler/introduction)
+
+</DeepDive>

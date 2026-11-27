@@ -339,6 +339,136 @@
         "streamRestPaint": "The browser swaps the placeholder for the real content.",
         "streamComplete": "The whole page is ready."
       }
+    },
+    "retries": {
+      "title": "Retry timing",
+      "modeLabel": "Retry strategy",
+      "modes": {
+        "immediate": "Immediate",
+        "backoff": "Backoff",
+        "jitter": "Jitter"
+      },
+      "explanation": {
+        "immediate": "No delay: clients immediately repeat the failed read together.",
+        "backoff": "Exponential delays reduce frequency, but clients still retry together.",
+        "jitter": "Full jitter spreads retries inside each backoff window. Fixed samples make this demo repeatable."
+      },
+      "captions": {
+        "idle": "Three clients are about to make the same read.",
+        "first": "The first requests run together; all three will fail.",
+        "retrying": "Retry requests are in flight. Compare their alignment across clients.",
+        "waiting": "Clients wait before retrying instead of adding immediate load.",
+        "recovered": "All three clients have succeeded on their third attempt."
+      },
+      "sent": "Requests sent",
+      "recovered": "Clients recovered",
+      "client": "Client {number}",
+      "attempt": "Attempt {number}",
+      "diagramLabel": "Request timing for three clients",
+      "ms": "{value} ms",
+      "legend": "× failed attempt; ✓ success. Every bar is one request. Times and outcomes are illustrative."
+    },
+    "race": {
+      "title": "Out-of-order search",
+      "modeLabel": "Response handling",
+      "modes": {
+        "unguarded": "Unguarded",
+        "latest": "Latest only"
+      },
+      "captions": {
+        "idle": "Search responses can arrive in a different order from the requests.",
+        "first": "The user searches for r. Its request will be slow.",
+        "second": "The user now searches for react. The new request will finish first.",
+        "newResult": "Results for react arrive and match the current input.",
+        "ignored": "The older r response arrives but is ignored. Results still match react.",
+        "stale": "The older r response overwrites the newer results. The input still says react."
+      },
+      "ignored": "Responses ignored",
+      "query": "Current input",
+      "result": "Displayed results",
+      "terms": {
+        "empty": "None yet",
+        "r": "r",
+        "react": "react"
+      },
+      "diagramLabel": "Older search completes after the newer search",
+      "request": "Request for {query}",
+      "ms": "{value} ms",
+      "note": "Both requests finish in both modes. The guard controls which response may update the screen."
+    },
+    "rate": {
+      "title": "Debounce vs throttle",
+      "modeLabel": "Rate policy",
+      "modes": {
+        "debounce": "Debounce",
+        "throttle": "Throttle"
+      },
+      "policy": {
+        "debounce": "Trailing debounce: emit the latest value after 300 ms without input.",
+        "throttle": "Leading-only throttle: emit immediately, then drop inputs for 300 ms."
+      },
+      "captions": {
+        "idle": "The same seven numbered inputs are used in both modes.",
+        "input": "Inputs keep arriving. The selected policy decides when to dispatch.",
+        "dispatch": "A value is dispatched without waiting for the entire interaction to end.",
+        "done": "All eligible dispatches are complete. Compare their timing and retained values."
+      },
+      "inputs": "Inputs",
+      "dispatches": "Dispatches",
+      "latest": "Last value",
+      "diagram": "Input events and dispatched values over time",
+      "ms": "{value} ms",
+      "note": "Numbers identify the input values. Illustrative times; no network requests are made."
+    },
+    "loading": {
+      "title": "Loading waterfall",
+      "modeLabel": "Discovery strategy",
+      "modes": {
+        "serial": "Sequential",
+        "parallel": "Parallel"
+      },
+      "captions": {
+        "idle": "Compare the same resources with different discovery order.",
+        "html": "The HTML response is arriving first.",
+        "resources": "Watch which requests can begin before earlier work finishes.",
+        "ready": "All resources needed for this example content are ready."
+      },
+      "complete": "Resources ready",
+      "visibleAt": "Content visible",
+      "ms": "{value} ms",
+      "content": "Content is visible",
+      "placeholder": "Waiting for critical content",
+      "diagram": "Resource discovery and request completion",
+      "resources": {
+        "html": "HTML",
+        "javascript": "JS",
+        "data": "Data",
+        "image": "Image"
+      },
+      "note": {
+        "serial": "Here JS discovers data, then data reveals the image URL. Times are illustrative.",
+        "parallel": "Here data and the image URL are known from HTML, so work overlaps. Equal task durations are assumed; shared bandwidth can change real results."
+      }
+    },
+    "virtualization": {
+      "title": "A thousand-row list",
+      "modeLabel": "List rendering",
+      "modes": {
+        "full": "All rows",
+        "windowed": "Windowed"
+      },
+      "captions": {
+        "idle": "A fixed-height list has 1,000 items and a five-row viewport.",
+        "full": "Scrolling changes the visible rows, but all 1,000 rows remain mounted in the model.",
+        "windowed": "Only visible rows plus two overscan rows on each side are mounted in the model.",
+        "end": "The viewport has reached the last five items. Compare the modeled mounted-row count."
+      },
+      "mounted": "Mounted rows",
+      "total": "Total items",
+      "range": "Visible rows {first} to {last}",
+      "row": "Row {number}",
+      "diagram": "Sketch of the current five-row viewport",
+      "note": "The sketch draws only visible rows in both modes. Counts model a real list; this is not a DOM benchmark."
     }
   }
 }

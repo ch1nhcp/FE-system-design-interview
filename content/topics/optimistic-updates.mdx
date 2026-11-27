@@ -1,0 +1,121 @@
+---
+description: Showing a predicted mutation result immediately, then confirming or reconciling it with the server.
+visual: diagram
+related: [normalized-state, retries, conflict-resolution, error-handling]
+---
+
+## TL;DR
+
+Optimistic UI displays the predicted result of a write before the server confirms it.
+Use it for likely, reversible outcomes, with visible pending state and deliberate failure reconciliation.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Optimistic mutation lifecycle"
+  steps={[
+    { title: 'Capture intent', note: 'Use a stable operation id for the pending change' },
+    { title: 'Project pending state', note: 'Render a provisional result immediately' },
+    { title: 'Server accepts or rejects', note: 'Validation and permissions still run on the server' },
+    { title: 'Reconcile', note: 'Replace with canonical data or remove only this pending change' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+Derive a display from canonical data plus pending operations instead of destructively overwriting a shared snapshot.
+
+```ts
+type Todo = { id: string; title: string; done: boolean };
+type PendingToggle = { operationId: string; todoId: string; done: boolean };
+
+function projectTodos(confirmed: readonly Todo[], pending: readonly PendingToggle[]): Todo[] {
+  return pending.reduce(
+    (todos, change) => todos.map((todo) => (todo.id === change.todoId ? { ...todo, done: change.done } : todo)),
+    [...confirmed],
+  );
+}
+
+// On rejection, remove only that operationId from pending.
+// On success, reconcile canonical data before dropping its pending layer.
+```
+
+This projection handles display, not server write ordering.
+Serialize conflicting changes or use server versions to keep confirmations consistent.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Predict only likely outcomes that are safe to reconcile.
+- Mark provisional data and prevent duplicate submissions.
+- Track pending changes with stable operation ids.
+- Reconcile server ids, validation and canonical values.
+- A rollback must preserve unrelated or newer changes.
+
+## Trade-offs
+
+| Strengths                | Weaknesses                      |
+| ------------------------ | ------------------------------- |
+| Immediate feedback       | Reconciliation complexity       |
+| Less perceived latency   | Visible correction on failure   |
+| Responsive repeated work | Concurrent writes need ordering |
+
+## Interview questions
+
+<InterviewQuestion question="Why can restoring a snapshot be unsafe?">
+
+If another change succeeds after the snapshot was taken, restoring the whole snapshot can erase that newer change.
+Roll back only the failed operation, rebase pending layers on canonical data, or serialize conflicting work and refetch deliberately.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Which actions should stay pessimistic?">
+
+Actions with uncertain or consequential outcomes, such as a payment authorization or a permission grant, usually need confirmation before presenting success.
+You can still acknowledge the click immediately and show a pending state without claiming the operation completed.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do temporary ids become server ids?">
+
+Keep a stable client operation id for reconciliation, then map the confirmed server id into the entity and its references.
+Avoid briefly showing both the pending and confirmed item when a refetch or real-time event arrives before the mutation response.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The UI overlays unconfirmed operations on the last known server state, then sends writes using their agreed concurrency and idempotency contracts.
+Success merges canonical server data; rejection removes or compensates for the specific pending operation and offers a useful recovery path.
+A timeout leaves the outcome unknown, so reconcile or query operation status before concluding that a write failed.
+
+### Design details
+
+Cancel or coordinate refetches that could overwrite the optimistic view, and invalidate affected lists, counts and detail queries after settlement.
+Overlapping writes to the same entity need an explicit order, version check or merge policy; a display projection alone cannot solve server-side conflicts.
+Pending state should be accessible and should preserve the user's draft when the server rejects it.
+
+### Edge cases
+
+- A permission revocation can reject a write that looked locally valid.
+- Reordering or deleting items affects more than the entity record, including list membership and pagination.
+- A background event may confirm an operation before its HTTP response; reconcile by identity rather than appending twice.
+
+### Common mistakes
+
+- Treating a predicted result as durable confirmation.
+- Rolling back a whole cache after one of several writes fails.
+- Refetching while blindly discarding still-pending user intent.
+
+### References
+
+- [Optimistic updates in TanStack Query](https://tanstack.com/query/latest/docs/framework/react/guides/optimistic-updates)
+- [React useOptimistic](https://react.dev/reference/react/useOptimistic)
+- [Normalizing state shape in Redux](https://redux.js.org/usage/structuring-reducers/normalizing-state-shape)
+
+</DeepDive>

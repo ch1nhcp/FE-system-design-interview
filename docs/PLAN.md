@@ -123,19 +123,43 @@ Decision: animations are React SVG rendered from a pure model at a point in time
 | Batch | Sections                        | Topics | Status      |
 | ----- | ------------------------------- | ------ | ----------- |
 | 1     | Architecture, State management  | 9      | In review   |
-| 2     | Back end APIs, Component APIs   | 9      | Not started |
-| 3     | Networking techniques           | 8      | Not started |
-| 4     | Performance                     | 14     | Not started |
+| 2     | Back end APIs, Component APIs   | 9      | In review   |
+| 3     | Networking techniques           | 8      | In review   |
+| 4     | Performance                     | 14     | In review   |
 | 5     | Images, Accessibility           | 12     | Not started |
 | 6     | SEO, User experience            | 10     | Not started |
 | 7     | Security, i18n, Common patterns | 15     | Not started |
 
 Topics already written in an earlier section are not counted again, such as Optimistic updates under Performance.
 
+Batch 2 adds all five Back end APIs topics and all four Component APIs topics, with a comparison overview for each section.
+There are now 44 English topic pages out of 81 unique topics.
+Content tests require every topic and the overview of each completed section to remain present, while unfinished sections can still use placeholders.
+The new topics reuse `FlowDiagram` and code panels because their main concepts are contracts, ownership and request structure rather than timing.
+Batch 2 summaries are checked at a 1440 by 900 desktop viewport with answers and the deep dive collapsed.
+From the TL;DR heading to the deep dive, the summary must fit within 820 pixels, leaving space for the sticky header when scrolled into view.
+Detailed key points live under "Design details" in the deep dive; the visible bullets stay short enough for quick review.
+
+Batch 3 adds all eight Networking techniques topics and a section overview that explains how their safeguards compose.
+`RetryAnimation` compares immediate retries, exponential backoff and full jitter for three clients, using fixed jitter samples for repeatable playback.
+`RaceAnimation` compares unguarded completions with a latest-generation guard while both requests finish out of order.
+Both animations use the existing playback controls, localized captions and reduced-motion behavior.
+Networking summaries use the same 820-pixel desktop height check as Batch 2, with desktop/mobile E2E coverage for navigation, code tabs, disclosures and English fallback.
+
+Batch 4 adds the fourteen new Performance topics and a diagnostic overview; Optimistic updates reuses its Networking page.
+`RateAnimation` compares trailing debounce with leading-only throttle on the same numbered input events.
+`LoadingAnimation` compares serial resource discovery with resources known early enough to load in parallel, with illustrative task durations.
+`VirtualizationAnimation` models a 1,000-item fixed-height list with five visible rows and two overscan rows per side.
+The list drawing is a viewport sketch, and its mounted-row counts describe the model rather than a live DOM benchmark.
+All three animations reuse deterministic playback, localized captions and reduced-motion behavior.
+Performance content uses the same 820-pixel desktop summary check, locale fallback and mobile interaction coverage as earlier batches.
+
 ### Visual building blocks
 
 - `RealtimeTransportAnimation`: short polling, long polling, SSE and WebSocket.
 - `RenderingTimelineAnimation`: CSR, SSR, SSG/ISR and streaming with Server Components, with a browser mock and server, network and browser lanes.
+- `RetryAnimation` and `RaceAnimation`: retry scheduling across clients and accepting only the current search result, sharing a request timeline diagram.
+- `RateAnimation`, `LoadingAnimation` and `VirtualizationAnimation`: input scheduling, resource discovery and moving list windows.
 - `FlowDiagram`: a vertical chain of steps with an optional loop, for topics about structure rather than timing.
 - `AnimationFrame` and `useTimelinePlayback` hold what every step-through animation shares, so a new animation only needs a model and a picture.
-- Animations still planned for later batches: debounce and throttle, retries with backoff, race conditions, loading waterfalls and list virtualization.
+- The animations originally planned through the Performance batch are implemented.

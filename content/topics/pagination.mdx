@@ -1,0 +1,132 @@
+---
+description: Loading a bounded slice of a collection with offsets or cursors and a stable order.
+visual: diagram
+related: [rest, graphql, infinite-scrolling, race-conditions]
+---
+
+## TL;DR
+
+Pagination loads a collection in bounded slices.
+Use offsets for page jumps or keyset cursors for sequential browsing, with stable ordering and an explicit end signal.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Cursor pagination"
+  steps={[
+    { title: 'First page', note: 'Request 20 items with a fixed filter and sort' },
+    { title: 'Ordered results', note: 'Server uses a stable order such as createdAt plus id' },
+    { title: 'Opaque next cursor', note: 'Response identifies where the next slice starts' },
+    { title: 'Continue or finish', note: 'Send the cursor; null means no next page' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+Example API contract: `{ items, nextCursor }`, with `null` at the end.
+
+```ts
+async function loadPage(cursor: string | null, signal: AbortSignal) {
+  const params = new URLSearchParams({
+    limit: '20',
+    sort: 'createdAt:desc,id:desc',
+  });
+  if (cursor !== null) params.set('after', cursor);
+
+  const response = await fetch(`/api/posts?${params}`, { signal });
+  if (!response.ok) throw new Error(`Page failed: ${response.status}`);
+  return response.json();
+}
+```
+
+For a descending keyset, the server resumes after the last item's full sort key:
+
+```sql
+SELECT id, title, created_at
+FROM posts
+WHERE (created_at, id) < (:last_created_at, :last_id)
+ORDER BY created_at DESC, id DESC
+LIMIT 21;
+```
+
+Fetching one extra row lets the server detect another page; it returns 20 rows and a cursor for the last returned row.
+The first page omits the cursor predicate.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Offsets allow page jumps; changing rows can shift boundaries.
+- Keyset cursors need a unique tie-breaker and a matching index.
+- Keep opaque cursors scoped to the same filter and sort.
+- Reset on filter changes; discard stale page responses.
+- Model loading, empty, error and end-of-list states separately.
+
+## Trade-offs
+
+| Strategy | Strengths        | Weaknesses           |
+| -------- | ---------------- | -------------------- |
+| Offset   | Page jumps       | Shifts; deep scans   |
+| Cursor   | Sequential reads | No direct page jump  |
+| Snapshot | Stable traversal | Lifetime and storage |
+
+## Interview questions
+
+<InterviewQuestion question="Why can offset pagination skip or repeat items?">
+
+An insertion before the current offset moves an already-seen item into the next page; a deletion can move an unseen item behind the offset.
+A keyset cursor avoids that particular shift by resuming after values rather than a row count, but it is not a frozen snapshot.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why sort by both a timestamp and an id?">
+
+Many records can share the same timestamp.
+The unique id breaks ties, and the cursor must include both values so the next request can resume at an unambiguous boundary.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What if filters change during a page request?">
+
+Use a new cache key and reset the cursor chain for the new filter and sort.
+Abort obsolete requests when possible, and only merge responses belonging to the active query; preserve existing items if a later page fails.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+An offset asks the server to skip a number of ordered rows, while a keyset predicate seeks past the last returned sort key.
+A cursor can encode that key along with a filter version or snapshot identifier; encoding alone does not make it trustworthy.
+The server validates the cursor, reapplies authorization and caps page size on every request.
+
+### Design details
+
+- Offset pagination supports direct page jumps, but deep offsets can cost more and shift when rows are inserted or deleted.
+- Keyset cursors resume from sort values; include a unique tie-breaker and an index matching the query.
+- Treat cursors as opaque and keep them tied to the same filters, sort and access scope.
+- Reset pages on filter changes, ignore stale responses and prevent duplicate next-page requests.
+- Distinguish initial loading, loading more, an empty collection, end of list and a failed page.
+
+### Edge cases
+
+- If a sort value changes between requests, keyset results can still repeat or miss records; use immutable ordering or a snapshot when stable traversal is required.
+- Deleting the cursor's record need not break keyset pagination if the cursor contains the sort values rather than requiring that record to exist.
+- A total count can be expensive and immediately stale; many feeds need only `nextCursor` or `hasNextPage`.
+
+### Common mistakes
+
+- Assuming a Base64-encoded offset gains keyset pagination's performance or consistency.
+- Reusing a cursor after changing sort, tenant or filters.
+- Treating a short page as the end without agreeing on that rule with the API.
+
+### References
+
+- [Pagination in the GraphQL docs](https://graphql.org/learn/pagination/)
+- [LIMIT and OFFSET in PostgreSQL](https://www.postgresql.org/docs/current/queries-limit.html)
+- [Row comparisons in PostgreSQL](https://www.postgresql.org/docs/current/functions-comparisons.html#ROW-WISE-COMPARISON)
+
+</DeepDive>

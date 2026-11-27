@@ -1,0 +1,132 @@
+---
+description: Reusing data with explicit identity, freshness, revalidation and invalidation rules at each cache layer.
+visual: code
+related: [rest, normalized-state, offline-usage, optimistic-updates]
+---
+
+## TL;DR
+
+A cache reuses a response or value under a key, trading freshness for less latency and repeated work.
+Define who may reuse it, how long it stays fresh and how writes invalidate it at every layer.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A public catalog response can be reused by shared caches under an explicit freshness policy:
+
+```http
+Cache-Control: public, max-age=60, stale-while-revalidate=30
+ETag: "catalog-v7"
+```
+
+An account-specific response can allow private storage but require validation before reuse:
+
+```http
+Cache-Control: private, no-cache
+ETag: "account-view-v12"
+Vary: Accept-Language
+```
+
+When a stored representation is unchanged, conditional validation can avoid downloading its body:
+
+```http
+If-None-Match: "account-view-v12"
+```
+
+```http
+HTTP/1.1 304 Not Modified
+Cache-Control: private, no-cache
+ETag: "account-view-v12"
+Vary: Accept-Language
+```
+
+Use `no-store` when a response must not be stored; `no-cache` instead permits storage with revalidation.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Cache reuse and revalidation"
+  steps={[
+    { title: 'Match the cache key', note: 'Include representation parameters and access scope' },
+    { title: 'Check freshness', note: 'Reuse a fresh eligible entry without a new body' },
+    { title: 'Revalidate when required', note: 'Send the stored ETag with If-None-Match' },
+    { title: 'Reuse or replace', note: '304 keeps the body; a new representation replaces it' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Include identity, parameters and representation in cache keys.
+- Freshness and retention are separate policies.
+- ETags support conditional revalidation of stored data.
+- Invalidate affected records and lists after confirmed writes.
+- Scope private data and clear caches on account changes.
+
+## Trade-offs
+
+| Strategy               | Strengths              | Weaknesses            |
+| ---------------------- | ---------------------- | --------------------- |
+| Freshness TTL          | Fast repeated reads    | Staleness window      |
+| Revalidation           | Checks current version | Network round trip    |
+| Stale while revalidate | Fast cached display    | Temporary old content |
+
+## Interview questions
+
+<InterviewQuestion question="How do no-cache and no-store differ?">
+
+`no-cache` allows storage but requires successful validation before that response is reused.
+`no-store` tells caches not to store the new request or response; it does not retroactively erase copies that already exist elsewhere.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why can data stay stale after a cache is cleared?">
+
+The browser HTTP cache, CDN, service worker and application query cache are distinct layers with different keys and policies.
+Trace the response through those layers and invalidate the affected representations rather than assuming one client-cache reset reaches them all.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does an expired item have to disappear from the UI?">
+
+Not necessarily: a query cache can retain stale data while revalidating it, depending on the workflow's freshness requirements.
+Retention controls how long unused data stays in memory; freshness controls when it needs validation, so those durations need not match.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The request identity selects a stored representation, and a freshness policy determines whether it can be reused directly.
+A stale entry may be validated with `If-None-Match`; a 304 updates its cache metadata while retaining the stored body.
+For normal browser fetches, the HTTP cache often manages this conditional exchange automatically.
+
+### Design details
+
+Application cache keys must include account or tenant scope and all parameters that affect the result.
+HTTP `Vary` identifies request headers that select different representations, while shared-cache eligibility and authenticated responses require a deliberate server policy.
+Writes can affect detail records, collection membership, ordering and counts; invalidating only the edited object's key can leave those views inconsistent.
+
+### Edge cases
+
+- A stale-while-revalidate window is bounded permission to serve old content, not an unlimited offline guarantee.
+- Permission or account changes may make an otherwise fresh cached entry inappropriate to display.
+- Several components can trigger the same revalidation simultaneously; deduplicate in-flight reads when their identities match.
+
+### Common mistakes
+
+- Treating a cache TTL as a data-security or permission check.
+- Confusing an application's stale time with the browser's HTTP cache headers.
+- Caching personalized data in a shared layer under a key that ignores identity.
+
+### References
+
+- [HTTP caching in MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching)
+- [Cache-Control in MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control)
+- [HTTP caching, RFC 9111](https://www.rfc-editor.org/rfc/rfc9111.html)
+- [Important defaults in TanStack Query](https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults)
+
+</DeepDive>

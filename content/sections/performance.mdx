@@ -1,0 +1,37 @@
+## Diagnose before choosing
+
+Start with the user-visible problem and a production-like trace, not a preferred optimization.
+Separate resource discovery and transfer from JavaScript execution, rendering, memory retention and the timing of interaction feedback.
+
+| Bottleneck                         | Candidate techniques                                   | What to verify                                           |
+| ---------------------------------- | ------------------------------------------------------ | -------------------------------------------------------- |
+| Too much initial JavaScript        | Code splitting, tree shaking                           | Startup work and deferred first-use latency              |
+| Large text transfer                | Compression                                            | Encoded bytes, CPU cost and correct cache variants       |
+| Late critical resources            | Loading sequence, preload, initial-viewport priorities | Discovery and presentation delay, not just download time |
+| Repeated expensive updates         | Memoization, debounce/throttle, DOM batching           | Cache hits, retained values and interaction latency      |
+| Large mounted collections          | List virtualization                                    | Window size, geometry, focus and item state              |
+| Repeated layout or paint           | Read/write scheduling and suitable visual properties   | Forced layouts, paint area and layer costs               |
+| Growth after repeated use          | Memory lifecycle cleanup                               | Retaining paths after the owner ends                     |
+| Constrained connections or devices | Adaptive loading                                       | Useful baseline, user preference and unknown signals     |
+
+## Choose the boundary
+
+Code splitting defers retained code; tree shaking removes provably unused code; compression encodes retained bytes for transfer.
+None of those automatically eliminates the execution and rendering costs of the features the user eventually opens.
+
+Debounce and throttle control execution timing, while DOM batching controls how related reads and writes are scheduled.
+Memoization skips repeated work when inputs remain stable, and virtualization bounds mounted UI rather than the whole data cache.
+Optimistic updates, already covered under Networking, improve perceived write latency while still requiring reconciliation and server concurrency rules.
+
+## Measure the result
+
+| Evidence               | Use it for                                    | Limitation                                        |
+| ---------------------- | --------------------------------------------- | ------------------------------------------------- |
+| Field LCP, INP and CLS | Real-user experience distributions            | Needs representative data and lifecycle handling  |
+| Network waterfall      | Discovery, dependencies and transfer          | Does not explain all main-thread work             |
+| Performance trace      | Tasks, layout, paint and interaction feedback | Represents the recorded device and scenario       |
+| Bundle analysis        | Module composition and chunk boundaries       | Bytes alone do not predict responsiveness         |
+| Heap snapshots         | Retained objects and ownership                | Temporary allocations are not automatically leaks |
+
+Compare against the same workflow and realistic constraints, including cold and warm caches.
+Keep a change only when its improvement survives representative testing without harming accessibility, correctness or recovery behavior.

@@ -1,0 +1,123 @@
+---
+description: Combining independent API operations into bounded requests without hiding individual failures.
+visual: diagram
+related: [graphql, debouncing-updates, timeouts, caching-and-expiry]
+---
+
+## TL;DR
+
+Batching combines several operations into one request to reduce repeated network overhead.
+Use a small collection window or explicit group, with limits and a result for each operation.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Bounded request batch"
+  steps={[
+    { title: 'Collect independent reads', note: 'Several cards need users by id' },
+    { title: 'Deduplicate and cap', note: 'Keep one read per id; split oversized groups' },
+    { title: 'One batch endpoint', note: 'Authorize each item and return keyed results' },
+    { title: 'Distribute outcomes', note: 'Resolve successful items; retry only eligible failures' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+Example contract: at most 50 user ids, with keyed successes or per-item errors.
+
+```ts
+type UserResult =
+  | { id: string; ok: true; user: { name: string } }
+  | { id: string; ok: false; code: 'missing' | 'forbidden' };
+
+async function loadUsers(ids: readonly string[], signal: AbortSignal) {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return [];
+  if (unique.length > 50) throw new Error('Split into batches of at most 50.');
+
+  const params = new URLSearchParams();
+  for (const id of unique) params.append('id', id);
+  const response = await fetch(`/api/users/batch?${params}`, { signal });
+  if (!response.ok) throw new Error(`Batch failed: ${response.status}`);
+  return response.json() as Promise<UserResult[]>;
+}
+```
+
+Validate the response at the API boundary in production; a TypeScript assertion alone does not validate JSON.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Batch independent work; dependencies still need ordering.
+- Cap item count, payload bytes and collection delay.
+- Deduplicate reads by identity and access context.
+- Map results by stable ids, not assumed response order.
+- Separate whole-request failures from per-item failures.
+
+## Trade-offs
+
+| Strengths               | Weaknesses                 |
+| ----------------------- | -------------------------- |
+| Less request overhead   | Collection delay           |
+| Fewer duplicate reads   | Shared failure boundary    |
+| Server-side aggregation | Slow items can hold others |
+
+## Interview questions
+
+<InterviewQuestion question="How does batching differ from debouncing?">
+
+Batching preserves several operations and transports them together.
+Debouncing usually replaces intermediate intents with the latest one after a quiet period, so it may intentionally discard work.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What if one operation in a batch fails?">
+
+Return an outcome keyed to each operation so successful UI regions can render independently.
+Retry only transient failures whose operations are safe to repeat; a batch of writes is not automatically an atomic transaction.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="When can batching make a screen slower?">
+
+A long collection window delays the first request, and a slow item can delay a response containing otherwise fast items.
+Measure time to useful content and split urgent or expensive work rather than optimizing only request count.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+A scheduler collects compatible operations until a short timer, item limit or explicit flush triggers dispatch.
+The server validates and authorizes each operation, executes bounded work and returns results associated with the original ids.
+GraphQL request-scoped data loaders can batch related database reads independently of whether the browser batches HTTP operations.
+
+### Design details
+
+HTTP/2 and HTTP/3 multiplex requests, which reduces some connection overhead but does not remove request headers, repeated authorization work or server execution costs.
+Deduplication is safe only when identity, tenant, parameters and freshness expectations match.
+Canceling one consumer should not abort a shared request still needed by other consumers.
+
+### Edge cases
+
+- A partial response may omit an id; treat missing results as an explicit protocol error rather than leaving a promise pending forever.
+- A global user loader can leak cached results across callers; keep authorization-sensitive loaders scoped appropriately.
+- Oversized URLs need smaller read batches or a deliberately designed POST query endpoint with its own cache policy.
+
+### Common mistakes
+
+- Replaying a whole mixed-write batch after one timeout without per-operation idempotency.
+- Assuming response order matches request order.
+- Treating batching, parallel requests and database transactions as interchangeable.
+
+### References
+
+- [Batching and caching in DataLoader](https://github.com/graphql/dataloader)
+- [GraphQL performance](https://graphql.org/learn/performance/)
+- [HTTP/2 multiplexing in MDN](https://developer.mozilla.org/en-US/docs/Glossary/HTTP_2)
+
+</DeepDive>
