@@ -127,6 +127,30 @@ test.describe('cheatsheet', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
   });
 
+  test('opens the rendering animation on the strategy of each architecture topic', async ({ page }) => {
+    for (const [slug, strategy] of [
+      ['client-side-rendering', 'CSR'],
+      ['server-side-rendering', 'SSR'],
+      ['incremental-static-regeneration', 'SSG / ISR'],
+      ['server-components', 'Streaming'],
+    ] as const) {
+      await page.goto(`/topics/${slug}`);
+      const strategies = page.getByRole('region', { name: 'Visual' }).getByRole('group', { name: 'Strategy' });
+      await expect(strategies.getByRole('button', { name: strategy, exact: true })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    }
+  });
+
+  test('shows a flow diagram for structural topics', async ({ page }) => {
+    await page.goto('/topics/flux-architecture');
+
+    const diagram = page.getByRole('figure', { name: 'Flux data flow' });
+    await expect(diagram.getByRole('listitem')).toHaveCount(4);
+    await expect(diagram.getByText('User input in the view dispatches a new action')).toBeVisible();
+  });
+
   test('compares the transports on the section page', async ({ page }) => {
     await page.goto('/sections/real-time-updates');
 
