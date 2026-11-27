@@ -1,0 +1,115 @@
+---
+description: Pages are built ahead of time like static files, then rebuilt in the background after they go stale.
+visual: animation
+related: [server-side-rendering, prerendering, caching-and-expiry, edge-computing]
+---
+
+## TL;DR
+
+Static generation builds pages into HTML at build time, so a CDN can serve them instantly.
+Incremental static regeneration keeps that speed but rebuilds a page in the background once it is older than a set time, or when you ask it to.
+Visitors always get a fast cached page, at the cost of sometimes seeing slightly old content.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RenderingTimelineAnimation initialMode="ssg" />
+</VisualTab>
+<VisualTab kind="code">
+
+```tsx
+// app/products/[id]/page.tsx (Next.js App Router)
+export const revalidate = 3600; // serve the cached page, rebuild it at most once an hour
+
+// Build the most visited pages ahead of time; the rest are built on their first request.
+export async function generateStaticParams() {
+  const products = await getTopProducts(100);
+  return products.map((product) => ({ id: product.id }));
+}
+
+export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const product = await getProduct(id);
+  return <ProductDetails product={product} />;
+}
+```
+
+```ts
+// Rebuild right away when the CMS publishes a change, instead of waiting for the timer.
+'use server';
+import { revalidatePath } from 'next/cache';
+
+export async function publishProduct(id: string) {
+  await saveProduct(id);
+  revalidatePath(`/products/${id}`);
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Static pages are the fastest to serve: no rendering per request, just a file from the nearest CDN location.
+- ISR follows stale-while-revalidate: the first visit after expiry still gets the old page and triggers a rebuild.
+- On-demand revalidation rebuilds a page as soon as its data changes, for example from a CMS webhook.
+- Build only the popular pages up front and generate the long tail on first request, to keep builds short.
+- Not for personalized or real-time content; combine with client-side fetching for the parts that must be live.
+
+## Trade-offs
+
+| Strengths                                    | Weaknesses                                     |
+| -------------------------------------------- | ---------------------------------------------- |
+| CDN speed with no rendering per request      | Content can be stale for one revalidate window |
+| Handles traffic spikes cheaply               | No per-user content in the cached page         |
+| Fast builds, the long tail renders on demand | Needs a platform that supports regeneration    |
+
+## Interview questions
+
+<InterviewQuestion question="How is ISR different from SSR with a CDN cache?">
+
+Both serve cached HTML and refresh it later, but ISR treats the page as a build artifact: it is generated once and reused until it expires or is revalidated.
+SSR with `Cache-Control: s-maxage, stale-while-revalidate` gets a similar effect through HTTP caching, and works on any CDN.
+ISR adds on-demand revalidation by path or tag and pre-building at deploy time.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="An editor publishes a typo fix and still sees the old page. Why, and how do you fix it?">
+
+The cached page is served until the revalidate window passes, and the first visit after that still gets the old version while the new one builds.
+Trigger on-demand revalidation from the CMS publish hook, and keep the time-based window as a safety net.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Which pages are a good fit for static generation?">
+
+Pages that look the same for every visitor and change much less often than they are viewed: docs, blog posts, marketing pages and product catalogs.
+Pages with per-user data or second-by-second data need SSR or client-side fetching for those parts.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+At build time the framework renders each known page to HTML and stores it.
+A request is served from the cache; if the page is older than its `revalidate` time, the framework regenerates it in the background and swaps it in for the next visitor.
+Unknown paths can be rendered on their first request and then cached like the others.
+
+### Edge cases
+
+- Regeneration can fail, for example when an API is down; the old page keeps being served, so monitor failures.
+- Pages that depend on each other, such as a product page and a category list, need their own revalidation, usually grouped with cache tags.
+- Very large sites still need care with build times and storage for millions of pages.
+
+### Common mistakes
+
+- Putting user-specific data in a statically generated page.
+- Setting a tiny revalidate time, which turns ISR into SSR with extra complexity.
+- Forgetting on-demand revalidation, so editors wait for the timer to see changes.
+
+### References
+
+- [Incremental static regeneration in the Next.js docs](https://nextjs.org/docs/app/guides/incremental-static-regeneration)
+- [Rendering on the web on web.dev](https://web.dev/articles/rendering-on-the-web)
+
+</DeepDive>

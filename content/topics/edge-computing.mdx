@@ -1,0 +1,114 @@
+---
+description: Running code in CDN locations close to users, for low latency on things like redirects, auth checks and personalization.
+visual: diagram
+related: [serverless, incremental-static-regeneration, caching-and-expiry, image-cdn]
+---
+
+## TL;DR
+
+Edge functions run in many CDN locations around the world, so code executes a few milliseconds from the user instead of in one distant region.
+They are ideal for quick decisions on every request, such as redirects, auth checks, A/B tests and geolocation.
+The runtime is limited, and the gain disappears if the edge has to call a far-away database.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="A request through the edge"
+  steps={[
+    { title: 'User in Hanoi', note: 'Request goes to the nearest location' },
+    { title: 'Edge function in Singapore', note: 'Checks cookies, geo, auth; rewrites or redirects' },
+    { title: 'Edge cache', note: 'Hit: respond immediately' },
+    { title: 'Origin in Virginia', note: 'Only on a cache miss or for fresh data' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+```ts
+// An edge function for an A/B test. It runs in the location closest to the user, with Web APIs only.
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const cookie = request.headers.get('cookie') ?? '';
+    const variant = /(?:^|; )ab=(a|b)/.exec(cookie)?.[1] ?? (Math.random() < 0.5 ? 'a' : 'b');
+
+    // Each variant is a separate cached page, so the edge can answer without the origin.
+    const url = new URL(request.url);
+    url.pathname = `/${variant}${url.pathname}`;
+    const response = await fetch(new Request(url, request));
+
+    const headers = new Headers(response.headers);
+    headers.append('Set-Cookie', `ab=${variant}; Path=/; Max-Age=2592000; SameSite=Lax`);
+    return new Response(response.body, { status: response.status, headers });
+  },
+};
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Code runs in hundreds of locations, so the round trip is short wherever the user is.
+- Edge runtimes are lightweight (V8 isolates with Web APIs), so they start in milliseconds but lack most Node.js APIs.
+- Best for fast, stateless logic in front of cached content: redirects, rewrites, auth checks, headers, A/B tests.
+- Calling a single-region database from the edge adds back the latency it saved; keep data at the edge or near the origin.
+- CPU time, memory and bundle size are tightly limited.
+
+## Trade-offs
+
+| Strengths                                   | Weaknesses                                          |
+| ------------------------------------------- | --------------------------------------------------- |
+| Very low latency for every user             | Limited runtime: no full Node.js, small bundles     |
+| Near-instant start, no cold-start problem   | Data usually lives in one region, far from the edge |
+| Personalize cached pages without the origin | Harder to debug and to keep consistent everywhere   |
+
+## Interview questions
+
+<InterviewQuestion question="What belongs at the edge, and what does not?">
+
+Fast decisions that only need the request itself, cookies or small edge data: redirects, auth token checks, A/B bucketing, geolocation and header rewrites.
+Heavy computation and work that needs a central database belong at the origin, close to the data.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How is an edge function different from a serverless function?">
+
+A serverless function usually runs in one region on a full runtime such as Node.js, with longer time limits and possible cold starts.
+An edge function runs in many locations on a lightweight runtime that starts almost instantly, with stricter limits on CPU time, memory and APIs.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you personalize a page without losing CDN caching?">
+
+Cache a small number of variants, such as per country or experiment bucket, and let the edge pick the variant from a cookie or header.
+Render user-specific bits, like the account menu, on the client or in a separate uncached request.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The CDN deploys your function to all its locations.
+A request is routed to the nearest one, where the function can answer directly, rewrite the URL, change headers, or fetch from the cache or the origin.
+Runtimes reuse V8 isolates instead of containers, which is why they start in milliseconds.
+
+### Edge cases
+
+- Global data consistency: edge key-value stores are often eventually consistent, so a write may not be visible everywhere at once.
+- Randomness and time differ per location, which matters for experiments and caching keys.
+- Some libraries depend on Node.js APIs and will not run at the edge.
+
+### Common mistakes
+
+- Making several round trips to an origin database from the edge for each request.
+- Bundling large dependencies that exceed the size limit or slow every request.
+- Varying the cache on too many headers, so the hit rate collapses.
+
+### References
+
+- [Rendering on the web on web.dev](https://web.dev/articles/rendering-on-the-web)
+- [How Workers works in the Cloudflare docs](https://developers.cloudflare.com/workers/reference/how-workers-works/)
+
+</DeepDive>

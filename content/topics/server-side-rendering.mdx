@@ -1,0 +1,113 @@
+---
+description: The server renders full HTML for every request, so content shows up fast and the browser hydrates it afterwards.
+visual: animation
+related: [client-side-rendering, incremental-static-regeneration, server-components, prerendering]
+---
+
+## TL;DR
+
+For every request, the server fetches the data and renders complete HTML, so the user sees content as soon as it arrives.
+The browser then downloads the JavaScript and hydrates the page to make it interactive.
+You trade server work per request for a fast first paint and good SEO.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RenderingTimelineAnimation initialMode="ssr" />
+</VisualTab>
+<VisualTab kind="code">
+
+```tsx
+// server.tsx: render on every request, then hydrate the same tree in the browser.
+import { renderToPipeableStream } from 'react-dom/server';
+
+app.get('/products/:id', async (request, response) => {
+  const product = await getProduct(request.params.id); // data first, on the server
+
+  const { pipe } = renderToPipeableStream(<App product={product} />, {
+    bootstrapScripts: ['/client.js'],
+    bootstrapScriptContent: `window.__DATA__ = ${serialize(product)}`,
+    onShellReady() {
+      response.setHeader('Content-Type', 'text/html');
+      pipe(response); // stream HTML as soon as the shell is ready
+    },
+  });
+});
+```
+
+```tsx
+// client.tsx: attach event handlers to the HTML that is already on screen.
+import { hydrateRoot } from 'react-dom/client';
+
+hydrateRoot(document, <App product={window.__DATA__} />);
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Content is visible after one round trip, which helps First Contentful Paint and Largest Contentful Paint.
+- Crawlers and link previews get real HTML, with no JavaScript needed.
+- The page looks ready before hydration finishes, so clicks can be ignored for a moment.
+- Every request costs server rendering time, which raises Time to First Byte under load.
+- Cache public pages at the CDN and stream the response to soften the cost.
+
+## Trade-offs
+
+| Strengths                                | Weaknesses                                   |
+| ---------------------------------------- | -------------------------------------------- |
+| Fast first content and good SEO          | Server cost on every request                 |
+| Always fresh, per-user data              | Slower Time to First Byte than static files  |
+| Works before JavaScript loads (no input) | Hydration ships and runs the same code twice |
+
+## Interview questions
+
+<InterviewQuestion question="What is hydration, and why can it go wrong?">
+
+Hydration is React walking the server-rendered HTML and attaching event handlers and state to it, instead of building new DOM.
+It fails with a mismatch when the client renders something different, for example from `Date.now()`, `Math.random()`, `window` checks or locale formatting.
+Keep render output deterministic, pass server data to the client, and move browser-only values into effects.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="When would you choose SSR over static generation?">
+
+When the page depends on the request: personalized content, fast-changing data, or too many pages to build ahead of time.
+If the content is the same for everyone and changes rarely, static generation or ISR is faster and cheaper.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you make SSR fast under load?">
+
+Stream the response so the shell arrives before slow data, and render slow parts behind `Suspense`.
+Cache whole pages at the CDN where content is shared, and cache data on the server.
+Fetch data in parallel and close to the database, so the server is not waiting on round trips.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The server runs the same React components as the client, with data it fetched itself, and sends HTML plus the serialized data.
+The browser paints that HTML immediately, then loads the JavaScript bundle and hydrates, reusing the existing DOM.
+Streaming SSR sends the HTML in chunks: the shell first, then each `Suspense` boundary as its data resolves.
+
+### Edge cases
+
+- The uncanny valley: the page looks interactive before hydration, so a click on a button may do nothing. Keep bundles small and hydrate important parts first.
+- Browser-only APIs such as `window` or `localStorage` do not exist on the server; read them in an effect.
+- Personalized pages cannot be shared from a CDN cache unless the personal part is rendered separately.
+
+### Common mistakes
+
+- Waterfalls: fetching data in nested components one after another on the server.
+- Serializing far more data than the page needs into the HTML.
+- Rendering non-deterministic output, which causes hydration mismatches.
+
+### References
+
+- [Rendering on the web on web.dev](https://web.dev/articles/rendering-on-the-web)
+- [renderToPipeableStream in the React docs](https://react.dev/reference/react-dom/server/renderToPipeableStream)
+
+</DeepDive>
