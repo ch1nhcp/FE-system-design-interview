@@ -16,13 +16,13 @@ test.describe('sections and topics', () => {
   });
 
   test('shows a placeholder for topics without a cheatsheet and links to neighbours', async ({ page }) => {
-    await page.goto('/topics/theming');
+    await page.goto('/topics/batching');
 
-    await expect(page.getByRole('heading', { level: 1, name: 'Theming config' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Batching', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Cheatsheet coming soon' })).toBeVisible();
 
     await page.getByRole('navigation', { name: 'Topic navigation' }).getByRole('link', { name: /Next/ }).click();
-    await expect(page).toHaveURL('/topics/event-handlers');
+    await expect(page).toHaveURL('/topics/retries');
   });
 
   test('shares progress between the topic page and the dashboard', async ({ page }) => {
@@ -157,6 +157,90 @@ test.describe('cheatsheet', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'How to choose' })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'Server-sent events' })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'Chat, collaboration, games' })).toBeVisible();
+  });
+
+  test('reads every back-end API cheatsheet from its section', async ({ page }) => {
+    const topics = [
+      { slug: 'rest', label: 'RESTful', visual: 'Diagram' },
+      { slug: 'graphql', label: 'GraphQL', visual: 'Code' },
+      { slug: 'pagination', label: 'Pagination (offset vs. cursor)', visual: 'Diagram' },
+      { slug: 'authentication', label: 'Authentication', visual: 'Diagram' },
+      { slug: 'authorization', label: 'Authorization', visual: 'Diagram' },
+    ];
+
+    for (const topic of topics) {
+      await page.goto('/sections/backend-apis');
+      const main = page.getByRole('main');
+      await expect(main.getByRole('heading', { name: 'Access contract', exact: true })).toBeVisible();
+      await main.getByRole('link', { name: topic.label, exact: true }).click();
+
+      await expect(page).toHaveURL(`/topics/${topic.slug}`);
+      await expect(page.getByRole('heading', { level: 2, name: 'TL;DR', exact: true })).toBeVisible();
+      const panel = page.getByRole('region', { name: 'Visual', exact: true });
+      await expect(panel.getByRole('tab', { name: topic.visual, exact: true })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      await panel.getByRole('tab', { name: 'Code', exact: true }).click();
+      await expect(panel.locator('pre').first()).toBeVisible();
+      await page.getByText('Deep dive', { exact: true }).click();
+      await expect(page.getByRole('heading', { name: 'References', exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+    }
+  });
+
+  test('reads every component API cheatsheet and its English fallback', async ({ page }) => {
+    const topics = [
+      { slug: 'theming', label: 'Theming config' },
+      { slug: 'event-handlers', label: 'Event handlers' },
+      { slug: 'render-props', label: 'Render props' },
+      { slug: 'composition', label: 'Composition' },
+    ];
+
+    for (const topic of topics) {
+      await page.goto('/sections/component-apis');
+      const main = page.getByRole('main');
+      await expect(main.getByRole('heading', { name: 'Define the contract', exact: true })).toBeVisible();
+      await main.getByRole('link', { name: topic.label, exact: true }).click();
+
+      await expect(page).toHaveURL(`/topics/${topic.slug}`);
+      const panel = page.getByRole('region', { name: 'Visual', exact: true });
+      await expect(panel.getByRole('tab', { name: 'Code', exact: true })).toHaveAttribute('aria-selected', 'true');
+      await expect(panel.locator('pre').first()).toBeVisible();
+      await panel.getByRole('tab', { name: 'Diagram', exact: true }).click();
+      await expect(panel.getByRole('figure')).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+
+      await page.goto(`/vi/topics/${topic.slug}`);
+      await expect(page.getByRole('note')).toBeVisible();
+      await expect(page.locator('[lang="en"]').getByRole('heading', { name: 'TL;DR', exact: true })).toBeVisible();
+    }
+  });
+
+  test('keeps batch 2 summaries within a desktop viewport', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'Small screens stack the visual within the content');
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    for (const slug of [
+      'rest',
+      'graphql',
+      'pagination',
+      'authentication',
+      'authorization',
+      'theming',
+      'event-handlers',
+      'render-props',
+      'composition',
+    ]) {
+      await page.goto(`/topics/${slug}`);
+      const body = page.locator('.topic-body');
+      const tldr = await body.getByRole('heading', { name: 'TL;DR', exact: true }).boundingBox();
+      const deepDive = await body.locator(':scope > details').last().boundingBox();
+      expect(tldr).not.toBeNull();
+      expect(deepDive).not.toBeNull();
+      // The closed summary fits below the sticky header once the reader scrolls to the cheatsheet.
+      expect(deepDive!.y - tldr!.y, `${slug} summary height`).toBeLessThanOrEqual(820);
+    }
   });
 });
 

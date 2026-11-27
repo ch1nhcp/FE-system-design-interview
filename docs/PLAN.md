@@ -123,7 +123,7 @@ Decision: animations are React SVG rendered from a pure model at a point in time
 | Batch | Sections                        | Topics | Status      |
 | ----- | ------------------------------- | ------ | ----------- |
 | 1     | Architecture, State management  | 9      | In review   |
-| 2     | Back end APIs, Component APIs   | 9      | Not started |
+| 2     | Back end APIs, Component APIs   | 9      | In review   |
 | 3     | Networking techniques           | 8      | Not started |
 | 4     | Performance                     | 14     | Not started |
 | 5     | Images, Accessibility           | 12     | Not started |
@@ -131,6 +131,14 @@ Decision: animations are React SVG rendered from a pure model at a point in time
 | 7     | Security, i18n, Common patterns | 15     | Not started |
 
 Topics already written in an earlier section are not counted again, such as Optimistic updates under Performance.
+
+Batch 2 adds all five Back end APIs topics and all four Component APIs topics, with a comparison overview for each section.
+There are now 22 English topic pages out of 81 unique topics.
+Content tests require every topic and the overview of each completed section to remain present, while unfinished sections can still use placeholders.
+The new topics reuse `FlowDiagram` and code panels because their main concepts are contracts, ownership and request structure rather than timing.
+Batch 2 summaries are checked at a 1440 by 900 desktop viewport with answers and the deep dive collapsed.
+From the TL;DR heading to the deep dive, the summary must fit within 820 pixels, leaving space for the sticky header when scrolled into view.
+Detailed key points live under "Design details" in the deep dive; the visible bullets stay short enough for quick review.
 
 ### Visual building blocks
 

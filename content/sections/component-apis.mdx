@@ -1,0 +1,28 @@
+## How to choose
+
+Start with a component's responsibilities: what it owns, what callers supply and what it reports back.
+Choose the smallest API that allows the required variation while preserving keyboard behavior and accessible structure.
+
+| Need                           | API shape                      | Example                                |
+| ------------------------------ | ------------------------------ | -------------------------------------- |
+| Change appearance consistently | Semantic theme tokens          | Surface and text tokens for light/dark |
+| Report user intent             | Typed callback prop            | `onQuantityChange(next)`               |
+| Place caller-owned content     | Children or named JSX slots    | Body content and an actions region     |
+| Customize using internal data  | Render prop                    | `renderItem(item)` for each list entry |
+| Coordinate interactive parts   | Accessible compound components | Tabs, triggers and associated panels   |
+
+These patterns work together.
+A themed list can accept a render prop and report selection through an event callback while its parent owns the selected value.
+
+## Define the contract
+
+| Question                  | Decide before adding props                                              |
+| ------------------------- | ----------------------------------------------------------------------- |
+| Who owns state?           | Controlled value and callback, or internal state and default            |
+| What can callers replace? | Content slots, finite variants or an entire item renderer               |
+| Who owns interactions?    | The component or primitive owns focus and keyboard behavior             |
+| What runs where?          | JSX slots can cross a server/client boundary; ordinary functions cannot |
+| What happens on failure?  | One owner for pending state, errors and duplicate actions               |
+
+Avoid adding an escape hatch for a hypothetical use case.
+When a new requirement arrives, add a focused slot or callback whose purpose is clear to the next caller.

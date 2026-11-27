@@ -1,0 +1,141 @@
+---
+description: A typed API where clients select the fields and relationships each screen needs.
+visual: code
+related: [rest, pagination, normalized-state, authorization]
+---
+
+## TL;DR
+
+GraphQL lets clients select fields and related objects from a typed schema.
+It suits varied screen requirements, with explicit limits, caching and partial-error handling.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A named operation with variables keeps user input separate from the query document.
+
+```graphql
+query ProjectCard($id: ID!) {
+  project(id: $id) {
+    id
+    name
+    owner {
+      id
+      name
+    }
+  }
+}
+```
+
+```ts
+async function loadProject(id: string, signal: AbortSignal) {
+  const response = await fetch('/graphql', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/graphql-response+json, application/json',
+    },
+    body: JSON.stringify({
+      query: `query ProjectCard($id: ID!) {
+        project(id: $id) { id name owner { id name } }
+      }`,
+      variables: { id },
+    }),
+    signal,
+  });
+  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+  // The caller must handle both data and GraphQL errors, even on HTTP 200.
+  return response.json();
+}
+```
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="GraphQL execution"
+  steps={[
+    { title: 'Screen operation', note: 'Select fields and provide variables' },
+    { title: 'Schema validation', note: 'Reject unknown fields and invalid argument types' },
+    { title: 'Authorized resolvers', note: 'Resolve fields; batch related data reads' },
+    { title: 'Data and errors', note: 'Render available data and handle failed paths' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Queries read, mutations change, and subscriptions deliver updates.
+- Use variables, fragments and generated operation types.
+- Inspect `data` and `errors`, including on HTTP 200.
+- Bound list sizes and query cost; batch related server reads.
+- Choose a client cache; GraphQL does not supply one.
+
+## Trade-offs
+
+| Strengths                   | Weaknesses                  |
+| --------------------------- | --------------------------- |
+| Select fields and relations | Resolver and N+1 complexity |
+| Schema tooling and codegen  | Query cost limits           |
+| Shared client contract      | Deliberate cache design     |
+
+## Interview questions
+
+<InterviewQuestion question="Does one GraphQL request solve an N+1 problem?">
+
+It removes extra browser round trips, but each nested resolver can still trigger a separate database query.
+Batch and deduplicate related reads within the request, then measure database work rather than counting HTTP calls alone.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How should a screen handle partial GraphQL failures?">
+
+Inspect both `data` and `errors`, including each error's path.
+Render valid regions where useful, show a local error or retry for missing regions, and account for non-null failures propagating to a nullable ancestor.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can GraphQL use HTTP caching?">
+
+Yes: query operations can use GET when the server supports it, and persisted operation identifiers can keep URLs manageable.
+Choose cache headers and keys that respect variables and identity; mutations must not be sent as GET requests.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The server parses and validates the operation against its schema, then executes resolvers for the selected fields.
+Schema types describe available data, but permission checks belong in trusted business logic rather than relying on the schema to hide fields.
+On the client, generated types describe the operation result; runtime failures, nullability and loading states still need UI treatment.
+
+### Design details
+
+- Queries read data, mutations request changes, and subscriptions deliver ongoing results through a supported transport.
+- Use variables and reusable fragments; generate client types from the schema and operations.
+- Handle transport failures separately from GraphQL errors, which may accompany partial data on HTTP 200.
+- Bound list sizes and query cost; one browser request can still cause many back-end reads.
+- Choose an operation cache or a normalized entity cache; GraphQL does not supply either automatically.
+
+### Edge cases
+
+- A forbidden nested field can fail while another part of the response remains usable.
+- Normalized caches need stable entity identities and explicit handling for list membership after mutations.
+- Uploads and subscriptions need additional transport choices beyond the basic query and mutation endpoint.
+
+### Common mistakes
+
+- Treating HTTP 200 as proof that every requested field succeeded.
+- Allowing unbounded lists or arbitrarily nested queries.
+- Assuming a schema makes server-side authorization or runtime input validation unnecessary.
+
+### References
+
+- [Queries in the GraphQL docs](https://graphql.org/learn/queries/)
+- [Serving GraphQL over HTTP](https://graphql.org/learn/serving-over-http/)
+- [GraphQL performance](https://graphql.org/learn/performance/)
+- [GraphQL response format](https://graphql.org/learn/response/)
+
+</DeepDive>

@@ -1,0 +1,124 @@
+---
+description: Resource-oriented HTTP APIs with predictable methods, status codes and cache behavior.
+visual: diagram
+related: [graphql, pagination, caching-and-expiry, optimistic-updates]
+---
+
+## TL;DR
+
+A REST-style API uses resource URLs and HTTP method semantics.
+Start here for resource-oriented screens, with explicit contracts for data, errors and caching.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Conditional REST update"
+  steps={[
+    { title: 'Read a project', note: 'GET /projects/42 returns data and a strong ETag' },
+    { title: 'Submit an edit', note: 'PATCH sends the last ETag in If-Match' },
+    { title: 'Check the version', note: 'The server applies the change only if it still matches' },
+    { title: 'Update or reconcile', note: '200 / 204 succeeds; 412 means reload and resolve' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+For an API that accepts a partial JSON object and returns the updated resource or no body:
+
+```ts
+async function renameProject(id: string, name: string, etag: string) {
+  const response = await fetch(`/api/projects/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'If-Match': etag,
+    },
+    body: JSON.stringify({ name }),
+  });
+
+  if (response.status === 412) {
+    throw new Error('Project changed. Reload before saving.');
+  }
+  if (!response.ok) throw new Error(`Save failed: ${response.status}`);
+  return response.status === 204 ? null : response.json();
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Model resource URLs with nouns and operations with HTTP methods.
+- GET is safe; PUT and DELETE are idempotent by semantics.
+- Check status before parsing; 204 has no response body.
+- Use cache headers and ETags; invalidate stale client queries.
+- Agree on errors, pagination and backward compatibility.
+
+## Trade-offs
+
+| Strengths            | Weaknesses        |
+| -------------------- | ----------------- |
+| Familiar HTTP tools  | Extra round trips |
+| HTTP caching         | Overfetching      |
+| Simple CRUD contract | Client-side joins |
+
+## Interview questions
+
+<InterviewQuestion question="When would you choose REST over GraphQL?">
+
+When the UI maps cleanly to resources, payloads are predictable and HTTP caching matters.
+A screen-specific aggregation endpoint can also remove waterfalls without introducing a GraphQL schema and execution layer.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Is it safe to retry a failed write?">
+
+A network failure does not tell you whether the server applied the write.
+Use method semantics and the API's contract: a create or payment often needs a server-enforced idempotency key, reused across retries of the same operation.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you prevent conflicting edits?">
+
+Read the resource's strong ETag, then send it in `If-Match` on the write.
+The server checks and updates atomically; a stale version returns 412 so the UI can reload, compare and resolve the conflict.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The client requests a representation of a resource, and the server applies authentication, authorization and validation before reading or changing it.
+HTTP methods define the operation's semantics; JSON is a common representation format, not a requirement of REST.
+Strict REST also includes hypermedia and other architectural constraints; many interview discussions use REST to mean resource-oriented HTTP APIs.
+
+### Design details
+
+- Model resources with nouns; use methods to express reads, creates, replacements and deletions.
+- GET is safe; PUT and DELETE are idempotent by semantics, while POST and PATCH need an explicit retry contract.
+- Check HTTP status before reading a body: `fetch` does not reject on 4xx or 5xx, and 204 has no body.
+- Use cache headers and validators such as ETag; invalidate affected client queries after writes.
+- Agree on error shape, pagination, optional fields and backward compatibility before building screens.
+
+### Edge cases
+
+- A successful DELETE can be followed by a 404 on retry while still being idempotent: the intended resource state is unchanged.
+- Aborting a browser request does not guarantee cancellation of a server-side write.
+- Personal responses need an explicit private caching policy so a shared cache cannot serve one user's data to another.
+
+### Common mistakes
+
+- Treating every response as JSON, including 204 responses.
+- Retrying a non-idempotent operation after a timeout without duplicate protection.
+- Changing an existing field's meaning without a compatibility plan for older clients.
+
+### References
+
+- [HTTP request methods in MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods)
+- [If-Match in MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/If-Match)
+- [HTTP semantics, RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html)
+
+</DeepDive>

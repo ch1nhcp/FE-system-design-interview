@@ -1,0 +1,25 @@
+## How to choose
+
+Start with the data each screen needs, the caller's identity and the operations it may perform.
+REST and GraphQL describe the data contract; pagination bounds collections; authentication and authorization protect access regardless of API style.
+
+| Decision       | Start with                                       | Consider an alternative when                         |
+| -------------- | ------------------------------------------------ | ---------------------------------------------------- |
+| REST           | Predictable resource operations and HTTP caching | Screens need varied combinations of related data     |
+| GraphQL        | A typed graph shared by varied clients           | A simple resource or aggregation endpoint is enough  |
+| Offset pages   | Small, stable lists with direct page jumps       | Deep offsets or frequent inserts make traversal poor |
+| Keyset cursors | Sequential browsing with a stable sort key       | Arbitrary page jumps or a frozen snapshot are needed |
+
+One request is not automatically cheap.
+Compare payload size, network round trips, server execution and caching for the actual screen.
+
+## Access contract
+
+| Concern        | Server responsibility                         | Front-end responsibility                               |
+| -------------- | --------------------------------------------- | ------------------------------------------------------ |
+| Authentication | Verify identity; expire and revoke sessions   | Represent session loading, expiry and recovery         |
+| Authorization  | Check action, resource, fields and tenant     | Show capabilities and handle denied operations         |
+| Pagination     | Validate cursors, cap sizes, enforce ordering | Keep pages scoped to filters and discard stale results |
+
+A hidden button is a usability choice, not an access check.
+Agree on unauthenticated, forbidden, missing and conflicting responses so the UI can recover without losing the user's work.

@@ -1,0 +1,129 @@
+---
+description: Deciding which actions a verified caller may perform on a particular resource.
+visual: diagram
+related: [authentication, graphql, error-handling]
+---
+
+## TL;DR
+
+Authorization decides which actions a caller may perform on a resource.
+Enforce it on every server request; UI capabilities guide the interface but can become stale.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Resource authorization"
+  steps={[
+    { title: 'Verified caller', note: 'Identity comes from a validated server session' },
+    { title: 'Action and resource', note: 'Example: edit document 42 within tenant A' },
+    { title: 'Trusted policy check', note: 'Check membership, role and resource relationships' },
+    { title: 'Allow or deny', note: 'Return authorized fields, or a deliberate error response' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+Capabilities returned by the API help the UI explain available actions.
+The write endpoint must independently enforce the same policy.
+
+```ts
+type DocumentView = {
+  id: string;
+  title: string;
+  capabilities: { canEdit: boolean };
+};
+
+async function renameDocument(document: DocumentView, title: string) {
+  if (!document.capabilities.canEdit) {
+    throw new Error('You have read-only access.');
+  }
+  const response = await fetch(`/api/documents/${encodeURIComponent(document.id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+    // A cookie-authenticated API also needs its CSRF defense.
+  });
+  if (response.status === 401) throw new Error('Sign in to continue.');
+  if (response.status === 403) throw new Error('Your edit access has changed.');
+  if (!response.ok) throw new Error(`Save failed: ${response.status}`);
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Check object and field access on the server for every request.
+- Combine caller, action, resource and tenant context.
+- Deny by default and grant the minimum necessary access.
+- UI capabilities are hints, never authorization credentials.
+- Define unauthenticated, forbidden and concealed responses.
+
+## Trade-offs
+
+| Model         | Strengths     | Weaknesses           |
+| ------------- | ------------- | -------------------- |
+| Roles         | Broad duties  | Role proliferation   |
+| Attributes    | Context rules | Policy interactions  |
+| Relationships | Owners; teams | Lookup; invalidation |
+
+## Interview questions
+
+<InterviewQuestion question="Why is hiding an admin button insufficient?">
+
+A caller can send an API request directly or modify browser state.
+The endpoint must derive identity from a verified credential and check permission on the exact resource, regardless of which controls were rendered.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you prevent cross-tenant data access?">
+
+Check the caller's membership in the requested tenant, then scope resource reads and writes to that authorized tenant.
+Never trust a tenant id or resource id simply because it came from the UI; test requests using another tenant's ids and ensure caches are scoped too.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What if edit access is revoked mid-edit?">
+
+The server rejects the next write even if the page still shows an enabled Save button.
+Keep the draft, refresh capabilities and explain the change; signing in again does not fix an otherwise valid session with insufficient access.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Trusted request handling resolves the caller and applies a policy before returning data or committing a mutation.
+Place shared checks in a consistent policy or data-access layer so alternate routes, exports and GraphQL fields do not bypass them.
+For sensitive writes, keep permission evaluation and the mutation consistent with concurrent membership or ownership changes.
+
+### Design details
+
+- Enforce permissions on trusted servers for every operation, including object and field access.
+- Combine caller, action, resource and tenant context; a broad role alone may not establish ownership or membership.
+- Deny unknown actions by default and grant only the access each workflow needs.
+- Treat UI capabilities as hints that can become stale, never as credentials sent back to authorize a write.
+- Separate unauthenticated, forbidden and intentionally concealed resources in the API and UI contract.
+
+### Edge cases
+
+- A 404 can deliberately conceal a resource's existence; do not reveal it through counts, search suggestions or error details elsewhere.
+- Permission caches can outlive a revocation; define invalidation and freshness for sensitive actions.
+- Authorized access to a record does not automatically permit every field, attachment or related record.
+
+### Common mistakes
+
+- Accepting `isAdmin`, `ownerId` or capability flags supplied by the client as proof of permission.
+- Checking a route once while allowing unscoped nested data reads.
+- Assuming an unpredictable id or a CORS policy is access control.
+
+### References
+
+- [OWASP authorization guidance](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)
+- [Authorization in GraphQL](https://graphql.org/learn/authorization/)
+- [OWASP insecure direct object reference prevention](https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html)
+
+</DeepDive>

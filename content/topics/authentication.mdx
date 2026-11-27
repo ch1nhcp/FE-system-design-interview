@@ -1,0 +1,128 @@
+---
+description: Establishing a user's identity and carrying a verifiable session across requests.
+visual: diagram
+related: [authorization, csrf, xss, https]
+---
+
+## TL;DR
+
+Authentication establishes identity; a session carries it across requests.
+Design sign-in, expiry, renewal and logout together, with authorization checked separately.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Cookie session lifecycle"
+  steps={[
+    { title: 'Sign in', note: 'A trusted server verifies the credential or identity-provider result' },
+    { title: 'Issue a fresh session', note: 'Set an opaque cookie; keep session state on the server' },
+    { title: 'Verify each request', note: 'Check session validity, then check resource permissions' },
+    { title: 'Expire or sign out', note: 'Revoke the server session and clear the cookie' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+The server issues the cookie over HTTPS after successful sign-in:
+
+```http
+Set-Cookie: __Host-session=<opaque-random-secret>; Path=/; Secure; HttpOnly; SameSite=Lax
+Cache-Control: no-store
+```
+
+The browser sends same-origin cookies without exposing this secret to JavaScript.
+
+```ts
+async function loadCurrentUser(signal: AbortSignal) {
+  const response = await fetch('/api/session', {
+    credentials: 'same-origin',
+    cache: 'no-store',
+    signal,
+  });
+  if (response.status === 401) return null;
+  if (!response.ok) throw new Error('Cannot check your session. Try again.');
+  return response.json();
+}
+```
+
+Keep the UI's checking, authenticated, anonymous and failed states distinct.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Verify identity on the server; client flags are not proof.
+- Distinguish session rejection from a failed network request.
+- HttpOnly limits secret reading; writes still need CSRF defense.
+- Revoke sessions server-side; clear caches on account changes.
+- Use OIDC for federated identity; OAuth alone delegates access.
+
+## Trade-offs
+
+| Approach       | Strengths           | Weaknesses            |
+| -------------- | ------------------- | --------------------- |
+| Session cookie | HttpOnly; revocable | Storage; CSRF defense |
+| Bearer token   | Explicit transport  | JS exposure; renewal  |
+| Login provider | Shared login; MFA   | Redirects; outages    |
+
+## Interview questions
+
+<InterviewQuestion question="How does authentication differ from authorization?">
+
+Authentication identifies the caller, while authorization decides whether that caller may perform an action on a resource.
+A signed-in user still needs a server-side permission check before reading someone else's document.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Would you store a session token in localStorage?">
+
+First ask whether browser JavaScript needs the token at all; a same-origin back end can often hold credentials and issue an HttpOnly session cookie.
+If a direct API integration needs a bearer token, assess exposure, lifetime and renewal deliberately rather than defaulting to persistent JavaScript-readable storage.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What should happen when a session expires during an edit?">
+
+Preserve the draft, explain that sign-in is required, and resume only after checking the new identity and permissions.
+Do not blindly replay a write whose server-side outcome is unknown; reconcile it or use the operation's idempotency contract.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The authentication service verifies a password, passkey or identity-provider response, then creates a session with a server-enforced lifetime.
+Requests carry a session identifier or token, which trusted infrastructure validates before constructing the caller's identity.
+For OpenID Connect, use the provider's supported authorization-code flow with PKCE and the library's state, nonce and redirect checks.
+
+### Design details
+
+- Establish identity through a trusted authentication service; client flags and decoded token claims are not proof.
+- Distinguish a rejected session from a network failure so an outage does not silently log the user out.
+- Protect cookie-authenticated writes against CSRF; HttpOnly limits token reading but does not neutralize XSS.
+- Expire and revoke sessions on the server, rotate identifiers after sign-in, and clear private client caches when identity changes.
+- Use a maintained OIDC client for federated sign-in; OAuth alone delegates access and does not define user authentication.
+
+### Edge cases
+
+- Several tabs can observe expiry together; coordinate renewal and avoid a refresh loop on persistent 401 responses.
+- Clearing a cookie alone does not revoke a copied credential; logout must invalidate the server session too.
+- A switch to another account must remove the previous user's cached data before displaying the new account.
+
+### Common mistakes
+
+- Redirecting to sign-in for every failed fetch, including offline errors and server outages.
+- Assuming a JWT is encrypted or that decoding it verifies its signature, issuer, audience and expiry.
+- Treating `SameSite` as a substitute for a considered CSRF defense on state-changing endpoints.
+
+### References
+
+- [OWASP authentication guidance](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)
+- [OWASP session management guidance](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
+- [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html)
+- [Set-Cookie in MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie)
+
+</DeepDive>
