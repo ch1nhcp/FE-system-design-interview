@@ -1,0 +1,11 @@
+## How to choose
+
+Start by sorting state by where it comes from and who uses it.
+Server data belongs in a data-fetching cache, form and UI state stays in components, and only state that many parts of the app share needs a store.
+These three patterns describe how such a store is organized.
+
+| Pattern           | What it solves                                   | Reach for it when                                        |
+| ----------------- | ------------------------------------------------ | -------------------------------------------------------- |
+| Flux architecture | Unpredictable changes from many places           | Many components read and change the same state           |
+| Normalized state  | Duplicated, inconsistent copies of the same data | The same entities appear in many lists and views         |
+| Event sourcing    | Losing history and the ability to replay         | You need undo, audit trails, offline sync or time travel |

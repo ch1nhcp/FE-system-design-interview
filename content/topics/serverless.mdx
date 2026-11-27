@@ -1,0 +1,115 @@
+---
+description: Functions that run on demand, scale automatically and cost nothing while idle, with cold starts as the catch.
+visual: diagram
+related: [edge-computing, server-side-rendering, timeouts, caching-and-expiry]
+---
+
+## TL;DR
+
+Serverless functions run your code only when a request or event arrives, and the platform scales them from zero to thousands of copies.
+You pay per invocation instead of for always-on servers, and many front end frameworks deploy SSR and API routes this way.
+The catch is cold starts, short time limits and no memory shared between requests.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="A serverless request"
+  steps={[
+    { title: 'Request arrives', note: 'HTTP call, queue message or schedule' },
+    { title: 'Warm instance?', note: 'Reuse one if it exists; otherwise a cold start boots a new one' },
+    { title: 'Run the handler', note: 'Stateless, with a time and memory limit' },
+    { title: 'Return the response', note: 'The instance stays warm for a while' },
+    { title: 'Scale to zero', note: 'Idle instances are stopped, and cost nothing' },
+  ]}
+  highlight={1}
+  loop="The next request reuses a warm instance, or starts a cold one"
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+```ts
+// app/api/subscribe/route.ts: a route handler deployed as a serverless function.
+import { z } from 'zod';
+
+const bodySchema = z.object({ email: z.email() });
+
+// Created once per instance and reused across warm invocations.
+const db = createDbClient({ url: process.env.DATABASE_URL, pool: { max: 1 } });
+
+export async function POST(request: Request) {
+  const result = bodySchema.safeParse(await request.json());
+  if (!result.success) {
+    return Response.json({ error: 'Invalid email' }, { status: 400 });
+  }
+  await db.subscribers.insert({ email: result.data.email });
+  return Response.json({ ok: true }, { status: 201 });
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- No servers to manage: the platform starts, scales and stops instances for you.
+- Cost follows usage, which suits spiky or low traffic, but steady high traffic can cost more than servers.
+- Cold starts add from tens of milliseconds to seconds when no warm instance is available.
+- Functions are stateless and short-lived: keep state in a database, cache or queue, not in memory.
+- Each instance opens its own connections, so use a connection pooler or an HTTP-based database driver.
+
+## Trade-offs
+
+| Strengths                       | Weaknesses                                    |
+| ------------------------------- | --------------------------------------------- |
+| Scales automatically, from zero | Cold starts on the first request              |
+| Pay only for what runs          | Execution time and memory limits              |
+| Little operations work          | Database connection limits and vendor lock-in |
+
+## Interview questions
+
+<InterviewQuestion question="What is a cold start, and how do you reduce it?">
+
+When no warm instance is free, the platform has to boot a runtime and load your code before handling the request.
+Keep the bundle and dependencies small, initialize expensive clients lazily, prefer lighter runtimes, and keep critical functions warm with provisioned or minimum instances.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why do serverless functions struggle with traditional databases?">
+
+Hundreds of instances can start at once, and each opens its own connections, which quickly exhausts the database's connection limit.
+Use a connection pooler, a database with an HTTP or serverless driver, and keep at most one connection per instance.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="When would you not use serverless?">
+
+For long-running work, steady high traffic where always-on servers are cheaper, persistent connections such as WebSockets, or latency-critical paths that cannot afford cold starts.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The platform packages each function, and on a request it routes to an idle instance or starts a new one.
+Instances handle one request (or a few) at a time, stay alive briefly after finishing, and are stopped when idle.
+Front end frameworks compile SSR pages and API routes into such functions, often one per route.
+
+### Edge cases
+
+- Fan-out bursts can start thousands of instances and overwhelm downstream services; add queues and concurrency limits.
+- Background work after the response may be killed; use the platform's `waitUntil` or a queue.
+- Retries on failure can run the same event twice, so handlers should be idempotent.
+
+### Common mistakes
+
+- Keeping user sessions or caches in memory, which disappear between invocations.
+- Opening a new database connection on every request.
+- Shipping a huge bundle, which makes every cold start slower.
+
+### References
+
+- [Serverless architecture on Martin Fowler's site](https://martinfowler.com/articles/serverless.html)
+- [Route handlers in the Next.js docs](https://nextjs.org/docs/app/getting-started/route-handlers)
+
+</DeepDive>

@@ -1,0 +1,127 @@
+---
+description: Storing each entity once, keyed by id, and referencing it by id everywhere else, like tables in a database.
+visual: code
+related: [flux-architecture, optimistic-updates, caching-and-expiry, graphql]
+---
+
+## TL;DR
+
+Nested API responses repeat the same entity in many places, so one update has to be applied everywhere.
+Normalizing stores each entity once in a lookup table keyed by id, and other data refers to it by id.
+Updates touch one place, lookups are instant, and the UI can never show two versions of the same thing.
+
+<VisualPanel tabs={['code']}>
+<VisualTab kind="code">
+
+Nested, as the API returns it: the same author appears in every post.
+
+```ts
+const posts = [
+  { id: 'p1', title: 'SSR', author: { id: 'u1', name: 'Linh' } },
+  { id: 'p2', title: 'CSR', author: { id: 'u1', name: 'Linh' } },
+];
+```
+
+Normalized: each entity once, referenced by id.
+
+```ts
+type Normalized<T> = { byId: Readonly<Record<string, T>>; allIds: readonly string[] };
+
+type State = {
+  users: Normalized<{ id: string; name: string }>;
+  posts: Normalized<{ id: string; title: string; authorId: string }>;
+};
+
+const state: State = {
+  users: { byId: { u1: { id: 'u1', name: 'Linh' } }, allIds: ['u1'] },
+  posts: {
+    byId: {
+      p1: { id: 'p1', title: 'SSR', authorId: 'u1' },
+      p2: { id: 'p2', title: 'CSR', authorId: 'u1' },
+    },
+    allIds: ['p1', 'p2'],
+  },
+};
+
+// Renaming the author is one update, and every post shows the new name.
+const renamed: State = {
+  ...state,
+  users: { ...state.users, byId: { ...state.users.byId, u1: { id: 'u1', name: 'Linh Tran' } } },
+};
+
+// Selectors join the tables back together for the UI.
+const selectPostsWithAuthor = (s: State) =>
+  s.posts.allIds.map((id) => {
+    const post = s.posts.byId[id]!;
+    return { ...post, author: s.users.byId[post.authorId] };
+  });
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Each entity type gets its own table: `byId` for lookups and `allIds` for order.
+- Relations are stored as ids, not nested copies.
+- One update changes one record, so every screen that shows it stays consistent.
+- Selectors rebuild the nested shape the UI needs; memoize them to avoid extra renders.
+- GraphQL clients such as Apollo and Relay normalize their cache automatically by type and id.
+
+## Trade-offs
+
+| Strengths                                  | Weaknesses                               |
+| ------------------------------------------ | ---------------------------------------- |
+| No duplicated data, no inconsistent copies | Extra step to normalize responses        |
+| Instant lookups and cheap updates by id    | Selectors needed to join data for the UI |
+| Smaller re-renders: one item changes alone | Overkill for small or read-only data     |
+
+## Interview questions
+
+<InterviewQuestion question="Why normalize client-side state?">
+
+Nested data duplicates entities, so an update must find every copy, and missing one shows stale data.
+With normalized tables, each entity has one source of truth, updates are a single write, and lookups by id are instant.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How does a normalized cache help with optimistic updates?">
+
+The optimistic change is written once, to the entity's record, and every list and detail view that references that id updates together.
+Rolling back on failure is also one write.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="When is normalizing not worth it?">
+
+When data is small, read-only, or only shown in one place, such as a single search results list that is replaced on every query.
+A data-fetching cache keyed by query is simpler there.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+When a response arrives, a normalizer walks it with a schema, pulls out each entity into its table and replaces nested objects with their ids.
+Reads go through selectors that look ids up again, so components get the shape they need.
+Redux Toolkit's `createEntityAdapter` and libraries such as normalizr implement this pattern.
+
+### Edge cases
+
+- Partial entities: a list endpoint may return fewer fields than the detail endpoint; merge fields instead of overwriting the record.
+- Deleting an entity must also remove its id from every list and relation that references it.
+- Entities without stable ids cannot be normalized safely.
+
+### Common mistakes
+
+- Selectors that build new arrays on every call, causing re-renders; memoize them.
+- Normalizing deeply for data the UI only shows once.
+- Storing derived values, like counts, next to entities, where they drift out of sync.
+
+### References
+
+- [Normalizing state shape in the Redux docs](https://redux.js.org/usage/structuring-reducers/normalizing-state-shape)
+- [createEntityAdapter in the Redux Toolkit docs](https://redux-toolkit.js.org/api/createEntityAdapter)
+
+</DeepDive>

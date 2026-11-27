@@ -117,3 +117,25 @@ Decision: animations are React SVG rendered from a pure model at a point in time
 - The transport animation covers short polling, long polling, SSE and WebSocket, with held requests, the open connection and client-to-server messages, so each topic opens on its own mode and can be compared with the others.
 - Code examples in the 25rem panel scroll horizontally; code blocks are focusable so keyboard users can scroll them.
 - The development-only `/lab` page is removed.
+
+## Phase 3 progress
+
+| Batch | Sections                        | Topics | Status      |
+| ----- | ------------------------------- | ------ | ----------- |
+| 1     | Architecture, State management  | 9      | In review   |
+| 2     | Back end APIs, Component APIs   | 9      | Not started |
+| 3     | Networking techniques           | 8      | Not started |
+| 4     | Performance                     | 14     | Not started |
+| 5     | Images, Accessibility           | 12     | Not started |
+| 6     | SEO, User experience            | 10     | Not started |
+| 7     | Security, i18n, Common patterns | 15     | Not started |
+
+Topics already written in an earlier section are not counted again, such as Optimistic updates under Performance.
+
+### Visual building blocks
+
+- `RealtimeTransportAnimation`: short polling, long polling, SSE and WebSocket.
+- `RenderingTimelineAnimation`: CSR, SSR, SSG/ISR and streaming with Server Components, with a browser mock and server, network and browser lanes.
+- `FlowDiagram`: a vertical chain of steps with an optional loop, for topics about structure rather than timing.
+- `AnimationFrame` and `useTimelinePlayback` hold what every step-through animation shares, so a new animation only needs a model and a picture.
+- Animations still planned for later batches: debounce and throttle, retries with backoff, race conditions, loading waterfalls and list virtualization.

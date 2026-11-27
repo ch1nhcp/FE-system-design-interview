@@ -20,11 +20,13 @@ It gives the lowest latency in both directions, but reconnection, heartbeats and
 type Connection<Out> = { send: (message: Out) => void; close: () => void };
 
 export function connect<In, Out>(url: string, onMessage: (message: In) => void): Connection<Out> {
-  let socket: WebSocket;
+  let socket: WebSocket | undefined;
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   let attempt = 0;
   let closedByUser = false;
 
   const open = () => {
+    if (closedByUser) return;
     socket = new WebSocket(url);
     socket.addEventListener('open', () => {
       attempt = 0;
@@ -35,7 +37,7 @@ export function connect<In, Out>(url: string, onMessage: (message: In) => void):
       // Reconnect with exponential backoff and full jitter.
       const delay = Math.random() * Math.min(30_000, 1000 * 2 ** attempt);
       attempt += 1;
-      setTimeout(open, delay);
+      reconnectTimer = setTimeout(open, delay);
     });
   };
 
@@ -43,11 +45,12 @@ export function connect<In, Out>(url: string, onMessage: (message: In) => void):
   return {
     send: (message) => {
       // A real app queues messages while reconnecting instead of dropping them.
-      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+      if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
     },
     close: () => {
       closedByUser = true;
-      socket.close();
+      clearTimeout(reconnectTimer); // a reconnect may be waiting in its backoff delay
+      socket?.close();
     },
   };
 }

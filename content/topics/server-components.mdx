@@ -1,0 +1,130 @@
+---
+description: Components that run only on the server, fetch their own data and send no JavaScript to the browser.
+visual: animation
+related: [server-side-rendering, code-splitting, client-side-rendering, loading-sequence]
+---
+
+## TL;DR
+
+React Server Components render on the server, can read data directly and ship no JavaScript for themselves.
+Interactive parts are marked `'use client'` and become small client islands inside the server-rendered tree.
+With `Suspense`, the page streams: fast parts show up first and slow parts arrive when their data is ready.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RenderingTimelineAnimation initialMode="streaming" />
+</VisualTab>
+<VisualTab kind="code">
+
+```tsx
+// app/products/page.tsx: a Server Component (the default). It ships no JavaScript.
+import { Suspense } from 'react';
+
+import { AddToCart } from './add-to-cart';
+
+export default async function ProductsPage() {
+  const products = await db.product.findMany({ take: 20 }); // direct data access on the server
+
+  return (
+    <main>
+      <ul>
+        {products.map((product) => (
+          <li key={product.id}>
+            {product.name}
+            <AddToCart productId={product.id} />
+          </li>
+        ))}
+      </ul>
+      <Suspense fallback={<p>Loading reviews…</p>}>
+        <Reviews /> {/* streams in when its slow query finishes */}
+      </Suspense>
+    </main>
+  );
+}
+```
+
+```tsx
+// add-to-cart.tsx: a Client Component island, the only part that ships JavaScript.
+'use client';
+import { useTransition } from 'react';
+
+export function AddToCart({ productId }: { productId: string }) {
+  const [pending, startTransition] = useTransition();
+  return (
+    <button disabled={pending} onClick={() => startTransition(() => addToCart(productId))}>
+      {pending ? 'Adding…' : 'Add to cart'}
+    </button>
+  );
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Server components run at request or build time and never in the browser, so their code and dependencies stay off the bundle.
+- They can be `async` and read databases, files or internal APIs directly, without a client-side fetch.
+- They cannot use state, effects or browser APIs; those belong in client components marked `'use client'`.
+- Props passed from a server to a client component must be serializable, such as plain data, not functions.
+- `Suspense` boundaries let the server stream slow parts later instead of blocking the whole page.
+
+## Trade-offs
+
+| Strengths                                   | Weaknesses                                     |
+| ------------------------------------------- | ---------------------------------------------- |
+| Less JavaScript, faster interactivity       | Needs a framework and a server (or build step) |
+| Data fetching next to the component, no API | New boundaries to learn: server vs client      |
+| Streaming shows content progressively       | Every navigation round-trips to the server     |
+
+## Interview questions
+
+<InterviewQuestion question="How are Server Components different from SSR?">
+
+SSR renders client components to HTML on the server, then sends all their JavaScript to hydrate them.
+Server Components are never hydrated: they render on the server only, and the browser gets their output, not their code.
+They are usually used together: server components for the static and data-heavy parts, client components for interactivity.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Where do you draw the line between server and client components?">
+
+Keep components on the server by default, and move the smallest interactive leaf to the client, such as a button, a form or a menu.
+Pass server-rendered content into client components as `children` instead of importing it, so it stays on the server.
+Anything that needs state, effects, event handlers or browser APIs has to be a client component.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How does streaming improve perceived performance?">
+
+The server sends the shell and fast sections immediately, with fallbacks where slow data is still loading.
+Each `Suspense` boundary is filled in as its data resolves, on the same response, so users see and use most of the page sooner.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The server renders the component tree into a serialized description of the UI, the RSC payload, plus HTML for the first load.
+Client components appear in that payload as references to their JavaScript chunks, with the props to render them.
+On navigation the client fetches only the new payload and merges it into the page without losing client state.
+
+### Edge cases
+
+- Importing a server-only module, such as a database client, into a client component leaks it to the browser bundle; mark such modules `server-only`.
+- Context providers are client components, so wrap them as low in the tree as possible.
+- Non-serializable props, such as class instances or functions, fail at the server and client boundary.
+
+### Common mistakes
+
+- Adding `'use client'` at the top of the tree, which turns the whole page into client components.
+- Sequential `await`s in nested server components, creating a data waterfall; start requests in parallel.
+- Using server components for highly interactive widgets that need instant feedback.
+
+### References
+
+- [Server Components in the React docs](https://react.dev/reference/rsc/server-components)
+- ['use client' in the React docs](https://react.dev/reference/rsc/use-client)
+
+</DeepDive>

@@ -1,0 +1,123 @@
+---
+description: Storing every change as an event and deriving the current state by replaying them.
+visual: diagram
+related: [flux-architecture, undo-redo, conflict-resolution, offline-usage]
+---
+
+## TL;DR
+
+Instead of saving the latest state, you save the sequence of events that led to it, such as "item added" or "coupon applied".
+The current state is computed by replaying those events, so you get a full history, undo and time travel for free.
+The price is more storage, versioning old events and rebuilding state efficiently.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Event sourcing"
+  steps={[
+    { title: 'User intent', note: 'Add an item, apply a coupon' },
+    { title: 'Append an event', note: 'Immutable, ordered, never edited' },
+    { title: 'Event log', note: 'The source of truth' },
+    { title: 'Replay (reduce)', note: 'Fold events into state' },
+    { title: 'Current state and views', note: 'Derived, can be rebuilt any time' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+```ts
+type CartEvent =
+  | { type: 'itemAdded'; id: string; price: number }
+  | { type: 'itemRemoved'; id: string }
+  | { type: 'couponApplied'; percentOff: number };
+
+type Cart = { items: Readonly<Record<string, number>>; percentOff: number };
+
+const emptyCart: Cart = { items: {}, percentOff: 0 };
+
+function apply(cart: Cart, event: CartEvent): Cart {
+  switch (event.type) {
+    case 'itemAdded':
+      return { ...cart, items: { ...cart.items, [event.id]: event.price } };
+    case 'itemRemoved':
+      return { ...cart, items: Object.fromEntries(Object.entries(cart.items).filter(([id]) => id !== event.id)) };
+    case 'couponApplied':
+      return { ...cart, percentOff: event.percentOff };
+  }
+}
+
+// State is never stored, only derived: replay every event, or only those up to a point in time.
+export const replay = (events: readonly CartEvent[]) => events.reduce(apply, emptyCart);
+
+// Undo is just replaying without the last event.
+export const undo = (events: readonly CartEvent[]) => events.slice(0, -1);
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- The event log is the source of truth; state is a cache you can always rebuild from it.
+- Events are facts in the past tense and are never edited; mistakes are fixed with new events.
+- You get an audit trail, undo and redo, time travel debugging and the ability to build new views from old data.
+- Long logs are replayed from snapshots, so you do not fold millions of events on every read.
+- Event shapes change over time, so version them and upgrade old events when you read them.
+
+## Trade-offs
+
+| Strengths                                  | Weaknesses                            |
+| ------------------------------------------ | ------------------------------------- |
+| Full history, audit trail and time travel  | More storage and more moving parts    |
+| Undo, redo and replay come almost for free | Old event versions must keep working  |
+| New read models can be built from old data | Read models are eventually consistent |
+
+## Interview questions
+
+<InterviewQuestion question="Where does event sourcing show up on the front end?">
+
+Redux devtools replaying actions, undo and redo stacks, offline queues that replay changes when the network returns, and collaborative editors that sync operations instead of whole documents.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you keep replay fast when the log gets long?">
+
+Store periodic snapshots of the state and replay only the events after the latest one.
+Keep read models, also called projections, updated as events arrive, so reads do not replay anything.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you change an event's shape once it is in production?">
+
+Never rewrite stored events.
+Add a version to each event and upcast old versions to the new shape when reading, or add a new event type and handle both.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Commands, such as "apply coupon", are validated against the current state and, if accepted, produce one or more events.
+Events are appended to an ordered log.
+Reducers fold the log into the current state, and projections build other views, such as a summary for a dashboard.
+
+### Edge cases
+
+- Concurrent writers can append conflicting events; use an expected version on append, or merge rules such as those in CRDTs.
+- Personal data in an immutable log conflicts with deletion requests; store it separately or encrypt it per user.
+- Replaying events must not repeat side effects such as sending emails; keep side effects out of reducers.
+
+### Common mistakes
+
+- Storing commands ("set total to 42") instead of facts ("item added").
+- Editing past events to fix bugs instead of appending corrections.
+- Using event sourcing for simple CRUD data that does not need history.
+
+### References
+
+- [Event sourcing by Martin Fowler](https://martinfowler.com/eaaDev/EventSourcing.html)
+- [Event sourcing pattern in the Azure Architecture Center](https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing)
+
+</DeepDive>

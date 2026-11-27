@@ -1,0 +1,114 @@
+---
+description: The server sends an empty HTML shell and JavaScript builds the whole page in the browser.
+visual: animation
+related: [server-side-rendering, code-splitting, ui-states, prerendering]
+---
+
+## TL;DR
+
+The server returns a nearly empty HTML file, and JavaScript fetches data and renders everything in the browser.
+Hosting is simple and later navigations feel instant, but the first visit shows nothing until the bundle and the data have loaded.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RenderingTimelineAnimation initialMode="csr" />
+</VisualTab>
+<VisualTab kind="code">
+
+```html
+<!-- index.html: all the server ever sends -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Dashboard</title>
+    <script type="module" src="/assets/main.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+```
+
+```tsx
+// main.tsx: render the app, then load data from the browser.
+import { createRoot } from 'react-dom/client';
+
+createRoot(document.getElementById('root')!).render(<App />);
+
+function App() {
+  const { data, error, isPending } = useQuery({ queryKey: ['projects'], queryFn: fetchProjects });
+  if (isPending) return <Skeleton />;
+  if (error) return <ErrorState onRetry={() => location.reload()} />;
+  return <ProjectList projects={data} />;
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- The first visit waits for HTML, then the JavaScript bundle, then the data, before anything useful appears.
+- After that, navigation happens in the browser without full page loads, so it feels fast.
+- The site is just static files, so hosting is cheap and a CDN can serve everything.
+- Search engines and link previews see an empty shell unless they run JavaScript, so it is a poor fit for public, SEO pages.
+- Keep it fast with code splitting, skeletons, prefetching and caching data on the client.
+
+## Trade-offs
+
+| Strengths                                 | Weaknesses                                   |
+| ----------------------------------------- | -------------------------------------------- |
+| Cheap static hosting, no server rendering | Slow first content: HTML, then JS, then data |
+| Fast, app-like navigation after load      | Weak SEO and link previews                   |
+| Simple mental model, one runtime          | Large bundles hurt low-end devices           |
+
+## Interview questions
+
+<InterviewQuestion question="When is client-side rendering the right choice?">
+
+For apps behind a login, such as dashboards, editors and admin tools, where SEO does not matter and users stay for a long session.
+The first load is paid once, and everything after it is fast and cheap to host.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="How do you improve the first load of a CSR app?">
+
+Ship less JavaScript: split code by route, lazy load heavy widgets and remove unused dependencies.
+Start the data request early, in parallel with the bundle, for example from a preload hint or by kicking it off before rendering.
+Show a skeleton that matches the final layout, and cache the shell with a service worker for repeat visits.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why is CSR bad for SEO, and what can you do about it?">
+
+Crawlers first see an empty `div`, and rendering JavaScript is slower, limited and not guaranteed for every crawler or link preview.
+Pre-render public pages at build time or render them on the server, and keep CSR for the logged-in part of the product.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The browser downloads `index.html`, which only references the bundle.
+Once the JavaScript runs, the router picks a page, components fetch data and React builds the DOM from scratch.
+Every later navigation swaps components in place and fetches only the data it needs.
+
+### Edge cases
+
+- Slow devices: parsing and executing a large bundle can take seconds on a low-end phone, even on a fast network.
+- Deep links and refreshes need the server or CDN to return `index.html` for every route.
+- Users with JavaScript disabled or failing to load see nothing, so show a meaningful `noscript` message.
+
+### Common mistakes
+
+- Request waterfalls: the bundle loads, then the page fetches data, then a child fetches more data.
+- A blank screen instead of a skeleton while loading.
+- Choosing CSR for marketing or content pages that need to rank in search.
+
+### References
+
+- [Rendering on the web on web.dev](https://web.dev/articles/rendering-on-the-web)
+- [createRoot in the React docs](https://react.dev/reference/react-dom/client/createRoot)
+
+</DeepDive>

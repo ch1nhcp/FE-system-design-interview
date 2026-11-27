@@ -263,6 +263,82 @@
       "animation": "Animation",
       "diagram": "Sơ đồ",
       "code": "Code"
+    },
+    "rendering": {
+      "title": "Các chiến lược render",
+      "modeLabel": "Chiến lược",
+      "modes": {
+        "csr": "CSR",
+        "ssr": "SSR",
+        "ssg": "SSG / ISR",
+        "streaming": "Streaming"
+      },
+      "diagramLabel": "Timeline công việc của server, mạng và trình duyệt khi tải trang với {mode}",
+      "lanes": {
+        "server": "Server",
+        "network": "Mạng",
+        "browser": "Trình duyệt"
+      },
+      "tasks": {
+        "shell": "Shell",
+        "parseShell": "",
+        "bundle": "JS",
+        "execute": "Chạy JS",
+        "data": "API",
+        "render": "Render",
+        "html": "HTML",
+        "paint": "",
+        "hydrate": "Hydrate",
+        "query": "Query chậm",
+        "shellHtml": "Shell",
+        "rest": "Phần còn lại",
+        "restPaint": ""
+      },
+      "screen": {
+        "blank": "Màn hình trắng",
+        "spinner": "Biểu tượng đang tải",
+        "partial": "Trang có chỗ giữ cho phần chậm",
+        "content": "Trang đầy đủ"
+      },
+      "visible": "Hiển thị",
+      "interactive": "Tương tác được",
+      "notInteractive": "Chưa tương tác được",
+      "pending": "…",
+      "statsVisible": "Nội dung hiện",
+      "statsInteractive": "Tương tác được",
+      "statsJavascript": "JavaScript",
+      "msValue": "{ms} ms",
+      "kbValue": "{kb} kB",
+      "captions": {
+        "idle": "Bấm phát, hoặc đi qua từng bước của quá trình tải trang.",
+        "csrShell": "Server gửi về một khung HTML gần như rỗng.",
+        "csrParse": "Trình duyệt chỉ hiện được trang trắng hoặc biểu tượng đang tải.",
+        "csrBundle": "Trình duyệt tải toàn bộ bundle JavaScript.",
+        "csrExecute": "JavaScript chạy và bắt đầu lấy dữ liệu.",
+        "csrData": "Trang chờ API trả về.",
+        "csrRender": "React render trang ngay trên trình duyệt.",
+        "csrInteractive": "Nội dung hiện ra và dùng được cùng lúc, nhưng chỉ sau khi mọi thứ đã tải xong.",
+        "ssrRender": "Server lấy dữ liệu và render ra HTML đầy đủ.",
+        "ssrHtml": "HTML hoàn chỉnh được gửi tới trình duyệt.",
+        "ssrPaint": "Trình duyệt vẽ nội dung ngay lập tức.",
+        "ssrBundle": "Nội dung đã hiện, nhưng JavaScript để trang hoạt động vẫn đang tải.",
+        "ssrHydrate": "React hydrate: gắn event handler vào HTML đang có trên màn hình.",
+        "ssrInteractive": "Trang đã tương tác được.",
+        "ssgHtml": "CDN gần người dùng trả về HTML đã build sẵn.",
+        "ssgPaint": "Trình duyệt vẽ nội dung gần như ngay lập tức.",
+        "ssgBundle": "Bundle JavaScript tải ở chế độ nền.",
+        "ssgHydrate": "React hydrate trang đã build sẵn.",
+        "ssgInteractive": "Đã tương tác được. Với ISR, CDN build lại trang ở chế độ nền khi nó cũ.",
+        "streamShell": "Server render các phần nhanh và bắt đầu stream ngay.",
+        "streamShellHtml": "Phần khung được stream tới trình duyệt trong khi một query chậm vẫn chạy trên server.",
+        "streamPaint": "Trình duyệt vẽ phần khung và nội dung nhanh, kèm chỗ giữ cho phần chậm.",
+        "streamBundle": "Chỉ client component mới gửi JavaScript, nên bundle nhỏ.",
+        "streamHydrate": "Các client component được hydrate.",
+        "streamInteractive": "Đã tương tác được, dù phần chậm vẫn đang tải.",
+        "streamRest": "Phần chậm được stream tiếp trên cùng response.",
+        "streamRestPaint": "Trình duyệt thay chỗ giữ bằng nội dung thật.",
+        "streamComplete": "Toàn bộ trang đã sẵn sàng."
+      }
     }
   }
 }
