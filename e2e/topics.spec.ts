@@ -46,7 +46,7 @@ test.describe('sections and topics', () => {
     expect((await page.request.get('/sections/not-a-section')).status()).toBe(404);
   });
 
-  test('renders the framework and flashcards placeholders', async ({ page }) => {
+  test('renders the framework and flashcards pages', async ({ page }) => {
     await page.goto('/framework');
     await expect(page.getByRole('heading', { level: 1, name: 'Interview framework' })).toBeVisible();
 

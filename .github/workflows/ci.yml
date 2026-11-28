@@ -2,6 +2,9 @@ name: Check PR
 
 on: [pull_request]
 
+env:
+  SITE_URL: https://study.example.org
+
 jobs:
   run-ci:
     env:

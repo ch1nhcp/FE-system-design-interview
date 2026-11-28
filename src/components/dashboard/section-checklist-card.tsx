@@ -13,9 +13,11 @@ import { countLearned, useProgressStore } from '@/stores/use-progress-store';
 
 type Props = {
   section: Section;
+  visibleTopics?: readonly TopicSlug[];
+  onLearned?: () => void;
 };
 
-export function SectionChecklistCard({ section }: Props) {
+export function SectionChecklistCard({ section, visibleTopics = section.topics, onLearned }: Props) {
   const t = useTranslations('Dashboard');
   const tSections = useTranslations('Sections');
   const tTopics = useTranslations('Topics');
@@ -49,7 +51,7 @@ export function SectionChecklistCard({ section }: Props) {
       </CardHeader>
       <CardContent>
         <ul aria-labelledby={headingId} className="flex flex-col gap-2.5">
-          {section.topics.map((topic: TopicSlug) => {
+          {visibleTopics.map((topic: TopicSlug) => {
             const status = topics[topic];
             return (
               <li key={topic} className="flex items-start gap-2.5">
@@ -57,7 +59,10 @@ export function SectionChecklistCard({ section }: Props) {
                   className="mt-0.5"
                   aria-label={t('learnedLabel', { topic: tTopics.markup(topic, topicLabelMarkup) })}
                   checked={status === 'learned'}
-                  onCheckedChange={(value) => setStatus(topic, value === true ? 'learned' : null)}
+                  onCheckedChange={(value) => {
+                    setStatus(topic, value === true ? 'learned' : null);
+                    if (value === true) onLearned?.();
+                  }}
                 />
                 <Link
                   href={`/topics/${topic}`}

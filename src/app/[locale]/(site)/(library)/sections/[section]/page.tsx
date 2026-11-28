@@ -4,9 +4,12 @@ import { notFound } from 'next/navigation';
 
 import { topicMdxComponents } from '@/components/mdx/mdx-components';
 import { SectionTopicList } from '@/components/section/section-topic-list';
+import { PageStructuredData } from '@/components/site/page-structured-data';
 import { resolveLocale } from '@/i18n/resolve-locale';
 import { routing } from '@/i18n/routing';
 import { getSectionOverview, getTopicContent } from '@/lib/content/topic-source';
+import { createPageMetadata } from '@/lib/seo/metadata';
+import { getPageInfo } from '@/lib/seo/page-info';
 import { SECTIONS, getSection } from '@/lib/topics/registry';
 
 type Props = {
@@ -25,8 +28,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!section) {
     return {};
   }
-  const t = await getTranslations({ locale, namespace: 'Sections' });
-  return { title: t(`${section.slug}.title`), description: t(`${section.slug}.description`) };
+  const info = await getPageInfo(locale, `section-${section.slug}`);
+  return info ? createPageMetadata(info, locale) : {};
 }
 
 export default async function SectionPage({ params }: Props) {
@@ -50,6 +53,7 @@ export default async function SectionPage({ params }: Props) {
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">
+      <PageStructuredData info={await getPageInfo(locale, `section-${section.slug}`)} locale={locale} />
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">{t(`${section.slug}.title`)}</h1>
         <p className="text-muted-foreground">{t(`${section.slug}.description`)}</p>

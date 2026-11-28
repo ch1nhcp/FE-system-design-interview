@@ -19,7 +19,7 @@ export function MobileNav() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={t('openMenu')} className="lg:hidden">
+        <Button variant="ghost" size="icon" aria-label={t('openMenu')} className="@min-[64rem]/site-header:hidden">
           <MenuIcon aria-hidden />
         </Button>
       </SheetTrigger>
@@ -28,7 +28,7 @@ export function MobileNav() {
           <SheetTitle>{t('name')}</SheetTitle>
         </SheetHeader>
         <div {...{ [NAV_SCROLL_CONTAINER_ATTRIBUTE]: '' }} className="flex flex-col gap-4 overflow-y-auto p-4">
-          <MainNavLinks onNavigate={close} className="-ml-2.5 sm:hidden" />
+          <MainNavLinks onNavigate={close} className="-ml-2.5" />
           <SectionsNav onNavigate={close} />
         </div>
       </SheetContent>

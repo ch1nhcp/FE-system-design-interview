@@ -29,7 +29,9 @@
     "resetDescription": "Thao tác này sẽ bỏ đánh dấu mọi mục trong checklist và không thể hoàn tác.",
     "resetCancel": "Huỷ",
     "resetConfirm": "Đặt lại",
-    "source": "Nguồn: <link>Front End System Design Cheatsheet</link> của GreatFrontEnd"
+    "source": "Nguồn: <link>Front End System Design Cheatsheet</link> của GreatFrontEnd",
+    "shown": "Hiển thị {count} chủ đề",
+    "showAll": "Xem tất cả chủ đề"
   },
   "Section": {
     "topicCount": "{count} chủ đề",
@@ -51,12 +53,75 @@
   "Framework": {
     "title": "Framework phỏng vấn",
     "description": "Cách trình bày từng bước cho buổi phỏng vấn front end system design 45 phút.",
-    "comingSoon": "Hướng dẫn này sắp có."
+    "guideIntro": "Dùng RADIO để làm rõ giả định và quyết định thiết kế. Quay lại các bước trước khi thông tin mới làm thay đổi phương án.",
+    "pacing": "Gợi ý cho một buổi luyện tập 45 phút",
+    "pacingHint": "Thời lượng dưới đây chỉ hỗ trợ luyện tập. Hãy điều chỉnh theo người phỏng vấn, đề bài và phần cần phân tích sâu hơn.",
+    "minutes": "{count} phút",
+    "steps": "Các bước RADIO",
+    "deliverableLabel": "Kết quả cần có sau bước này",
+    "promptsLabel": "Câu hỏi tự kiểm tra",
+    "readMore": "Bài học liên quan",
+    "source": "Nguồn framework: hướng dẫn RADIO của GreatFrontEnd",
+    "closing": "Kết thúc bằng cách nối các lựa chọn với yêu cầu ban đầu. Nêu đánh đổi quan trọng nhất, một rủi ro chưa giải quyết và bằng chứng đầu tiên cần thu thập để kiểm chứng thiết kế.",
+    "stages": {
+      "requirements": {
+        "title": "Yêu cầu",
+        "summary": "Thống nhất tác vụ, người dùng và ràng buộc trước khi chọn công nghệ. Chuyển kỳ vọng mơ hồ thành các tiêu chí có thể kiểm chứng.",
+        "deliverable": "Các hành trình chính, phạm vi loại trừ và mục tiêu chất lượng đo được.",
+        "q1": "Ai dùng giao diện này và họ cần hoàn thành việc gì?",
+        "q2": "Ràng buộc nào về quy mô, độ trễ, offline, accessibility và quyền truy cập làm thay đổi thiết kế?",
+        "q3": "Điều gì có thể để sau và giả định nào cần xác nhận trước khi tiếp tục?"
+      },
+      "architecture": {
+        "title": "Kiến trúc",
+        "summary": "Phác thảo ranh giới sở hữu rendering, truy cập dữ liệu, state và side effect. Theo dấu một thao tác quan trọng qua các ranh giới đó.",
+        "deliverable": "Sơ đồ trách nhiệm, luồng dữ liệu và các ranh giới triển khai hoặc tin cậy chính.",
+        "q1": "Phần nào chạy trên browser, server và hạ tầng dùng chung?",
+        "q2": "Mỗi phần state nằm ở đâu và ai được thay đổi nó?",
+        "q3": "Giao diện hoạt động ra sao khi một dịch vụ chậm hoặc không sẵn sàng?"
+      },
+      "data": {
+        "title": "Mô hình dữ liệu",
+        "summary": "Xác định thực thể và định danh mà trải nghiệm phụ thuộc vào. Tách dữ kiện domain bền vững khỏi cache và state hiển thị tạm thời.",
+        "deliverable": "Thực thể có id ổn định, quan hệ, vòng đời và nguồn dữ liệu chuẩn rõ ràng.",
+        "q1": "Bản ghi nào được dùng ở nhiều màn hình và được định danh thế nào?",
+        "q2": "Dữ liệu nào thuộc server, client cache hoặc chỉ một component?",
+        "q3": "Pagination, xoá, optimistic update và chỉnh sửa đồng thời ảnh hưởng mô hình ra sao?"
+      },
+      "interfaces": {
+        "title": "Định nghĩa interface",
+        "summary": "Cụ thể hoá hợp đồng giữa các ranh giới. Mô tả một thao tác bình thường cùng đường xử lý lỗi thay vì chỉ liệt kê tên endpoint.",
+        "deliverable": "Ví dụ hợp đồng request, response và component, gồm lỗi và giả định về phiên bản.",
+        "q1": "Tham số, kết quả, sự kiện và quy tắc sở hữu nào đi qua mỗi ranh giới?",
+        "q2": "Xử lý xác thực, phân quyền, retry, huỷ và response cũ như thế nào?",
+        "q3": "Kỹ sư khác có thể viết phía gọi mà không phải đoán hợp đồng không?"
+      },
+      "optimizations": {
+        "title": "Tối ưu và phân tích sâu",
+        "summary": "Chọn rủi ro có ảnh hưởng lớn nhất từ yêu cầu để phân tích kỹ. Gắn mỗi tối ưu với một nút thắt hoặc nhu cầu người dùng.",
+        "deliverable": "Danh sách đánh đổi theo ưu tiên, cơ chế bảo vệ khi lỗi và kế hoạch đo lường.",
+        "q1": "Chi phí tải, tương tác, rendering hay bộ nhớ nào quan trọng nhất với tác vụ này?",
+        "q2": "Điều gì thay đổi với bàn phím, màn hình nhỏ, mạng yếu và ngôn ngữ khác?",
+        "q3": "Bạn đo gì trước và kết quả nào sẽ khiến bạn sửa thiết kế?"
+      }
+    }
   },
   "Flashcards": {
     "title": "Flashcard",
     "description": "Ôn nhanh bằng câu hỏi phỏng vấn của mọi chủ đề.",
-    "comingSoon": "Flashcard sắp có."
+    "showAnswer": "Xem đáp án",
+    "hideAnswer": "Ẩn đáp án",
+    "previous": "Thẻ trước",
+    "next": "Thẻ tiếp",
+    "position": "Thẻ {current} trên {total}",
+    "codeExample": "Ví dụ mã",
+    "noCards": "Không có thẻ phù hợp với bộ lọc.",
+    "emptyTitle": "Chưa có thẻ cần ôn",
+    "emptyDescription": "Đánh dấu chủ đề cần ôn trong bài học hoặc checklist, hoặc chọn bộ lọc khác.",
+    "showAll": "Xem tất cả thẻ",
+    "markLearned": "Đánh dấu đã nắm chủ đề",
+    "markReview": "Ôn lại chủ đề này",
+    "progressHint": "Tiến độ áp dụng cho cả chủ đề, bao gồm các câu hỏi khác."
   },
   "Sections": {
     "architecture": {
@@ -467,5 +532,30 @@
       "diagram": "Minh họa năm hàng đang nhìn thấy",
       "note": "Cả hai chế độ chỉ vẽ hàng đang nhìn thấy. Số liệu mô phỏng danh sách thật; đây không phải benchmark DOM."
     }
+  },
+  "Study": {
+    "status": "Trạng thái chủ đề",
+    "all": "Tất cả chủ đề",
+    "review": "Cần ôn lại",
+    "section": "Nhóm chủ đề",
+    "allSections": "Tất cả nhóm"
+  },
+  "Search": {
+    "title": "Tìm chủ đề",
+    "description": "Tìm theo tên chủ đề, khái niệm hoặc câu hỏi phỏng vấn.",
+    "placeholder": "Tìm trong thư viện học tập...",
+    "results": "Chủ đề",
+    "hint": "Thử “WebSockets”, “retry” hoặc “focus”.",
+    "loading": "Đang tìm...",
+    "empty": "Chưa có chủ đề phù hợp. Hãy thử từ khác.",
+    "errorTitle": "Không tải được tìm kiếm",
+    "errorDescription": "Kiểm tra kết nối rồi thử lại.",
+    "retry": "Thử lại",
+    "keyboardHint": "Dùng phím mũi tên để chọn, Enter để mở và Escape để đóng."
+  },
+  "OpenGraph": {
+    "eyebrow": "ÔN PHỎNG VẤN",
+    "stats": "81 chủ đề / 14 phần",
+    "footer": "Học. Giải thích. Ôn lại."
   }
 }

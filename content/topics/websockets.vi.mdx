@@ -1,0 +1,132 @@
+---
+description: Kết nối hai chiều sống lâu cho phép client và server gửi thông điệp bất kỳ lúc nào với ít chi phí giao thức.
+visual: animation
+related: [server-sent-events, long-polling, retries, conflict-resolution]
+---
+
+## Tóm tắt
+
+WebSocket nâng cấp kết nối HTTP thành kênh hai chiều lâu dài.
+Độ trễ thấp, nhưng ứng dụng phải tự xử lý kết nối lại, heartbeat và đồng bộ bù.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RealtimeTransportAnimation initialMode="webSocket" />
+</VisualTab>
+<VisualTab kind="code">
+
+```ts
+type Connection<Out> = { send: (message: Out) => void; close: () => void };
+
+export function connect<In, Out>(url: string, onMessage: (message: In) => void): Connection<Out> {
+  let socket: WebSocket | undefined;
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  let attempt = 0;
+  let closedByUser = false;
+
+  const open = () => {
+    if (closedByUser) return;
+    socket = new WebSocket(url);
+    socket.addEventListener('open', () => {
+      attempt = 0;
+    });
+    socket.addEventListener('message', (event) => onMessage(JSON.parse(event.data) as In));
+    socket.addEventListener('close', () => {
+      if (closedByUser) return;
+      // Kết nối lại với backoff lũy thừa và full jitter.
+      const delay = Math.random() * Math.min(30_000, 1000 * 2 ** attempt);
+      attempt += 1;
+      reconnectTimer = setTimeout(open, delay);
+    });
+  };
+
+  open();
+  return {
+    send: (message) => {
+      // Ứng dụng thực cần xếp hàng thông điệp trong lúc nối lại thay vì bỏ chúng.
+      if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+    },
+    close: () => {
+      closedByUser = true;
+      clearTimeout(reconnectTimer); // Có thể đang chờ hết khoảng backoff để nối lại.
+      socket?.close();
+    },
+  };
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Hai phía cùng gửi trên một kết nối sống lâu.
+- Sau bắt tay, framing chỉ thêm 2 đến 14 byte mỗi thông điệp.
+- Tự bổ sung kết nối lại, heartbeat, ID và bảo đảm giao nhận.
+- Cần pub/sub liên server và timeout nhàn rỗi đủ dài.
+- Hợp chat, cộng tác, game và giao dịch hai chiều.
+
+## Cân nhắc
+
+| Ưu điểm                        | Hạn chế                             |
+| ------------------------------ | ----------------------------------- |
+| Độ trễ thấp theo cả hai chiều  | Tự nối lại, heartbeat và đồng bộ bù |
+| Ít chi phí trên mỗi thông điệp | Server có trạng thái, khó mở rộng   |
+| Hỗ trợ văn bản và nhị phân     | Proxy doanh nghiệp có thể chặn      |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Kết nối WebSocket bị ngắt thì xử lý thế nào?">
+
+Phát hiện bằng sự kiện `close` và heartbeat, vì kết nối TCP đã chết có thể im lặng nhiều phút.
+Nối lại bằng backoff lũy thừa kèm jitter, đăng ký lại các kênh rồi lấy dữ liệu bị lỡ theo số thứ tự gần nhất client đã nhận.
+Trong lúc đó, xếp hàng thông điệp cần gửi và hiển thị trạng thái kết nối trên UI.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Mở rộng WebSocket ra nhiều server bằng cách nào?">
+
+Mỗi kết nối nằm trên một server, nên cần phát thông điệp qua lớp pub/sub dùng chung như Redis, Kafka hoặc dịch vụ được quản lý để các server cùng nhận.
+Tăng timeout nhàn rỗi của bộ cân bằng tải và duy trì kết nối bằng heartbeat.
+Khi triển khai, rút dần các kết nối khỏi server cũ và cho client nối lại với jitter để tránh cùng dồn tới một lúc.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Chọn WebSocket, SSE hay long polling cho chat?">
+
+Chọn WebSocket khi người dùng gửi và nhận thường xuyên, đồng thời trạng thái đang nhập cần độ trễ thấp theo cả hai chiều.
+SSE kết hợp request `POST` thông thường đơn giản hơn nếu ít khi gửi dữ liệu lên.
+Long polling là phương án dự phòng khi mạng không cho phép hai cách trên.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Client gửi `GET` với `Upgrade: websocket`, `Connection: Upgrade` và một `Sec-WebSocket-Key` ngẫu nhiên.
+Server trả `101 Switching Protocols` cùng `Sec-WebSocket-Accept` được tính từ khóa đó.
+Sau bước bắt tay, hai phía trao đổi frame trên cùng kết nối TCP cho đến khi một phía đóng nó.
+Mỗi thông điệp chỉ thêm framing thay vì toàn bộ header HTTP.
+Mỗi kết nối thuộc một server, nên broadcast qua nhiều server cần pub/sub dùng chung.
+Chat, chỉnh sửa cộng tác, game nhiều người và giao dịch là các ví dụ có nhu cầu gửi thường xuyên theo cả hai chiều.
+
+### Trường hợp biên
+
+- Xác thực: trình duyệt không đặt được header tùy ý trong bước bắt tay, nên dùng cookie hoặc gửi token ngắn hạn trong thông điệp đầu tiên.
+  Tránh token trong URL vì chúng dễ lọt vào log.
+- Backpressure: `bufferedAmount` tăng khi tốc độ gửi vượt khả năng truyền của mạng, nên giảm tốc độ hoặc bỏ thông điệp ít quan trọng.
+- Heartbeat: API trình duyệt không cho gửi ping ở mức giao thức, nên cần thông điệp ping nhỏ ở mức ứng dụng.
+
+### Lỗi thường gặp
+
+- Không kiểm tra header `Origin` ở server, tạo điều kiện chiếm kết nối WebSocket từ site khác.
+- Dùng `ws://` thay cho `wss://` ở production.
+- Tin dữ liệu nhận được mà không kiểm tra cấu trúc và giá trị.
+
+### Tài liệu tham khảo
+
+- [WebSocket API trên MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API)
+- [RFC 6455: Giao thức WebSocket](https://www.rfc-editor.org/rfc/rfc6455.html)
+
+</DeepDive>

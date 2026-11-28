@@ -1,8 +1,13 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
+import { ProgressFilter } from '@/components/study/progress-filter';
+import type { ProgressFilterValue } from '@/components/study/progress-filter';
+import { Button } from '@/components/ui/button';
+import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Progress } from '@/components/ui/progress';
 import { SECTIONS, TOPIC_SLUGS } from '@/lib/topics/registry';
 import { countLearned, useProgressStore } from '@/stores/use-progress-store';
@@ -17,6 +22,10 @@ const TITLE_ID = 'dashboard-title';
 export function Dashboard() {
   const t = useTranslations('Dashboard');
   const topics = useProgressStore((state) => state.topics);
+  const [filter, setFilter] = useState<ProgressFilterValue>('all');
+  const shownRef = useRef<HTMLParagraphElement>(null);
+  const visibleTopics = TOPIC_SLUGS.filter((topic) => filter === 'all' || topics[topic] === 'review');
+  const visible = new Set(visibleTopics);
   const hasProgress = Object.keys(topics).length > 0;
 
   const total = TOPIC_SLUGS.length;
@@ -40,12 +49,40 @@ export function Dashboard() {
           </div>
         </div>
       </header>
-      <ReviewList />
-      <div className="columns-1 gap-3 sm:columns-2">
-        {SECTIONS.map((section) => (
-          <SectionChecklistCard key={section.slug} section={section} />
-        ))}
-      </div>
+      {filter === 'all' && <ReviewList />}
+      <ProgressFilter value={filter} onChange={setFilter} />
+      <p
+        ref={shownRef}
+        tabIndex={-1}
+        role="status"
+        className="text-muted-foreground focus-visible:ring-ring/50 rounded-sm text-sm outline-none focus-visible:ring-3"
+      >
+        {t('shown', { count: visibleTopics.length })}
+      </p>
+      {visibleTopics.length > 0 && (
+        <div className="columns-1 gap-3 sm:columns-2">
+          {SECTIONS.filter((section) => section.topics.some((topic) => visible.has(topic))).map((section) => (
+            <SectionChecklistCard
+              key={section.slug}
+              section={section}
+              visibleTopics={section.topics.filter((topic) => visible.has(topic))}
+              onLearned={filter === 'review' ? () => shownRef.current?.focus() : undefined}
+            />
+          ))}
+        </div>
+      )}
+      {visibleTopics.length === 0 && (
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>{t('reviewEmpty')}</EmptyTitle>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button variant="outline" onClick={() => setFilter('all')}>
+              {t('showAll')}
+            </Button>
+          </EmptyContent>
+        </Empty>
+      )}
       <p className="text-muted-foreground text-xs">
         {t.rich('source', {
           link: (chunks: ReactNode) => (

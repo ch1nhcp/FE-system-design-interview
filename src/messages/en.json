@@ -29,7 +29,9 @@
     "resetDescription": "This unchecks every item in the checklist. It cannot be undone.",
     "resetCancel": "Cancel",
     "resetConfirm": "Reset",
-    "source": "Source: <link>Front End System Design Cheatsheet</link> by GreatFrontEnd"
+    "source": "Source: <link>Front End System Design Cheatsheet</link> by GreatFrontEnd",
+    "shown": "{count, plural, one {Showing # topic} other {Showing # topics}}",
+    "showAll": "Show all topics"
   },
   "Section": {
     "topicCount": "{count, plural, one {# topic} other {# topics}}",
@@ -51,12 +53,75 @@
   "Framework": {
     "title": "Interview framework",
     "description": "A step by step way to structure a 45 minute front end system design interview.",
-    "comingSoon": "This guide is coming soon."
+    "guideIntro": "Use RADIO to make your assumptions and decisions visible. Move between steps when new information changes the design.",
+    "pacing": "A suggested 45-minute practice session",
+    "pacingHint": "The timings below are a practice aid. Adapt them to the interviewer, the problem and the areas that need deeper discussion.",
+    "minutes": "{count} min",
+    "steps": "RADIO steps",
+    "deliverableLabel": "Leave this step with",
+    "promptsLabel": "Questions to ask yourself",
+    "readMore": "Related lessons",
+    "source": "Framework source: GreatFrontEnd RADIO guide",
+    "closing": "Finish by connecting your choices back to the requirements. Name the most important trade-off, an unresolved risk and the first evidence you would collect to validate the design.",
+    "stages": {
+      "requirements": {
+        "title": "Requirements",
+        "summary": "Agree on the task, the users and the constraints before naming a stack. Turn vague expectations into decisions you can verify.",
+        "deliverable": "A small set of primary journeys, explicit exclusions and measurable quality goals.",
+        "q1": "Who uses this interface, and what must they finish successfully?",
+        "q2": "Which scale, latency, offline, accessibility and permission constraints change the design?",
+        "q3": "What can we defer, and which assumptions should we confirm before proceeding?"
+      },
+      "architecture": {
+        "title": "Architecture",
+        "summary": "Sketch the boundaries that own rendering, data access, state and side effects. Follow one important user action through those boundaries.",
+        "deliverable": "A diagram with responsibilities, data flow and the main deployment or trust boundaries.",
+        "q1": "What runs in the browser, on the server and in shared infrastructure?",
+        "q2": "Where does each piece of state live, and who is allowed to change it?",
+        "q3": "How does the interface behave when a dependency is slow or unavailable?"
+      },
+      "data": {
+        "title": "Data model",
+        "summary": "Define the entities and identities the experience depends on. Separate durable domain facts from caches and temporary view state.",
+        "deliverable": "Entities with stable ids, relationships, lifecycle rules and a clear source of truth.",
+        "q1": "Which records are shared across views, and how are they identified?",
+        "q2": "What belongs on the server, in a client cache or only in one component?",
+        "q3": "How do pagination, deletion, optimistic changes and concurrent edits affect the model?"
+      },
+      "interfaces": {
+        "title": "Interface definition",
+        "summary": "Make the contracts between your boundaries concrete. Specify an ordinary operation and its failure path rather than listing endpoint names alone.",
+        "deliverable": "Representative request, response and component contracts, including errors and versioning assumptions.",
+        "q1": "What parameters, results, events and ownership rules cross each boundary?",
+        "q2": "How are authentication, permissions, retries, cancellation and stale responses handled?",
+        "q3": "Can another engineer implement the caller without guessing the contract?"
+      },
+      "optimizations": {
+        "title": "Optimizations and deep dive",
+        "summary": "Choose the most consequential risks from the requirements and examine them in detail. Tie every optimization to a bottleneck or a user need.",
+        "deliverable": "A prioritized set of trade-offs, failure safeguards and a measurement plan.",
+        "q1": "Which loading, interaction, rendering or memory cost matters most for this task?",
+        "q2": "What changes for keyboard users, small screens, weak connections and different languages?",
+        "q3": "What would you measure first, and what result would make you revise the design?"
+      }
+    }
   },
   "Flashcards": {
     "title": "Flashcards",
     "description": "Quick review built from the interview questions of every topic.",
-    "comingSoon": "Flashcards are coming soon."
+    "showAnswer": "Show answer",
+    "hideAnswer": "Hide answer",
+    "previous": "Previous card",
+    "next": "Next card",
+    "position": "Card {current} of {total}",
+    "codeExample": "Code example",
+    "noCards": "No cards match these filters.",
+    "emptyTitle": "No cards to review",
+    "emptyDescription": "Mark topics to review from a lesson or the checklist, or choose another filter.",
+    "showAll": "Show all cards",
+    "markLearned": "Mark topic learned",
+    "markReview": "Review this topic again",
+    "progressHint": "Progress applies to the whole topic, including its other questions."
   },
   "Sections": {
     "architecture": {
@@ -467,5 +532,30 @@
       "diagram": "Sketch of the current five-row viewport",
       "note": "The sketch draws only visible rows in both modes. Counts model a real list; this is not a DOM benchmark."
     }
+  },
+  "Study": {
+    "status": "Topic status",
+    "all": "All topics",
+    "review": "Review again",
+    "section": "Section",
+    "allSections": "All sections"
+  },
+  "Search": {
+    "title": "Search topics",
+    "description": "Find a topic by name, concept or interview question.",
+    "placeholder": "Search the study library...",
+    "results": "Topics",
+    "hint": "Try “WebSockets”, “retry” or “focus”.",
+    "loading": "Searching...",
+    "empty": "No matching topics. Try another term.",
+    "errorTitle": "Search could not load",
+    "errorDescription": "Check your connection and try again.",
+    "retry": "Try again",
+    "keyboardHint": "Use arrow keys to choose, Enter to open and Escape to close."
+  },
+  "OpenGraph": {
+    "eyebrow": "INTERVIEW PREPARATION",
+    "stats": "81 topics / 14 sections",
+    "footer": "Learn. Explain. Review."
   }
 }

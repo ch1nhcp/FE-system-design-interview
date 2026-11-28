@@ -184,3 +184,61 @@ The new topics use code and diagrams to explain trust boundaries, language-sensi
 - `FlowDiagram`: a vertical chain of steps with an optional loop, for topics about structure rather than timing.
 - `AnimationFrame` and `useTimelinePlayback` hold what every step-through animation shares, so a new animation only needs a model and a picture.
 - The animations originally planned through the Performance batch are implemented.
+
+## Phase 4 progress
+
+- RADIO now has an original guide in both UI languages, with suggested practice pacing, concrete prompts and links to relevant lessons.
+- Search evaluates and uses Fumadocs' built-in multilingual static index, exported at `/api/search` and loaded when the search dialog is used.
+- The dialog supports the header trigger, Cmd/Ctrl+K, keyboard selection, Escape, focus return and a recoverable index-load failure.
+- Flashcards are extracted from the authored `InterviewQuestion` MDX AST, preserving answer paragraphs, code, lists, emphasis and links without evaluating arbitrary expressions.
+- Flashcards support section and review filters, answer reveal, previous/next navigation and the existing topic-level progress store.
+- The dashboard also filters the checklist to review topics while preserving overall and full-section progress counts.
+- Removing a reviewed topic moves focus to the next question, a recovery action or the checklist summary instead of leaving focus on the page body.
+- Topic translations remain Phase 6 work; flashcards retain the actual content language until each translation is published.
+
+Phase 4 validation uses a production preview on port 3101 because another worktree owns port 3100.
+All 844 unit tests pass with 96.84% line coverage.
+All 205 desktop/mobile E2E tests pass, with nine device-specific skips.
+The keyboard flow covers section selection, review filtering, empty recovery, answer reveal and previous/next navigation.
+Navigation clears the revealed answer even when returning to a previously viewed card.
+Desktop and 320-pixel mobile layouts were checked in both themes, including search focus visibility and empty review states.
+Standards and spec reviews have no unresolved findings.
+
+A subsequent PR review reproduced skipped questions when a reviewed topic was marked learned from a later card.
+The deck now adjusts its index for all removed cards, and browser regressions verify that the next topic starts at its first question.
+
+## Phase 5 progress
+
+- All 196 public pages and 196 Open Graph images now prerender, with `dynamic = 'error'` preventing a silent return to request-time rendering.
+- Metadata, canonical URLs, reciprocal language alternatives, the sitemap and escaped JSON-LD share the registry and localized page information.
+- Share images use a locally bundled font with Vietnamese glyphs and remain crawlable.
+- Production requires a validated `SITE_URL` at build time; CI validates an explicit HTTPS fixture origin and Docker retains the build argument.
+- Accessibility checks cover representative templates and every animation family in both themes on desktop/mobile, plus search and revealed answers.
+- Browser audits fixed search naming, text/syntax contrast, 200% text resizing and navigation visibility at responsive boundaries.
+- The reproducible performance audit records three Lighthouse mobile lab runs on each of four routes and a separate browser interaction sample.
+
+Detailed measurements, reproduction commands, release configuration and the limits of the lab/accessibility evidence live in [the Phase 5 audit](./PHASE_5_AUDIT.md).
+The actual production domain remains a deployment configuration input; no deployment or field Core Web Vitals result is claimed.
+The remaining implementation phase is all 81 Vietnamese topic translations and all 14 Vietnamese section overviews.
+Phase 5 validation passes 853 unit tests with 94.48% line coverage and 222 E2E tests, with ten device-specific skips.
+The final standards and spec reviews have no unresolved findings.
+
+## Phase 6 progress
+
+| Batch | Sections                  | Topics | Status      |
+| ----- | ------------------------- | ------ | ----------- |
+| 1     | Real-time updates         | 4      | In review   |
+| 2+    | The remaining 13 sections | 77     | Not started |
+
+Batch 1 translates the four Real-time updates topics and the section overview, the same section that piloted the English template.
+Vietnamese pages use fixed headings: Tóm tắt, Ý chính, Cân nhắc, Câu hỏi phỏng vấn and, inside the deep dive, Cơ chế hoạt động, Trường hợp biên, Lỗi thường gặp and Tài liệu tham khảo.
+Established English terms such as polling, WebSocket, cursor, jitter and backoff stay in English; the surrounding explanation is Vietnamese.
+Code comments and sample strings are translated, while identifiers, APIs and protocol fields stay unchanged.
+Reference links keep the English URLs with Vietnamese link text.
+Content tests apply the one-screen rules to Vietnamese headings and check that each translation keeps its English file's visual, related topics, number of interview questions, code block languages and reference URLs.
+Flashcard tests now build cards from every topic file, including translations.
+The fallback notice E2E test moves to a topic that is still untranslated, and a new E2E test reads the whole Vietnamese section with `inLanguage: vi` JSON-LD and no fallback notice.
+Vietnamese summaries follow the same 820-pixel desktop budget as Batch 2 onwards; trade-off cells are kept short enough not to wrap, since each wrapped row adds about 20 pixels.
+Linux CI renders text slightly taller than macOS, so a page measured at 819 pixels locally failed at 820 in CI; keep at least one line (about 25 pixels) of local headroom.
+The English pilot pages predate that budget and measure 954 to 1075 pixels, so they do not meet it yet.
+Batch 1 validation passes 892 unit tests with 94.48% line coverage and 225 E2E tests, with eleven device-specific skips.

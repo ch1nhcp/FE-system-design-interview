@@ -10,7 +10,7 @@ import { sectionFrontmatterSchema, topicFrontmatterSchema } from './topic-frontm
 
 const topics = defineDocs({
   dir: 'content/topics',
-  docs: { schema: topicFrontmatterSchema },
+  docs: { schema: topicFrontmatterSchema, postprocess: { includeMDAST: true } },
 });
 
 const sections = defineDocs({

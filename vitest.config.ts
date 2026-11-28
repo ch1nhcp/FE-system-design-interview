@@ -32,6 +32,7 @@ export default defineConfig({
         'src/proxy.ts',
         // Compiled by the fumadocs-mdx bundler plugin; covered by the Playwright suite.
         'src/lib/content/topic-source.ts',
+        'src/lib/content/study-catalog.ts',
       ],
       thresholds: {
         lines: 80,
