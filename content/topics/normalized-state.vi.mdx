@@ -1,0 +1,133 @@
+---
+description: 'Mỗi thực thể chỉ lưu một lần theo ID; dữ liệu khác giữ tham chiếu ID như các bảng trong cơ sở dữ liệu.'
+visual: code
+related: [flux-architecture, optimistic-updates, caching-and-expiry, graphql]
+---
+
+## Tóm tắt
+
+Chuẩn hóa lưu mỗi thực thể một lần và liên kết bằng ID.
+Selector ghép các bản ghi thành dữ liệu UI cần.
+
+<VisualPanel tabs={['code']}>
+<VisualTab kind="code">
+
+Dữ liệu lồng nhau từ API: cùng tác giả xuất hiện trong mỗi bài viết.
+
+```ts
+const posts = [
+  { id: 'p1', title: 'SSR', author: { id: 'u1', name: 'Linh' } },
+  { id: 'p2', title: 'CSR', author: { id: 'u1', name: 'Linh' } },
+];
+```
+
+Sau chuẩn hóa: mỗi thực thể một bản ghi, liên kết bằng ID.
+
+```ts
+type Normalized<T> = { byId: Readonly<Record<string, T>>; allIds: readonly string[] };
+
+type State = {
+  users: Normalized<{ id: string; name: string }>;
+  posts: Normalized<{ id: string; title: string; authorId: string }>;
+};
+
+const state: State = {
+  users: { byId: { u1: { id: 'u1', name: 'Linh' } }, allIds: ['u1'] },
+  posts: {
+    byId: {
+      p1: { id: 'p1', title: 'SSR', authorId: 'u1' },
+      p2: { id: 'p2', title: 'CSR', authorId: 'u1' },
+    },
+    allIds: ['p1', 'p2'],
+  },
+};
+
+// Đổi tên tác giả bằng một cập nhật để mọi bài viết đọc cùng tên mới.
+const renamed: State = {
+  ...state,
+  users: { ...state.users, byId: { ...state.users.byId, u1: { id: 'u1', name: 'Linh Tran' } } },
+};
+
+// Selector ghép các bảng thành dữ liệu UI cần.
+const selectPostsWithAuthor = (s: State) =>
+  s.posts.allIds.map((id) => {
+    const post = s.posts.byId[id]!;
+    return { ...post, author: s.users.byId[post.authorId] };
+  });
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Dùng byId để tra cứu và allIds để giữ thứ tự.
+- Quan hệ dùng ID thay cho bản sao lồng nhau.
+- Cập nhật một bản ghi và memoize selector.
+- Dữ liệu nhỏ, dùng một chỗ có thể chỉ cần query cache.
+
+## Cân nhắc
+
+| Ưu điểm                         | Hạn chế                            |
+| ------------------------------- | ---------------------------------- |
+| Một bản ghi cục bộ mỗi thực thể | Thêm bước chuẩn hóa lúc ghi        |
+| Tra cứu trực tiếp theo ID       | Selector phải ghép quan hệ         |
+| Subscribe theo phần nhỏ         | Thêm cấu trúc cho dữ liệu đơn giản |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Vì sao chuẩn hóa state phía client?">
+
+Dữ liệu lồng nhau lặp thực thể; mỗi lần cập nhật phải tìm mọi bản sao và bỏ sót sẽ hiển thị dữ liệu cũ.
+Với bảng chuẩn hóa, mỗi thực thể có một nguồn dữ liệu cục bộ, cập nhật một bản ghi và tra cứu trực tiếp bằng ID.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Chuẩn hóa giúp optimistic update như thế nào?">
+
+Thay đổi optimistic được ghi một lần vào bản ghi thực thể; các danh sách và trang chi tiết tham chiếu ID đó cùng đọc thay đổi.
+Khi thất bại, rollback cũng có thể cập nhật lại chính bản ghi đó.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Khi nào không đáng chuẩn hóa dữ liệu?">
+
+Khi dữ liệu ít, chỉ đọc hoặc chỉ hiện ở một nơi, như danh sách tìm kiếm được thay toàn bộ sau mỗi query.
+Cache lấy dữ liệu theo query thường đơn giản hơn trong trường hợp đó.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Chi tiết thiết kế
+
+- Mỗi loại thực thể có một bảng: `byId` để tra cứu và `allIds` để giữ thứ tự.
+- Quan hệ được lưu bằng ID, không nhân bản object lồng nhau.
+- Cập nhật một bản ghi giúp các màn hình dùng cùng bản ghi cục bộ tránh các bản sao lệch nhau.
+- Selector dựng lại hình dạng dữ liệu UI cần; memoization giúp tránh tạo tham chiếu mới không cần thiết.
+- Apollo và Relay có cơ chế chuẩn hóa cache theo loại thực thể và ID.
+
+### Cơ chế hoạt động
+
+Khi response đến, normalizer duyệt theo schema, đưa mỗi thực thể vào bảng riêng rồi thay object lồng nhau bằng ID.
+Selector tra lại các ID và ghép dữ liệu cho component.
+`createEntityAdapter` của Redux Toolkit và thư viện như normalizr hỗ trợ mẫu tổ chức này.
+
+### Trường hợp biên
+
+- Endpoint danh sách có thể trả ít trường hơn endpoint chi tiết; merge trường thay vì ghi đè toàn bộ bản ghi bằng dữ liệu thiếu.
+- Khi xóa thực thể, phải bỏ ID khỏi các danh sách và quan hệ đang tham chiếu nó.
+- Không thể chuẩn hóa đáng tin cậy nếu thực thể không có ID ổn định.
+
+### Lỗi thường gặp
+
+- Selector tạo mảng mới ở mọi lần gọi gây render lại; dùng memoization khi cần giữ tham chiếu.
+- Chuẩn hóa quá sâu cho dữ liệu UI chỉ hiển thị một lần.
+- Lưu giá trị dẫn xuất như số lượng cạnh thực thể rồi để chúng mất đồng bộ.
+
+### Tài liệu tham khảo
+
+- [Chuẩn hóa cấu trúc state trong tài liệu Redux](https://redux.js.org/usage/structuring-reducers/normalizing-state-shape)
+- [createEntityAdapter trong tài liệu Redux Toolkit](https://redux-toolkit.js.org/api/createEntityAdapter)
+
+</DeepDive>

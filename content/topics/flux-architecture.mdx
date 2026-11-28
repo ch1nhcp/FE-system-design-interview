@@ -6,9 +6,8 @@ related: [reducer-pattern, event-sourcing, normalized-state, undo-redo]
 
 ## TL;DR
 
-In Flux, data moves in one direction: the view dispatches an action, the store handles it and produces new state, and the view re-renders from that state.
-Views never change state directly, so every change has a single, traceable cause.
-Redux and React's `useReducer` are the most common descendants of the pattern.
+Flux sends actions through a store so views read predictable state.
+Reducers make changes traceable and testable.
 
 <VisualPanel tabs={['diagram', 'code']}>
 <VisualTab kind="diagram">
@@ -27,6 +26,8 @@ Redux and React's `useReducer` are the most common descendants of the pattern.
 <VisualTab kind="code">
 
 ```tsx
+import { useReducer } from 'react';
+
 type Todo = { id: string; title: string; done: boolean };
 
 type Action =
@@ -72,37 +73,36 @@ export function TodoList() {
 
 ## Key points
 
-- One-way flow: action, then store, then view, never the view writing state directly.
-- Actions describe what happened, not how to change state, which makes logs readable.
-- Reducers are pure functions, so state changes are predictable and easy to test.
-- Every change goes through one place, which enables logging, devtools and time travel.
-- Keep server data in a data-fetching cache and local UI state in components; a global store is for state many parts share.
+- Actions describe events; views do not mutate state.
+- Pure reducers compute the next state.
+- Narrow selectors and stable references limit re-renders.
+- Keep server data in a cache and local UI state nearby.
 
 ## Trade-offs
 
-| Strengths                                 | Weaknesses                                     |
-| ----------------------------------------- | ---------------------------------------------- |
-| Predictable, traceable state changes      | Boilerplate for small apps                     |
-| Easy to test, log and debug (time travel) | Everything in one store can re-render too much |
-| Scales to many developers and features    | Indirection: actions, reducers, selectors      |
+| Strengths               | Weaknesses                       |
+| ----------------------- | -------------------------------- |
+| Traceable changes       | Extra structure in small apps    |
+| Testing and time travel | Broad subscriptions re-render    |
+| Shared state ownership  | Actions and selectors add layers |
 
 ## Interview questions
 
-<InterviewQuestion question="Why is one-way data flow easier to reason about than two-way binding?">
+<InterviewQuestion question="Why prefer one-way flow to two-way binding?">
 
 With two-way binding, any view can change shared state, so a bug can come from anywhere.
 With one-way flow, state only changes in response to an action, in one place, so you can log, replay and test every change.
 
 </InterviewQuestion>
 
-<InterviewQuestion question="Where would you keep server data in a Flux or Redux app?">
+<InterviewQuestion question="Where should server data live in a Flux app?">
 
 In a data-fetching cache, such as TanStack Query or RTK Query, which handles loading states, caching, refetching and invalidation.
 The store then holds only client state that many components share, such as UI preferences or a draft.
 
 </InterviewQuestion>
 
-<InterviewQuestion question="How do you avoid re-rendering everything when the store changes?">
+<InterviewQuestion question="How do you avoid re-rendering the whole app?">
 
 Subscribe with narrow selectors that return only what a component needs, and keep returned values stable with memoization.
 Split unrelated state into separate stores or slices, and normalize collections so one item's update does not change the whole list.
@@ -110,6 +110,14 @@ Split unrelated state into separate stores or slices, and normalize collections 
 </InterviewQuestion>
 
 <DeepDive>
+
+### Design details
+
+- One-way flow: action, then store, then view, never the view writing state directly.
+- Actions describe what happened, not how to change state, which makes logs readable.
+- Reducers are pure functions, so state changes are predictable and easy to test.
+- Every change goes through one place, which enables logging, devtools and time travel.
+- Keep server data in a data-fetching cache and local UI state in components; a global store is for state many parts share.
 
 ### How it works
 

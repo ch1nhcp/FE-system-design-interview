@@ -9,3 +9,5 @@ These three patterns describe how such a store is organized.
 | Flux architecture | Unpredictable changes from many places           | Many components read and change the same state           |
 | Normalized state  | Duplicated, inconsistent copies of the same data | The same entities appear in many lists and views         |
 | Event sourcing    | Losing history and the ability to replay         | You need undo, audit trails, offline sync or time travel |
+
+The patterns can be combined: Flux manages updates, normalization organizes entities and event sourcing preserves history.

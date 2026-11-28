@@ -1,14 +1,13 @@
 ---
-description: Functions that run on demand, scale automatically and cost nothing while idle, with cold starts as the catch.
+description: Functions that run on demand and scale with usage, with cold starts and execution limits as the trade-offs.
 visual: diagram
 related: [edge-computing, server-side-rendering, timeouts, caching-and-expiry]
 ---
 
 ## TL;DR
 
-Serverless functions run your code only when a request or event arrives, and the platform scales them from zero to thousands of copies.
-You pay per invocation instead of for always-on servers, and many front end frameworks deploy SSR and API routes this way.
-The catch is cold starts, short time limits and no memory shared between requests.
+Serverless functions run on demand and scale with traffic.
+Cold starts and resource limits shape their trade-offs.
 
 <VisualPanel tabs={['diagram', 'code']}>
 <VisualTab kind="diagram">
@@ -19,7 +18,7 @@ The catch is cold starts, short time limits and no memory shared between request
     { title: 'Warm instance?', note: 'Reuse one if it exists; otherwise a cold start boots a new one' },
     { title: 'Run the handler', note: 'Stateless, with a time and memory limit' },
     { title: 'Return the response', note: 'The instance stays warm for a while' },
-    { title: 'Scale to zero', note: 'Idle instances are stopped, and cost nothing' },
+    { title: 'Scale to zero', note: 'Idle instances can be stopped to reduce usage cost' },
   ]}
   highlight={1}
   loop="The next request reuses a warm instance, or starts a cold one"
@@ -51,19 +50,18 @@ export async function POST(request: Request) {
 
 ## Key points
 
-- No servers to manage: the platform starts, scales and stops instances for you.
-- Cost follows usage, which suits spiky or low traffic, but steady high traffic can cost more than servers.
-- Cold starts add from tens of milliseconds to seconds when no warm instance is available.
-- Functions are stateless and short-lived: keep state in a database, cache or queue, not in memory.
-- Each instance opens its own connections, so use a connection pooler or an HTTP-based database driver.
+- The platform starts and scales function instances.
+- Usage pricing suits bursts, less so steady heavy traffic.
+- Keep durable state outside short-lived instances.
+- Limit concurrency and pool downstream connections.
 
 ## Trade-offs
 
-| Strengths                       | Weaknesses                                    |
-| ------------------------------- | --------------------------------------------- |
-| Scales automatically, from zero | Cold starts on the first request              |
-| Pay only for what runs          | Execution time and memory limits              |
-| Little operations work          | Database connection limits and vendor lock-in |
+| Strengths              | Weaknesses                    |
+| ---------------------- | ----------------------------- |
+| Automatic scaling      | Cold starts                   |
+| Usage-based cost       | Time and memory limits        |
+| Less server operations | Connection limits and lock-in |
 
 ## Interview questions
 
@@ -74,7 +72,7 @@ Keep the bundle and dependencies small, initialize expensive clients lazily, pre
 
 </InterviewQuestion>
 
-<InterviewQuestion question="Why do serverless functions struggle with traditional databases?">
+<InterviewQuestion question="Why can serverless exhaust database connections?">
 
 Hundreds of instances can start at once, and each opens its own connections, which quickly exhausts the database's connection limit.
 Use a connection pooler, a database with an HTTP or serverless driver, and keep at most one connection per instance.
@@ -88,6 +86,14 @@ For long-running work, steady high traffic where always-on servers are cheaper, 
 </InterviewQuestion>
 
 <DeepDive>
+
+### Design details
+
+- No servers to manage: the platform starts, scales and stops instances for you.
+- Cost follows usage, which suits spiky or low traffic, but steady high traffic can cost more than servers.
+- Cold starts add from tens of milliseconds to seconds when no warm instance is available.
+- Functions are stateless and short-lived: keep state in a database, cache or queue, not in memory.
+- Each instance opens its own connections, so use a connection pooler or an HTTP-based database driver.
 
 ### How it works
 

@@ -6,9 +6,8 @@ related: [serverless, incremental-static-regeneration, caching-and-expiry, image
 
 ## TL;DR
 
-Edge functions run in many CDN locations around the world, so code executes a few milliseconds from the user instead of in one distant region.
-They are ideal for quick decisions on every request, such as redirects, auth checks, A/B tests and geolocation.
-The runtime is limited, and the gain disappears if the edge has to call a far-away database.
+Edge code runs close to users for quick request decisions.
+Distant data and runtime limits can erase the latency gain.
 
 <VisualPanel tabs={['diagram', 'code']}>
 <VisualTab kind="diagram">
@@ -49,19 +48,18 @@ export default {
 
 ## Key points
 
-- Code runs in hundreds of locations, so the round trip is short wherever the user is.
-- Edge runtimes are lightweight (V8 isolates with Web APIs), so they start in milliseconds but lack most Node.js APIs.
-- Best for fast, stateless logic in front of cached content: redirects, rewrites, auth checks, headers, A/B tests.
-- Calling a single-region database from the edge adds back the latency it saved; keep data at the edge or near the origin.
-- CPU time, memory and bundle size are tightly limited.
+- Best for small, stateless decisions before cached content.
+- Lightweight runtimes expose a limited API surface.
+- Keep data nearby or compute close to the database.
+- Respect CPU, memory, bundle and consistency limits.
 
 ## Trade-offs
 
-| Strengths                                   | Weaknesses                                          |
-| ------------------------------------------- | --------------------------------------------------- |
-| Very low latency for every user             | Limited runtime: no full Node.js, small bundles     |
-| Near-instant start, no cold-start problem   | Data usually lives in one region, far from the edge |
-| Personalize cached pages without the origin | Harder to debug and to keep consistent everywhere   |
+| Strengths                | Weaknesses                      |
+| ------------------------ | ------------------------------- |
+| Short client round trips | Restricted runtime and APIs     |
+| Lightweight startup      | Data may be far away            |
+| Select cached variants   | Distributed debugging is harder |
 
 ## Interview questions
 
@@ -72,7 +70,7 @@ Heavy computation and work that needs a central database belong at the origin, c
 
 </InterviewQuestion>
 
-<InterviewQuestion question="How is an edge function different from a serverless function?">
+<InterviewQuestion question="How does edge differ from regional serverless?">
 
 A serverless function usually runs in one region on a full runtime such as Node.js, with longer time limits and possible cold starts.
 An edge function runs in many locations on a lightweight runtime that starts almost instantly, with stricter limits on CPU time, memory and APIs.
@@ -88,11 +86,19 @@ Render user-specific bits, like the account menu, on the client or in a separate
 
 <DeepDive>
 
+### Design details
+
+- Code runs in hundreds of locations, so the round trip is short wherever the user is.
+- Many edge runtimes use lightweight isolates and Web APIs; Node.js compatibility and startup limits depend on the platform.
+- Best for fast, stateless logic in front of cached content: redirects, rewrites, auth checks, headers, A/B tests.
+- Calling a single-region database from the edge adds back the latency it saved; keep data at the edge or near the origin.
+- CPU time, memory and bundle size are tightly limited.
+
 ### How it works
 
 The CDN deploys your function to all its locations.
 A request is routed to the nearest one, where the function can answer directly, rewrite the URL, change headers, or fetch from the cache or the origin.
-Runtimes reuse V8 isolates instead of containers, which is why they start in milliseconds.
+Isolate-based platforms reuse lightweight runtimes rather than booting a container for each request.
 
 ### Edge cases
 

@@ -6,14 +6,16 @@ If it is the same for everyone and changes rarely, build it ahead of time with S
 If it depends on the request, render it on the server, and stream slow parts with Server Components.
 If it lives behind a login and SEO does not matter, client-side rendering is simple and cheap.
 
-|               | CSR                   | SSR                     | SSG                  | ISR                              | Server Components (streaming)    |
-| ------------- | --------------------- | ----------------------- | -------------------- | -------------------------------- | -------------------------------- |
-| HTML is built | In the browser        | On every request        | At build time        | At build, then in the background | On request, streamed in parts    |
-| First content | Slow                  | Fast                    | Fastest              | Fastest                          | Fast, slow parts later           |
-| Interactive   | When data is rendered | After hydration         | After hydration      | After hydration                  | Sooner, with less JavaScript     |
-| Server cost   | Static files only     | Render per request      | None per request     | Occasional rebuilds              | Render per request               |
-| Freshness     | Always fresh          | Always fresh            | Until the next build | Within the revalidate window     | Always fresh                     |
-| Good for      | Apps behind a login   | Personalized, SEO pages | Docs, marketing      | Catalogs, blogs                  | Data-heavy pages with slow parts |
+|               | CSR                       | SSR                       | SSG                  | ISR                              | Server Components (streaming)    |
+| ------------- | ------------------------- | ------------------------- | -------------------- | -------------------------------- | -------------------------------- |
+| HTML is built | In the browser            | On every request          | At build time        | At build, then in the background | At build or request time         |
+| First content | Slow                      | Fast                      | Fastest              | Fastest                          | Fast, slow parts later           |
+| Interactive   | When data is rendered     | After hydration           | After hydration      | After hydration                  | Sooner, with less JavaScript     |
+| Server cost   | Static files only         | Render per request        | None per request     | Occasional rebuilds              | Depends on static/dynamic route  |
+| Freshness     | Client fetch/cache policy | Request data/cache policy | Until the next build | Until successful revalidation    | Data/cache policy                |
+| Good for      | Apps behind a login       | Personalized, SEO pages   | Docs, marketing      | Catalogs, blogs                  | Data-heavy pages with slow parts |
+
+Server Components describe where component code runs, not a separate freshness policy; they can be used with static or request-time rendering.
 
 Where the server code runs is a separate choice.
 Serverless functions scale on demand in one region, and edge functions run close to every user with a smaller runtime.

@@ -17,14 +17,17 @@ const EM_DASH = String.fromCodePoint(0x20_14);
 const topicFiles = readdirSync(TOPICS_DIR);
 const sectionFiles = readdirSync(SECTIONS_DIR);
 
-describe('completed Vietnamese real-time section', () => {
-  it('has a translated overview and every registered lesson', () => {
-    expect(sectionFiles).toContain('real-time-updates.vi.mdx');
-    for (const topic of getSection('real-time-updates')?.topics ?? []) {
-      expect(topicFiles).toContain(`${topic}.vi.mdx`);
-    }
-  });
-});
+describe.each(['real-time-updates', 'architecture', 'state-management'] as const)(
+  'completed Vietnamese section: %s',
+  (slug) => {
+    it('has a translated overview and every registered lesson', () => {
+      expect(sectionFiles).toContain(`${slug}.vi.mdx`);
+      for (const topic of getSection(slug)?.topics ?? []) {
+        expect(topicFiles).toContain(`${topic}.vi.mdx`);
+      }
+    });
+  },
+);
 
 describe.each(SECTIONS.map(({ slug }) => slug))('completed English section: %s', (slug) => {
   it('has a cheatsheet for every registered topic', () => {
@@ -155,16 +158,16 @@ describe.each(topicFiles.filter((file) => file.endsWith('.vi.mdx')))('translatio
     const referenceUrls = (text: string) => [...text.matchAll(/\]\((https?:\/\/[^)]+)\)/g)].map((match) => match[1]);
     expect(referenceUrls(source)).toEqual(referenceUrls(original));
     for (const heading of [
-      'Tóm tắt',
-      'Ý chính',
-      'Cân nhắc',
-      'Câu hỏi phỏng vấn',
-      'Cơ chế hoạt động',
-      'Trường hợp biên',
-      'Lỗi thường gặp',
-      'Tài liệu tham khảo',
+      '## Tóm tắt',
+      '## Ý chính',
+      '## Cân nhắc',
+      '## Câu hỏi phỏng vấn',
+      '### Cơ chế hoạt động',
+      '### Trường hợp biên',
+      '### Lỗi thường gặp',
+      '### Tài liệu tham khảo',
     ]) {
-      expect(source).toContain(`## ${heading}\n`);
+      expect(source).toContain(`\n${heading}\n`);
     }
   });
 });

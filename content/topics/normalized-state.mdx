@@ -6,9 +6,8 @@ related: [flux-architecture, optimistic-updates, caching-and-expiry, graphql]
 
 ## TL;DR
 
-Nested API responses repeat the same entity in many places, so one update has to be applied everywhere.
-Normalizing stores each entity once in a lookup table keyed by id, and other data refers to it by id.
-Updates touch one place, lookups are instant, and the UI can never show two versions of the same thing.
+Normalization stores each entity once and refers to it by ID.
+Selectors join those records into the shapes the UI needs.
 
 <VisualPanel tabs={['code']}>
 <VisualTab kind="code">
@@ -62,19 +61,18 @@ const selectPostsWithAuthor = (s: State) =>
 
 ## Key points
 
-- Each entity type gets its own table: `byId` for lookups and `allIds` for order.
-- Relations are stored as ids, not nested copies.
-- One update changes one record, so every screen that shows it stays consistent.
-- Selectors rebuild the nested shape the UI needs; memoize them to avoid extra renders.
-- GraphQL clients such as Apollo and Relay normalize their cache automatically by type and id.
+- Use byId for lookup and allIds for ordering.
+- Store relations as IDs, not nested copies.
+- Update one record and memoize selectors.
+- Keep simple, one-off data in a query cache when sufficient.
 
 ## Trade-offs
 
-| Strengths                                  | Weaknesses                               |
-| ------------------------------------------ | ---------------------------------------- |
-| No duplicated data, no inconsistent copies | Extra step to normalize responses        |
-| Instant lookups and cheap updates by id    | Selectors needed to join data for the UI |
-| Smaller re-renders: one item changes alone | Overkill for small or read-only data     |
+| Strengths               | Weaknesses                     |
+| ----------------------- | ------------------------------ |
+| One local entity record | Normalization work on writes   |
+| Direct ID lookups       | Selectors must join relations  |
+| Narrow subscriptions    | Extra structure for small data |
 
 ## Interview questions
 
@@ -85,7 +83,7 @@ With normalized tables, each entity has one source of truth, updates are a singl
 
 </InterviewQuestion>
 
-<InterviewQuestion question="How does a normalized cache help with optimistic updates?">
+<InterviewQuestion question="How does normalization help optimistic updates?">
 
 The optimistic change is written once, to the entity's record, and every list and detail view that references that id updates together.
 Rolling back on failure is also one write.
@@ -100,6 +98,14 @@ A data-fetching cache keyed by query is simpler there.
 </InterviewQuestion>
 
 <DeepDive>
+
+### Design details
+
+- Each entity type gets its own table: `byId` for lookups and `allIds` for order.
+- Relations are stored as ids, not nested copies.
+- One update changes one record, so every screen that shows it stays consistent.
+- Selectors rebuild the nested shape the UI needs; memoize them to avoid extra renders.
+- GraphQL clients such as Apollo and Relay normalize their cache automatically by type and id.
 
 ### How it works
 

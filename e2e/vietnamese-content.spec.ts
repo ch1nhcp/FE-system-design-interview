@@ -1,6 +1,17 @@
 import { expect, test } from './fixtures';
 
 const realtime = ['short-polling', 'long-polling', 'server-sent-events', 'websockets'];
+const foundations = [
+  'server-side-rendering',
+  'client-side-rendering',
+  'incremental-static-regeneration',
+  'serverless',
+  'edge-computing',
+  'server-components',
+  'event-sourcing',
+  'flux-architecture',
+  'normalized-state',
+];
 
 test('reads the complete real-time section in Vietnamese without a fallback notice', async ({ page }) => {
   for (const topic of realtime) {
@@ -13,22 +24,118 @@ test('reads the complete real-time section in Vietnamese without a fallback noti
     expect(schema.inLanguage).toBe('vi');
     await page.getByText('Đào sâu', { exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Tài liệu tham khảo', exact: true })).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+  }
+  await page.goto('/vi/sections/real-time-updates');
+  await expect(page.getByRole('heading', { name: 'Cách lựa chọn', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('cell', { name: 'Trình duyệt nối lại; server phát bù theo ID', exact: true }),
+  ).toBeVisible();
+});
+
+test('keeps every translated summary within one desktop screen', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'The desktop summary and sticky panel are checked at 1440px');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  for (const topic of [...realtime, ...foundations]) {
+    await page.goto(`/vi/topics/${topic}`);
+    await page.evaluate(() => document.fonts.ready);
+    const start = await page.getByRole('heading', { name: 'Tóm tắt', exact: true }).boundingBox();
+    const end = await page.locator('.topic-body > details').last().boundingBox();
+    expect(start).not.toBeNull();
+    expect(end).not.toBeNull();
+    expect(end!.y - start!.y, topic).toBeLessThanOrEqual(820);
   }
 });
 
-test('keeps Vietnamese real-time summaries within a desktop viewport', async ({ page, isMobile }) => {
-  test.skip(isMobile, 'Small screens stack the visual within the content');
-  await page.setViewportSize({ width: 1440, height: 900 });
+test('searches translated questions and studies translated flashcard answers', async ({ page }) => {
+  await page.goto('/vi');
+  await page.getByRole('button', { name: /Tìm chủ đề/ }).click();
+  await page.getByRole('combobox', { name: 'Tìm chủ đề', exact: true }).fill('khôi phục');
+  await page.getByRole('option').first().click();
+  await expect(page).toHaveURL('/vi/topics/server-sent-events');
+  await page.goto('/vi/topics/websockets');
+  await page.getByRole('button', { name: 'Cần ôn lại', exact: true }).click();
+  await page.goto('/vi/flashcards');
+  await page.getByRole('radio', { name: 'Cần ôn lại', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Kết nối WebSocket bị ngắt thì xử lý thế nào?', exact: true }),
+  ).toHaveAttribute('lang', 'vi');
+  await page.getByRole('button', { name: 'Xem đáp án', exact: true }).click();
+  await expect(page.locator('#flashcard-answer')).toContainText('Nối lại bằng backoff lũy thừa kèm jitter');
+  await expect(page.locator('#flashcard-answer')).toHaveAttribute('lang', 'vi');
+  await page.getByRole('button', { name: 'Thẻ tiếp', exact: true }).click();
+  await expect(page.locator('#flashcard-answer')).toBeHidden();
+});
 
-  for (const topic of realtime) {
+test('keeps translated lessons and the overview readable at 320px', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  for (const topic of [...realtime, ...foundations]) {
     await page.goto(`/vi/topics/${topic}`);
-    const body = page.locator('.topic-body');
-    const tldr = await body.getByRole('heading', { name: 'Tóm tắt', exact: true }).boundingBox();
-    const deepDive = await body.locator(':scope > details').last().boundingBox();
-    expect(tldr).not.toBeNull();
-    expect(deepDive).not.toBeNull();
-    // Same one-screen budget as the English batches, leaving room for the sticky header.
-    expect.soft(deepDive!.y - tldr!.y, `${topic} summary height`).toBeLessThanOrEqual(820);
+    await expect(page.getByRole('heading', { name: 'Tóm tắt', exact: true })).toBeVisible();
+    const codeTab = page.getByRole('tab', { name: 'Code', exact: true });
+    if (await codeTab.count()) await codeTab.click();
+    await expect(page.locator('[data-slot="tabs-content"] pre').first()).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   }
+  await page.goto('/vi/sections/real-time-updates');
+  await expect(page.getByRole('heading', { name: 'Cách lựa chọn', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+});
+
+test('reads Architecture and State management with translated examples and metadata', async ({ page }) => {
+  test.setTimeout(90_000);
+  for (const topic of foundations) {
+    await page.goto(`/vi/topics/${topic}`);
+    await expect(page.getByRole('note')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Tóm tắt', exact: true })).toBeVisible();
+    const schema = JSON.parse(await page.locator('script[type="application/ld+json"]').innerText());
+    expect(schema.inLanguage).toBe('vi');
+    const panel = page.getByRole('region', { name: 'Hình minh hoạ', exact: true });
+    const diagram = panel.getByRole('tab', { name: 'Sơ đồ', exact: true });
+    if (await diagram.count()) {
+      await diagram.click();
+      await expect(panel.getByRole('figure')).toBeVisible();
+    }
+    const code = panel.getByRole('tab', { name: 'Code', exact: true });
+    if (await code.count()) await code.click();
+    await expect(panel.locator('pre').first()).toBeVisible();
+    await page.getByText('Đào sâu', { exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Tài liệu tham khảo', exact: true })).toBeVisible();
+  }
+  await page.goto('/vi/sections/architecture');
+  await expect(page.getByRole('heading', { name: 'Chọn chiến lược render', exact: true })).toBeVisible();
+  await page.goto('/vi/sections/state-management');
+  await expect(page.getByRole('heading', { name: 'Chọn cách tổ chức state', exact: true })).toBeVisible();
+});
+
+test('shares translated Event sourcing across sections, search and flashcards', async ({ page }) => {
+  for (const section of ['state-management', 'common-patterns']) {
+    await page.goto(`/vi/sections/${section}`);
+    await expect(page.getByRole('main').locator('a[href="/vi/topics/event-sourcing"]')).toHaveCount(1);
+  }
+  await page.getByRole('button', { name: /Tìm chủ đề/ }).click();
+  await page.getByRole('combobox', { name: 'Tìm chủ đề', exact: true }).fill('bù trừ');
+  await page.getByRole('option', { name: /Event sourcing/ }).click();
+  await expect(page).toHaveURL('/vi/topics/event-sourcing');
+  await page.getByRole('button', { name: 'Cần ôn lại', exact: true }).click();
+  await page.goto('/vi/flashcards');
+  await page.getByRole('radio', { name: 'Cần ôn lại', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Event sourcing xuất hiện ở front end như thế nào?', exact: true }),
+  ).toHaveAttribute('lang', 'vi');
+  await page.getByRole('button', { name: 'Xem đáp án', exact: true }).click();
+  await expect(page.locator('#flashcard-answer')).toContainText('Redux devtools phát lại action');
+});
+
+test('keeps a long sticky code panel within the viewport and scrollable by keyboard', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Code is inline with the lesson on small screens');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/vi/topics/normalized-state');
+  const panel = page.getByRole('tabpanel');
+  await expect(panel).toHaveAccessibleName('Code');
+  const box = await panel.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.height).toBeLessThanOrEqual(740);
+  await panel.focus();
+  await page.keyboard.press('End');
+  await expect.poll(() => panel.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 });

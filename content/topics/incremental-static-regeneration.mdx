@@ -6,9 +6,8 @@ related: [server-side-rendering, prerendering, caching-and-expiry, edge-computin
 
 ## TL;DR
 
-Static generation builds pages into HTML at build time, so a CDN can serve them instantly.
-Incremental static regeneration keeps that speed but rebuilds a page in the background once it is older than a set time, or when you ask it to.
-Visitors always get a fast cached page, at the cost of sometimes seeing slightly old content.
+ISR serves cached HTML and regenerates pages as needed.
+It trades some freshness for static delivery speed.
 
 <VisualPanel tabs={['animation', 'code']}>
 <VisualTab kind="animation">
@@ -18,7 +17,7 @@ Visitors always get a fast cached page, at the cost of sometimes seeing slightly
 
 ```tsx
 // app/products/[id]/page.tsx (Next.js App Router)
-export const revalidate = 3600; // serve the cached page, rebuild it at most once an hour
+export const revalidate = 3600; // time-based revalidation becomes eligible after one hour
 
 // Build the most visited pages ahead of time; the rest are built on their first request.
 export async function generateStaticParams() {
@@ -34,7 +33,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 ```
 
 ```ts
-// Rebuild right away when the CMS publishes a change, instead of waiting for the timer.
+// Invalidate after saving; a currently viewed affected page can refresh immediately.
 'use server';
 import { revalidatePath } from 'next/cache';
 
@@ -49,19 +48,18 @@ export async function publishProduct(id: string) {
 
 ## Key points
 
-- Static pages are the fastest to serve: no rendering per request, just a file from the nearest CDN location.
-- ISR follows stale-while-revalidate: the first visit after expiry still gets the old page and triggers a rebuild.
-- On-demand revalidation rebuilds a page as soon as its data changes, for example from a CMS webhook.
-- Build only the popular pages up front and generate the long tail on first request, to keep builds short.
-- Not for personalized or real-time content; combine with client-side fetching for the parts that must be live.
+- Expiry can serve stale HTML while regeneration runs.
+- On-demand APIs invalidate paths or tagged data.
+- Prerender popular pages; generate the long tail on demand.
+- Keep personalized or live data outside shared HTML.
 
 ## Trade-offs
 
-| Strengths                                    | Weaknesses                                     |
-| -------------------------------------------- | ---------------------------------------------- |
-| CDN speed with no rendering per request      | Content can be stale for one revalidate window |
-| Handles traffic spikes cheaply               | No per-user content in the cached page         |
-| Fast builds, the long tail renders on demand | Needs a platform that supports regeneration    |
+| Strengths              | Weaknesses                      |
+| ---------------------- | ------------------------------- |
+| Fast shared HTML       | Temporarily stale content       |
+| Handles traffic spikes | No private data in shared cache |
+| On-demand long tail    | Regeneration support required   |
 
 ## Interview questions
 
@@ -73,10 +71,12 @@ ISR adds on-demand revalidation by path or tag and pre-building at deploy time.
 
 </InterviewQuestion>
 
-<InterviewQuestion question="An editor publishes a typo fix and still sees the old page. Why, and how do you fix it?">
+<InterviewQuestion question="Why can a published CMS edit remain invisible?">
 
 The cached page is served until the revalidate window passes, and the first visit after that still gets the old version while the new one builds.
-Trigger on-demand revalidation from the CMS publish hook, and keep the time-based window as a safety net.
+Invalidate the path from the CMS publish hook, and keep the time-based window as a safety net.
+In the Next.js App Router, a Route Handler marks a path for revalidation on its next visit.
+A Server Function can update an affected currently viewed page immediately; neither call should be described as eagerly rebuilding every related path.
 
 </InterviewQuestion>
 
@@ -89,6 +89,14 @@ Pages with per-user data or second-by-second data need SSR or client-side fetchi
 
 <DeepDive>
 
+### Design details
+
+- Static pages are the fastest to serve: no rendering per request, just a file from the nearest CDN location.
+- ISR follows stale-while-revalidate: the first visit after expiry still gets the old page and triggers a rebuild.
+- On-demand invalidation marks a path stale after a data change; regeneration timing depends on the framework API.
+- Build only the popular pages up front and generate the long tail on first request, to keep builds short.
+- Not for personalized or real-time content; combine with client-side fetching for the parts that must be live.
+
 ### How it works
 
 At build time the framework renders each known page to HTML and stores it.
@@ -97,6 +105,7 @@ Unknown paths can be rendered on their first request and then cached like the ot
 
 ### Edge cases
 
+- The call site matters: a Route Handler marks the path for its next visit, while a Server Function can update affected UI currently being viewed; neither is an eager bulk prerender job.
 - Regeneration can fail, for example when an API is down; the old page keeps being served, so monitor failures.
 - Pages that depend on each other, such as a product page and a category list, need their own revalidation, usually grouped with cache tags.
 - Very large sites still need care with build times and storage for millions of pages.
@@ -110,6 +119,7 @@ Unknown paths can be rendered on their first request and then cached like the ot
 ### References
 
 - [Incremental static regeneration in the Next.js docs](https://nextjs.org/docs/app/guides/incremental-static-regeneration)
+- [revalidatePath in the Next.js docs](https://nextjs.org/docs/app/api-reference/functions/revalidatePath)
 - [Rendering on the web on web.dev](https://web.dev/articles/rendering-on-the-web)
 
 </DeepDive>

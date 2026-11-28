@@ -1,0 +1,145 @@
+---
+description: 'Dữ liệu đi một chiều: view phát action, store cập nhật state và view render lại từ state mới.'
+visual: diagram
+related: [reducer-pattern, event-sourcing, normalized-state, undo-redo]
+---
+
+## Tóm tắt
+
+Flux chuyển action qua store để view đọc state có thể dự đoán.
+Reducer giúp truy vết và kiểm thử các thay đổi.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Luồng dữ liệu Flux"
+  steps={[
+    { title: 'Action', note: 'Object mô tả sự việc, ví dụ { type: "todoAdded" }' },
+    { title: 'Dispatcher', note: 'Chuyển action tới các store' },
+    { title: 'Store', note: 'Nơi tính state tiếp theo và quản lý thay đổi' },
+    { title: 'View', note: 'Render từ state và subscribe thay đổi' },
+  ]}
+  highlight={2}
+  loop="Thao tác tại view phát một action mới"
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+```tsx
+import { useReducer } from 'react';
+
+type Todo = { id: string; title: string; done: boolean };
+
+type Action =
+  | { type: 'todoAdded'; id: string; title: string }
+  | { type: 'todoToggled'; id: string }
+  | { type: 'todoRemoved'; id: string };
+
+// Logic của store: hàm thuần từ (state, action) sang state tiếp theo.
+function todosReducer(todos: readonly Todo[], action: Action): readonly Todo[] {
+  switch (action.type) {
+    case 'todoAdded':
+      return [...todos, { id: action.id, title: action.title, done: false }];
+    case 'todoToggled':
+      return todos.map((todo) => (todo.id === action.id ? { ...todo, done: !todo.done } : todo));
+    case 'todoRemoved':
+      return todos.filter((todo) => todo.id !== action.id);
+  }
+}
+
+export function TodoList() {
+  const [todos, dispatch] = useReducer(todosReducer, []);
+  return (
+    <ul>
+      {todos.map((todo) => (
+        <li key={todo.id}>
+          <label>
+            <input
+              type="checkbox"
+              checked={todo.done}
+              onChange={() => dispatch({ type: 'todoToggled', id: todo.id })}
+            />
+            {todo.title}
+          </label>
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Action mô tả sự kiện; view không tự sửa state.
+- Reducer thuần tính state tiếp theo.
+- Selector hẹp và tham chiếu ổn định giảm render lại.
+- Dữ liệu server ở cache, UI cục bộ ở gần component.
+
+## Cân nhắc
+
+| Ưu điểm                    | Hạn chế                        |
+| -------------------------- | ------------------------------ |
+| Thay đổi truy vết được     | Thêm cấu trúc cho ứng dụng nhỏ |
+| Dễ kiểm thử và time travel | Subscribe rộng gây render lại  |
+| Chủ sở hữu state rõ ràng   | Thêm action và selector        |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Vì sao luồng một chiều dễ hiểu hơn binding hai chiều?">
+
+Với binding hai chiều, nhiều view có thể thay đổi state chung nên lỗi có thể bắt nguồn từ nhiều nơi.
+Luồng một chiều chỉ đổi state khi nhận action tại nơi xử lý xác định, cho phép ghi log, phát lại và kiểm thử từng thay đổi.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Dữ liệu server nên ở đâu trong ứng dụng Flux?">
+
+Trong cache lấy dữ liệu như TanStack Query hoặc RTK Query, nơi xử lý loading, cache, refetch và invalidation.
+Store chung chỉ giữ state client mà nhiều component dùng, như tùy chọn UI hoặc bản nháp.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Tránh render lại toàn ứng dụng bằng cách nào?">
+
+Subscribe bằng selector chỉ trả phần dữ liệu component cần và dùng memoization để giữ tham chiếu ổn định.
+Tách state không liên quan thành store hoặc slice khác nhau, chuẩn hóa collection để thay đổi một phần tử không làm mọi phần tử cùng đổi tham chiếu.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Chi tiết thiết kế
+
+- Luồng đi qua action, store rồi view; view không ghi trực tiếp vào state chung.
+- Action mô tả sự việc đã xảy ra thay vì cách gán state để log thể hiện ý nghĩa thao tác.
+- Reducer thuần giúp thay đổi có thể dự đoán và kiểm thử được.
+- Các thay đổi đi qua cơ chế chung, hỗ trợ ghi log, devtools và time travel.
+- Dữ liệu server thuộc cache lấy dữ liệu; UI cục bộ ở component; chỉ state dùng chung mới cần store toàn cục.
+
+### Cơ chế hoạt động
+
+Flux ban đầu có dispatcher phát action cho nhiều store; từng store cập nhật và phát thông báo thay đổi.
+Redux dùng một store với root reducer tính state, còn middleware xử lý side effect.
+`useReducer` của React áp dụng ý tưởng tương tự trong một cây component cục bộ.
+
+### Trường hợp biên
+
+- API call không thuộc reducer; thực hiện trong middleware, thunk hoặc event handler rồi dispatch kết quả.
+- Dữ liệu dẫn xuất nên tính bằng selector thay vì lưu song song để tránh lệch nhau.
+- Giá trị không serialize được trong action hoặc state làm khó devtools và persistence.
+
+### Lỗi thường gặp
+
+- Mutate state trong reducer khiến subscriber không thấy thay đổi tham chiếu.
+- Đưa mọi state vào store toàn cục, kể cả ô nhập form và dữ liệu server.
+- Đặt tên action như setter `setTodos` thay vì sự kiện `todoAdded`, che khuất ý định nghiệp vụ.
+
+### Tài liệu tham khảo
+
+- [Luồng dữ liệu trong Redux Fundamentals](https://redux.js.org/tutorials/fundamentals/part-2-concepts-data-flow)
+- [Tách logic state vào reducer trong tài liệu React](https://react.dev/learn/extracting-state-logic-into-a-reducer)
+
+</DeepDive>

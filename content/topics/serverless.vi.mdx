@@ -1,0 +1,122 @@
+---
+description: 'Hàm chạy theo nhu cầu và mở rộng theo lưu lượng, đổi lại là cold start và các giới hạn thực thi.'
+visual: diagram
+related: [edge-computing, server-side-rendering, timeouts, caching-and-expiry]
+---
+
+## Tóm tắt
+
+Serverless chạy hàm theo nhu cầu và mở rộng theo lưu lượng.
+Cold start cùng giới hạn tài nguyên quyết định cách sử dụng.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Một request serverless"
+  steps={[
+    { title: 'Request đến', note: 'Lệnh gọi HTTP, thông điệp hàng đợi hoặc lịch chạy' },
+    { title: 'Có instance nóng?', note: 'Tái sử dụng nếu có; nếu không thì cold start instance mới' },
+    { title: 'Chạy handler', note: 'Không giữ state bền vững; giới hạn thời gian và bộ nhớ' },
+    { title: 'Trả response', note: 'Instance có thể được giữ nóng thêm một lúc' },
+    { title: 'Hạ số instance về 0', note: 'Có thể dừng instance nhàn rỗi để giảm chi phí sử dụng' },
+  ]}
+  highlight={1}
+  loop="Request sau dùng lại instance nóng hoặc khởi tạo instance mới"
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+```ts
+// app/api/subscribe/route.ts: Route Handler được triển khai thành hàm serverless.
+import { z } from 'zod';
+
+const bodySchema = z.object({ email: z.email() });
+
+// Tạo một lần trên mỗi instance, tái sử dụng qua các lần gọi khi còn nóng.
+const db = createDbClient({ url: process.env.DATABASE_URL, pool: { max: 1 } });
+
+export async function POST(request: Request) {
+  const result = bodySchema.safeParse(await request.json());
+  if (!result.success) {
+    return Response.json({ error: 'Email không hợp lệ' }, { status: 400 });
+  }
+  await db.subscribers.insert({ email: result.data.email });
+  return Response.json({ ok: true }, { status: 201 });
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Nền tảng tạo và điều chỉnh số instance.
+- Tính phí theo mức dùng hợp tải đột biến hơn tải đều cao.
+- Đặt state bền vững ngoài instance sống ngắn.
+- Giới hạn đồng thời và quản lý kết nối xuống dịch vụ khác.
+
+## Cân nhắc
+
+| Ưu điểm                   | Hạn chế                          |
+| ------------------------- | -------------------------------- |
+| Tự mở rộng theo lưu lượng | Cold start                       |
+| Chi phí theo mức sử dụng  | Giới hạn thời gian và bộ nhớ     |
+| Ít vận hành server hơn    | Giới hạn kết nối, phụ thuộc hãng |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Cold start là gì, giảm nó bằng cách nào?">
+
+Khi không có instance đang nóng phù hợp, nền tảng phải khởi tạo runtime và tải mã trước khi xử lý request.
+Giữ bundle và dependency nhỏ, khởi tạo client đắt tiền khi cần, ưu tiên runtime nhẹ và cân nhắc instance được provision hoặc số instance tối thiểu cho đường xử lý quan trọng.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Vì sao serverless làm cạn kết nối cơ sở dữ liệu?">
+
+Hàng trăm instance có thể khởi chạy cùng lúc; mỗi instance tự mở kết nối nên nhanh chóng chạm giới hạn của cơ sở dữ liệu.
+Dùng connection pooler, driver qua HTTP hoặc driver dành cho serverless, đồng thời giới hạn số kết nối trên mỗi instance, chẳng hạn một kết nối trong ví dụ này.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Khi nào không nên dùng hàm serverless thông thường?">
+
+Với công việc kéo dài, tải cao ổn định khiến server chạy thường trực tiết kiệm hơn, kết nối bền như WebSocket hoặc đường xử lý không chịu được cold start.
+Quyết định dựa trên thời gian thực thi, mô hình kết nối và giới hạn cụ thể của nền tảng.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Chi tiết thiết kế
+
+- Nền tảng thay bạn khởi chạy, mở rộng và dừng instance; nhiều cấu hình có thể hạ số instance về 0 khi nhàn rỗi.
+- Chi phí theo mức sử dụng hợp tải thấp hoặc tăng đột biến; tải cao ổn định có thể đắt hơn server thường trực.
+- Khi không có instance nóng, cold start có thể thêm từ vài chục mili giây đến vài giây tùy runtime và workload.
+- Hàm không nên giữ state bền vững trong bộ nhớ; dùng cơ sở dữ liệu, cache hoặc hàng đợi bên ngoài.
+- Mỗi instance có thể tạo kết nối riêng, nên cần pooler hoặc driver cơ sở dữ liệu qua HTTP.
+
+### Cơ chế hoạt động
+
+Nền tảng đóng gói từng hàm, rồi điều phối request đến instance rảnh hoặc khởi tạo instance mới.
+Mỗi instance xử lý một hoặc vài request đồng thời, có thể được giữ nóng một thời gian rồi dừng khi nhàn rỗi.
+Framework front end thường biên dịch trang SSR và API route thành các hàm, nhiều trường hợp tách theo route.
+
+### Trường hợp biên
+
+- Fan-out có thể tạo hàng nghìn instance và làm quá tải dịch vụ phía sau; dùng hàng đợi và giới hạn số tác vụ đồng thời.
+- Công việc nền sau khi trả response có thể bị dừng; dùng `waitUntil` của nền tảng hoặc hàng đợi.
+- Nền tảng thử lại khi lỗi có thể chạy cùng sự kiện hai lần, nên handler cần idempotent.
+
+### Lỗi thường gặp
+
+- Giữ session hoặc cache quan trọng trong bộ nhớ instance rồi mất dữ liệu khi instance bị thay thế.
+- Mở kết nối cơ sở dữ liệu mới cho từng request.
+- Đưa vào bundle quá nhiều dependency, làm cold start chậm hơn.
+
+### Tài liệu tham khảo
+
+- [Kiến trúc serverless trên trang Martin Fowler](https://martinfowler.com/articles/serverless.html)
+- [Route Handler trong tài liệu Next.js](https://nextjs.org/docs/app/getting-started/route-handlers)
+
+</DeepDive>

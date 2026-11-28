@@ -1,0 +1,136 @@
+---
+description: 'Component chỉ render trên server, đọc dữ liệu trực tiếp và không gửi mã của chính nó đến trình duyệt.'
+visual: animation
+related: [server-side-rendering, code-splitting, client-side-rendering, loading-sequence]
+---
+
+## Tóm tắt
+
+Server Component render UI có dữ liệu mà không gửi mã của nó.
+Component client nhỏ đảm nhiệm tương tác.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RenderingTimelineAnimation initialMode="streaming" />
+</VisualTab>
+<VisualTab kind="code">
+
+```tsx
+// app/products/page.tsx: Server Component mặc định, không gửi mã riêng của nó tới client.
+import { Suspense } from 'react';
+
+import { AddToCart } from './add-to-cart';
+
+export default async function ProductsPage() {
+  const products = await db.product.findMany({ take: 20 }); // Đọc dữ liệu trực tiếp trên server.
+
+  return (
+    <main>
+      <ul>
+        {products.map((product) => (
+          <li key={product.id}>
+            {product.name}
+            <AddToCart productId={product.id} />
+          </li>
+        ))}
+      </ul>
+      <Suspense fallback={<p>Đang tải đánh giá…</p>}>
+        <Reviews /> {/* Stream vào khi truy vấn chậm hoàn tất. */}
+      </Suspense>
+    </main>
+  );
+}
+```
+
+```tsx
+// add-to-cart.tsx: phần client tương tác, cần gửi JavaScript tới trình duyệt.
+'use client';
+import { useTransition } from 'react';
+
+export function AddToCart({ productId }: { productId: string }) {
+  const [pending, startTransition] = useTransition();
+  return (
+    <button disabled={pending} onClick={() => startTransition(() => addToCart(productId))}>
+      {pending ? 'Đang thêm…' : 'Thêm vào giỏ'}
+    </button>
+  );
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Chạy ở server khi build hoặc khi có request.
+- Đọc dữ liệu trực tiếp; state và effect ở client.
+- Truyền giá trị React hỗ trợ qua ranh giới hai phía.
+- Stream phần chậm sau ranh giới Suspense.
+
+## Cân nhắc
+
+| Ưu điểm                    | Hạn chế                         |
+| -------------------------- | ------------------------------- |
+| Ít JavaScript ở client     | Cần tích hợp server hoặc build  |
+| Dữ liệu cạnh component     | Ranh giới server/client rõ ràng |
+| Hiển thị dần qua streaming | Điều hướng có thể cần server    |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Server Component khác SSR ở đâu?">
+
+SSR render Client Component thành HTML trên server rồi gửi JavaScript của chúng để hydrate.
+Server Component không được hydrate: nó chỉ render trên server, trình duyệt nhận kết quả chứ không nhận mã component đó.
+Hai cách thường kết hợp: phần dữ liệu nặng ở server, phần tương tác ở client.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Nên đặt ranh giới server/client ở đâu?">
+
+Mặc định giữ component trên server, rồi chuyển phần tương tác nhỏ nhất sang client như nút, form hoặc menu.
+Truyền nội dung đã render ở server qua `children` vào Client Component thay vì import module server từ bên client.
+Phần cần state, effect, event handler hoặc API trình duyệt phải nằm trong component client.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Streaming cải thiện cảm nhận tốc độ thế nào?">
+
+Server gửi phần khung và các vùng nhanh trước, đặt fallback ở chỗ còn đợi dữ liệu.
+Từng vùng `Suspense` được hoàn thiện khi dữ liệu sẵn sàng trên cùng response, nên người dùng thấy phần lớn trang sớm hơn.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Chi tiết thiết kế
+
+- Server Component chạy ở request time hoặc build time; mã và dependency riêng của nó không cần vào bundle trình duyệt.
+- Component có thể là hàm `async`, đọc database, file hoặc API nội bộ trực tiếp mà không thêm request lấy dữ liệu từ client.
+- State, effect và API trình duyệt thuộc component có ranh giới `'use client'`.
+- Props sang Client Component phải thuộc các kiểu React hỗ trợ serialize; không truyền closure tùy ý.
+- `Suspense` cho phép stream phần chậm sau thay vì chặn toàn bộ trang.
+
+### Cơ chế hoạt động
+
+Server render cây component thành mô tả UI được serialize, gọi là RSC payload, và HTML cho lần tải đầu.
+Client Component xuất hiện trong payload bằng tham chiếu đến JavaScript chunk cùng props cần render.
+Khi điều hướng, client lấy payload mới và ghép vào trang mà không phải mất toàn bộ state phía client.
+
+### Trường hợp biên
+
+- Import module chỉ dành cho server, như database client, từ module client có thể đưa dependency đó vào bundle; đánh dấu module phù hợp bằng `server-only`.
+- Context provider là Client Component; đặt provider thấp trong cây khi có thể để giữ phần còn lại ở server.
+- Closure thông thường và instance class không được hỗ trợ không đi qua được ranh giới; Server Function được đánh dấu rõ có thể truyền dưới dạng tham chiếu được serialize.
+
+### Lỗi thường gặp
+
+- Đặt `'use client'` ở đầu cây khiến cả nhánh dependency chuyển sang client.
+- `await` tuần tự trong các component server lồng nhau tạo waterfall thay vì bắt đầu request song song.
+- Để widget cần phản hồi tức thì phụ thuộc hoàn toàn vào các lượt render trên server.
+
+### Tài liệu tham khảo
+
+- [Server Component trong tài liệu React](https://react.dev/reference/rsc/server-components)
+- [Chỉ thị 'use client' trong tài liệu React](https://react.dev/reference/rsc/use-client)
+
+</DeepDive>

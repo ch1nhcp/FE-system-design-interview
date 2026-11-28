@@ -6,8 +6,8 @@ related: [server-side-rendering, code-splitting, ui-states, prerendering]
 
 ## TL;DR
 
-The server returns a nearly empty HTML file, and JavaScript fetches data and renders everything in the browser.
-Hosting is simple and later navigations feel instant, but the first visit shows nothing until the bundle and the data have loaded.
+CSR builds the page in the browser from JavaScript and data.
+Later navigation is fast, but the first visit waits for both.
 
 <VisualPanel tabs={['animation', 'code']}>
 <VisualTab kind="animation">
@@ -48,19 +48,18 @@ function App() {
 
 ## Key points
 
-- The first visit waits for HTML, then the JavaScript bundle, then the data, before anything useful appears.
-- After that, navigation happens in the browser without full page loads, so it feels fast.
-- The site is just static files, so hosting is cheap and a CDN can serve everything.
-- Search engines and link previews see an empty shell unless they run JavaScript, so it is a poor fit for public, SEO pages.
-- Keep it fast with code splitting, skeletons, prefetching and caching data on the client.
+- First visits wait for HTML, JavaScript and data.
+- Later navigation avoids full document reloads.
+- Static hosting is simple; public SEO needs care.
+- Split code, prefetch data and show useful loading states.
 
 ## Trade-offs
 
-| Strengths                                 | Weaknesses                                   |
-| ----------------------------------------- | -------------------------------------------- |
-| Cheap static hosting, no server rendering | Slow first content: HTML, then JS, then data |
-| Fast, app-like navigation after load      | Weak SEO and link previews                   |
-| Simple mental model, one runtime          | Large bundles hurt low-end devices           |
+| Strengths             | Weaknesses                      |
+| --------------------- | ------------------------------- |
+| Cheap static hosting  | HTML, JS and data waterfall     |
+| Fast later navigation | Weak previews without rendering |
+| One browser runtime   | Heavy bundles hurt slow devices |
 
 ## Interview questions
 
@@ -87,6 +86,14 @@ Pre-render public pages at build time or render them on the server, and keep CSR
 </InterviewQuestion>
 
 <DeepDive>
+
+### Design details
+
+- The first visit waits for HTML, then the JavaScript bundle, then the data, before anything useful appears.
+- After that, navigation happens in the browser without full page loads, so it feels fast.
+- The site is just static files, so hosting is cheap and a CDN can serve everything.
+- Search engines and link previews see an empty shell unless they run JavaScript, so it is a poor fit for public, SEO pages.
+- Keep it fast with code splitting, skeletons, prefetching and caching data on the client.
 
 ### How it works
 

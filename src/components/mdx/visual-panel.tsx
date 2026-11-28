@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { TOPIC_VISUALS } from '@/lib/content/topic-frontmatter';
+import { cn } from '@/lib/utils';
 
 export type VisualKind = (typeof TOPIC_VISUALS)[number];
 
@@ -47,8 +48,13 @@ type VisualTabProps = {
 };
 
 export function VisualTab({ kind, children }: VisualTabProps) {
+  const t = useTranslations('Visuals.panel');
   return (
-    <TabsContent value={kind} className="min-w-0">
+    <TabsContent
+      value={kind}
+      aria-label={t(kind)}
+      className={cn('min-w-0', kind === 'code' && 'topic-code-panel focus-visible:ring-ring/50 focus-visible:ring-3')}
+    >
       {children}
     </TabsContent>
   );
