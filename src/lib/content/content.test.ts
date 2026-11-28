@@ -17,17 +17,21 @@ const EM_DASH = String.fromCodePoint(0x20_14);
 const topicFiles = readdirSync(TOPICS_DIR);
 const sectionFiles = readdirSync(SECTIONS_DIR);
 
-describe.each(['real-time-updates', 'architecture', 'state-management', 'backend-apis', 'component-apis'] as const)(
-  'completed Vietnamese section: %s',
-  (slug) => {
-    it('has a translated overview and every registered lesson', () => {
-      expect(sectionFiles).toContain(`${slug}.vi.mdx`);
-      for (const topic of getSection(slug)?.topics ?? []) {
-        expect(topicFiles).toContain(`${topic}.vi.mdx`);
-      }
-    });
-  },
-);
+describe.each([
+  'real-time-updates',
+  'architecture',
+  'state-management',
+  'backend-apis',
+  'component-apis',
+  'networking',
+] as const)('completed Vietnamese section: %s', (slug) => {
+  it('has a translated overview and every registered lesson', () => {
+    expect(sectionFiles).toContain(`${slug}.vi.mdx`);
+    for (const topic of getSection(slug)?.topics ?? []) {
+      expect(topicFiles).toContain(`${topic}.vi.mdx`);
+    }
+  });
+});
 
 describe.each(SECTIONS.map(({ slug }) => slug))('completed English section: %s', (slug) => {
   it('has a cheatsheet for every registered topic', () => {

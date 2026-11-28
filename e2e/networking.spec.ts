@@ -13,8 +13,8 @@ const TOPICS = [
   { slug: 'caching-and-expiry', label: 'Caching and expiry', visual: 'Code' },
 ] as const;
 
-async function finishTimeline(panel: Locator) {
-  const next = panel.getByRole('button', { name: 'Next step', exact: true });
+async function finishTimeline(panel: Locator, label = 'Next step') {
+  const next = panel.getByRole('button', { name: label, exact: true });
   for (let step = 0; step < 25 && !(await next.isDisabled()); step++) {
     await next.click();
   }
@@ -25,7 +25,7 @@ test.describe('networking batch', () => {
   test.use({ reducedMotion: 'reduce' });
 
   for (const topic of TOPICS) {
-    test(`reads ${topic.slug} and its locale fallback`, async ({ page, isMobile }) => {
+    test(`reads ${topic.slug} in both languages`, async ({ page, isMobile }) => {
       if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto('/sections/networking');
       const main = page.getByRole('main');
@@ -53,8 +53,8 @@ test.describe('networking batch', () => {
       await expect(page.getByRole('heading', { name: 'References', exact: true })).toBeVisible();
 
       await page.goto(`/vi/topics/${topic.slug}`);
-      await expect(page.getByRole('note')).toBeVisible();
-      await expect(page.locator('[lang="en"]').getByRole('heading', { name: 'TL;DR', exact: true })).toBeVisible();
+      await expect(page.getByRole('note')).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Tóm tắt', exact: true })).toBeVisible();
     });
   }
 
@@ -101,4 +101,20 @@ test.describe('networking batch', () => {
       'true',
     );
   });
+
+  for (const { slug, caption } of [
+    { slug: 'retries', caption: 'Cả ba client đã thành công ở lần gửi thứ ba.' },
+    { slug: 'race-conditions', caption: 'Phản hồi r cũ đã đến nhưng bị bỏ qua. Kết quả vẫn khớp react.' },
+  ]) {
+    test(`steps and restarts the Vietnamese ${slug} animation`, async ({ page }) => {
+      await page.goto(`/vi/topics/${slug}`);
+      const panel = page.getByRole('region', { name: 'Hình minh hoạ', exact: true });
+      await expect(panel.getByRole('button', { name: 'Phát', exact: true })).toBeVisible();
+      await finishTimeline(panel, 'Bước tiếp');
+      await expect(panel.getByText(caption, { exact: true })).toBeVisible();
+      await panel.getByRole('button', { name: 'Phát lại từ đầu', exact: true }).click();
+      await expect(panel.getByRole('button', { name: 'Bước trước', exact: true })).toBeDisabled();
+      await expect(panel.getByRole('button', { name: 'Bước tiếp', exact: true })).toBeEnabled();
+    });
+  }
 });

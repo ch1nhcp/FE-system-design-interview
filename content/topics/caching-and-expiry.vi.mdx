@@ -1,0 +1,131 @@
+---
+description: Tái sử dụng dữ liệu với quy tắc rõ về danh tính, độ mới, revalidation và invalidation ở từng lớp cache.
+visual: code
+related: [rest, normalized-state, offline-usage, optimistic-updates]
+---
+
+## Tóm tắt
+
+Cache dùng lại dữ liệu theo key, đổi độ mới lấy giảm độ trễ và việc lặp.
+Xác định ai được dùng lại, thời hạn tươi mới và cách thao tác ghi vô hiệu từng lớp cache.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Phản hồi danh mục công khai có thể được shared cache dùng lại theo chính sách độ mới rõ ràng:
+
+```http
+Cache-Control: public, max-age=60, stale-while-revalidate=30
+ETag: "catalog-v7"
+```
+
+Phản hồi riêng theo tài khoản có thể cho phép lưu riêng tư nhưng yêu cầu kiểm tra lại trước khi dùng:
+
+```http
+Cache-Control: private, no-cache
+ETag: "account-view-v12"
+Vary: Accept-Language
+```
+
+Khi biểu diễn đã lưu không đổi, kiểm tra có điều kiện giúp tránh tải lại body:
+
+```http
+If-None-Match: "account-view-v12"
+```
+
+```http
+HTTP/1.1 304 Not Modified
+Cache-Control: private, no-cache
+ETag: "account-view-v12"
+Vary: Accept-Language
+```
+
+Dùng `no-store` khi không được lưu phản hồi; `no-cache` cho phép lưu nhưng cần revalidation.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Dùng lại và kiểm tra cache"
+  steps={[
+    { title: 'Khớp cache key', note: 'Bao gồm tham số biểu diễn và phạm vi truy cập' },
+    { title: 'Kiểm tra độ mới', note: 'Dùng lại entry còn mới và phù hợp, không tải body mới' },
+    { title: 'Kiểm tra lại khi cần', note: 'Gửi ETag đã lưu qua If-None-Match' },
+    { title: 'Dùng lại hoặc thay thế', note: '304 giữ body; biểu diễn mới thay body cũ' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Cache key chứa danh tính, tham số và biểu diễn.
+- Độ mới và thời gian lưu giữ là hai chính sách riêng.
+- ETag hỗ trợ kiểm tra lại có điều kiện.
+- Vô hiệu dữ liệu sau ghi; xóa cache khi đổi tài khoản.
+
+## Cân nhắc
+
+| Cách               | Ưu điểm            | Hạn chế           |
+| ------------------ | ------------------ | ----------------- |
+| TTL độ mới         | Đọc lại nhanh      | Khoảng dữ liệu cũ |
+| Revalidation       | Kiểm tra phiên bản | Round trip mạng   |
+| Stale khi cập nhật | Hiện cache nhanh   | Tạm hiển thị cũ   |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="no-cache khác no-store thế nào?">
+
+`no-cache` cho phép lưu nhưng yêu cầu kiểm tra lại thành công trước khi dùng lại phản hồi.
+`no-store` yêu cầu cache không lưu request hoặc response mới; nó không tự xóa ngược các bản sao đã tồn tại nơi khác.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Vì sao xóa cache rồi dữ liệu vẫn cũ?">
+
+HTTP cache trình duyệt, CDN, service worker và query cache ứng dụng là các lớp riêng, có key và chính sách khác nhau.
+Lần theo phản hồi qua từng lớp và vô hiệu đúng biểu diễn bị ảnh hưởng, không cho rằng reset cache client tác động tới tất cả.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Hết hạn có buộc dữ liệu biến mất khỏi UI không?">
+
+Không nhất thiết: query cache có thể giữ dữ liệu cũ trong khi kiểm tra lại, tùy yêu cầu độ mới của luồng sử dụng.
+Retention quyết định dữ liệu không dùng còn trong bộ nhớ bao lâu; freshness quyết định khi nào cần kiểm tra lại, nên hai thời hạn không cần bằng nhau.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Danh tính request chọn biểu diễn đã lưu; chính sách độ mới quyết định có dùng lại trực tiếp được không.
+Entry cũ có thể được kiểm tra bằng `If-None-Match`; phản hồi 304 cập nhật metadata cache và giữ body đã lưu.
+Với fetch trình duyệt thông thường, HTTP cache thường tự quản lý trao đổi có điều kiện này.
+
+### Chi tiết thiết kế
+
+Cache key ứng dụng phải gồm phạm vi tài khoản hoặc tenant và mọi tham số ảnh hưởng kết quả.
+HTTP `Vary` chỉ các request header chọn biểu diễn khác nhau; điều kiện dùng shared cache và phản hồi đã xác thực cần chính sách server có chủ đích.
+Thao tác ghi có thể ảnh hưởng bản ghi chi tiết, thành viên collection, thứ tự và số lượng; chỉ vô hiệu key object được sửa có thể để các view lệch nhau.
+
+### Trường hợp biên
+
+- Cửa sổ stale-while-revalidate cho phép trả nội dung cũ có giới hạn, không phải bảo đảm offline vô hạn.
+- Quyền hoặc tài khoản đổi có thể khiến entry còn mới cũng không phù hợp để hiển thị.
+- Nhiều component có thể kích hoạt cùng revalidation; khử trùng lượt đọc đang chạy khi danh tính khớp nhau.
+
+### Lỗi thường gặp
+
+- Coi cache TTL là kiểm tra bảo mật dữ liệu hoặc phân quyền.
+- Nhầm stale time ứng dụng với HTTP cache header trình duyệt.
+- Cache dữ liệu cá nhân ở lớp dùng chung bằng key bỏ qua danh tính.
+
+### Tài liệu tham khảo
+
+- [HTTP cache trên MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching)
+- [Cache-Control trên MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control)
+- [HTTP caching, RFC 9111](https://www.rfc-editor.org/rfc/rfc9111.html)
+- [Mặc định quan trọng trong TanStack Query](https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults)
+
+</DeepDive>

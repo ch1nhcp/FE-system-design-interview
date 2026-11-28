@@ -1,0 +1,122 @@
+---
+description: Gộp thao tác API độc lập vào request có giới hạn và giữ kết quả riêng cho từng thao tác.
+visual: diagram
+related: [graphql, debouncing-updates, timeouts, caching-and-expiry]
+---
+
+## Tóm tắt
+
+Batching gộp nhiều thao tác vào một request để giảm chi phí mạng lặp lại.
+Dùng nhóm tường minh hoặc khoảng gom ngắn, có giới hạn và kết quả cho từng thao tác.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Batch request có giới hạn"
+  steps={[
+    { title: 'Gom lượt đọc độc lập', note: 'Nhiều card cần lấy người dùng theo id' },
+    { title: 'Khử trùng và giới hạn', note: 'Mỗi id chỉ đọc một lần; chia nhóm quá lớn' },
+    { title: 'Một endpoint batch', note: 'Phân quyền từng mục và trả kết quả có khóa' },
+    { title: 'Phân phối kết quả', note: 'Trả mục thành công; chỉ retry lỗi đủ điều kiện' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+Hợp đồng ví dụ: tối đa 50 id người dùng, mỗi kết quả thành công hoặc lỗi đều có khóa.
+
+```ts
+type UserResult =
+  | { id: string; ok: true; user: { name: string } }
+  | { id: string; ok: false; code: 'missing' | 'forbidden' };
+
+async function loadUsers(ids: readonly string[], signal: AbortSignal) {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return [];
+  if (unique.length > 50) throw new Error('Chia thành batch tối đa 50 mục.');
+
+  const params = new URLSearchParams();
+  for (const id of unique) params.append('id', id);
+  const response = await fetch(`/api/users/batch?${params}`, { signal });
+  if (!response.ok) throw new Error(`Batch thất bại: ${response.status}`);
+  return response.json() as Promise<UserResult[]>;
+}
+```
+
+Ở production, kiểm tra phản hồi tại ranh giới API; ép kiểu TypeScript không tự kiểm tra JSON.
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Gộp việc độc lập; việc phụ thuộc vẫn cần thứ tự.
+- Giới hạn số mục, byte payload và thời gian gom.
+- Khử trùng theo danh tính và phạm vi truy cập.
+- Ghép bằng id; tách lỗi request khỏi lỗi từng mục.
+
+## Cân nhắc
+
+| Ưu điểm              | Hạn chế               |
+| -------------------- | --------------------- |
+| Giảm chi phí request | Chờ gom nhóm          |
+| Ít lượt đọc trùng    | Chung ranh giới lỗi   |
+| Server tổng hợp      | Mục chậm giữ mục khác |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Batching khác debouncing thế nào?">
+
+Batching giữ nhiều thao tác và chuyển chúng cùng nhau.
+Debouncing thường thay ý định trung gian bằng ý định mới nhất sau khoảng yên lặng, nên có thể chủ động bỏ việc.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Một thao tác trong batch lỗi thì sao?">
+
+Trả kết quả có khóa cho từng thao tác để các vùng UI thành công render độc lập.
+Chỉ retry lỗi tạm thời của thao tác có thể lặp an toàn; batch ghi không tự trở thành transaction nguyên tử.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Khi nào batching khiến màn hình chậm hơn?">
+
+Khoảng gom dài trì hoãn request đầu tiên; mục chậm có thể giữ phản hồi chứa các mục vốn xử lý nhanh.
+Đo thời gian tới nội dung hữu ích và tách việc khẩn cấp hoặc tốn kém thay vì chỉ tối ưu số request.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Scheduler gom thao tác tương thích tới khi timer ngắn, giới hạn số mục hoặc lệnh flush kích hoạt gửi.
+Server kiểm tra đầu vào và quyền từng thao tác, thực thi công việc có giới hạn, trả kết quả gắn với id ban đầu.
+Data loader có phạm vi request của GraphQL có thể gộp lượt đọc database độc lập với việc trình duyệt có gộp thao tác HTTP hay không.
+
+### Chi tiết thiết kế
+
+HTTP/2 và HTTP/3 multiplex request, giảm một phần chi phí kết nối nhưng không loại bỏ header, kiểm tra quyền lặp và chi phí thực thi server.
+Khử trùng chỉ an toàn khi danh tính, tenant, tham số và kỳ vọng độ mới khớp nhau.
+Hủy một bên sử dụng không nên abort request dùng chung mà bên khác vẫn cần.
+
+### Trường hợp biên
+
+- Phản hồi từng phần có thể thiếu id; coi đó là lỗi giao thức rõ ràng thay vì để promise chờ mãi.
+- Loader người dùng toàn cục có thể lộ cache giữa người gọi; đặt phạm vi phù hợp cho loader nhạy cảm với phân quyền.
+- URL quá dài cần batch đọc nhỏ hơn hoặc endpoint query POST được thiết kế rõ với chính sách cache riêng.
+
+### Lỗi thường gặp
+
+- Phát lại cả batch ghi hỗn hợp sau timeout mà không có idempotency từng thao tác.
+- Cho rằng thứ tự phản hồi khớp thứ tự request.
+- Coi batching, request song song và transaction database là như nhau.
+
+### Tài liệu tham khảo
+
+- [Batching và cache trong DataLoader](https://github.com/graphql/dataloader)
+- [Hiệu năng GraphQL](https://graphql.org/learn/performance/)
+- [HTTP/2 multiplexing trên MDN](https://developer.mozilla.org/en-US/docs/Glossary/HTTP_2)
+
+</DeepDive>
