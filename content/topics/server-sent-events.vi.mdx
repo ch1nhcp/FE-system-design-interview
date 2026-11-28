@@ -1,0 +1,126 @@
+---
+description: Một response HTTP sống lâu truyền sự kiện từ server đến client, với cơ chế kết nối lại của trình duyệt.
+visual: animation
+related: [websockets, long-polling, short-polling, offline-usage]
+---
+
+## Tóm tắt
+
+`EventSource` giữ một response HTTP mở để server đẩy sự kiện ngay khi có.
+Luồng chỉ đi từ server đến client; trình duyệt tự kết nối lại khi bị ngắt.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RealtimeTransportAnimation initialMode="serverSentEvents" />
+</VisualTab>
+<VisualTab kind="code">
+
+```ts
+type AppNotification = { id: string; title: string };
+
+export function subscribeToNotifications(
+  onNotification: (notification: AppNotification) => void,
+  onConnectionLost: () => void,
+) {
+  const source = new EventSource('/api/notifications');
+
+  source.addEventListener('notification', (event) => {
+    onNotification(JSON.parse(event.data) as AppNotification);
+  });
+
+  source.addEventListener('error', () => {
+    // Trình duyệt tự thử lại; CLOSED nghĩa là đã dừng hẳn.
+    if (source.readyState === EventSource.CLOSED) {
+      onConnectionLost();
+    }
+  });
+
+  return () => source.close();
+}
+```
+
+Dữ liệu server ghi vào luồng:
+
+```text
+retry: 5000
+
+id: 42
+event: notification
+data: {"id":"42","title":"Có bình luận mới trong bài viết của bạn"}
+
+: heartbeat giữ proxy không đóng luồng đang nhàn rỗi
+
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Một chiều qua HTTP `text/event-stream`; client gửi lên bằng request riêng.
+- Tự kết nối lại, gửi `Last-Event-ID` để server phát bù.
+- Chỉ truyền văn bản; `EventSource` không đặt header tùy ý.
+- Hợp thông báo, tiến độ, bảng tin và phản hồi AI dạng luồng.
+
+## Cân nhắc
+
+| Ưu điểm                           | Hạn chế                             |
+| --------------------------------- | ----------------------------------- |
+| Có sẵn kết nối lại và phát bù     | Chỉ từ server xuống client          |
+| HTTP thường, xác thực bằng cookie | Chỉ văn bản, không header riêng     |
+| Rất ít mã ở client                | Proxy có thể giữ luồng trong bộ đệm |
+| Tự ghép luồng qua HTTP/2          | HTTP/1.1: khoảng 6 luồng mỗi domain |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Khi nào SSE phù hợp hơn WebSocket?">
+
+Khi dữ liệu chủ yếu đi từ server xuống: thông báo, bảng tin, dashboard, thanh tiến độ hoặc token từ mô hình AI.
+SSE cung cấp cơ chế kết nối lại và ID sự kiện trên nền HTTP thông thường, dùng được với cookie và HTTP/2.
+Chọn WebSocket khi client cũng gửi dữ liệu thường xuyên với độ trễ thấp, như trạng thái đang nhập, chỉnh sửa cộng tác hoặc game.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="SSE khôi phục thế nào khi mất kết nối?">
+
+Trình duyệt nối lại sau khoảng chờ mà server có thể đặt bằng `retry:`.
+Nó gửi ID sự kiện gần nhất đã nhận trong header `Last-Event-ID`; server dùng bộ đệm hoặc cơ sở dữ liệu để phát lại các sự kiện mới hơn.
+Client vẫn cần bỏ qua ID đã xử lý để không áp dụng trùng.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="SSE có những giới hạn nào?">
+
+SSE chỉ truyền văn bản theo một chiều; với HTTP/1.1, mỗi luồng chiếm một trong khoảng sáu kết nối mà trình duyệt cho phép trên mỗi domain.
+`EventSource` không đặt được header `Authorization`, nên dùng cookie hoặc client dựa trên `fetch` khi cần header này.
+Proxy có bộ đệm làm sự kiện đến chậm: tắt buffering, chẳng hạn `X-Accel-Buffering: no` trên nginx, và gửi comment heartbeat mỗi 15 đến 30 giây.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Response giữ mở để server ghi từng khối gồm các dòng `field: value`, ngăn cách các khối bằng một dòng trống.
+`data` chứa nội dung, `event` đặt tên loại sự kiện, `id` cập nhật ID gần nhất và `retry` thay đổi thời gian chờ nối lại.
+Dòng bắt đầu bằng dấu hai chấm là comment, phù hợp để làm heartbeat.
+ID và kết nối lại là cơ chế của giao thức; việc lưu và phát bù dữ liệu vẫn cần server triển khai.
+
+### Trường hợp biên
+
+- Nén hoặc buffering ở proxy có thể giữ sự kiện đến khi bộ đệm đầy, nên flush sau từng sự kiện.
+- Khi server khởi động lại, nhiều client có thể cùng nối lại; phân tán giá trị `retry` giúp trải đều tải.
+- Tab nền vẫn giữ luồng mở; đóng khi không cần dữ liệu và mở lại theo `visibilitychange`.
+
+### Lỗi thường gặp
+
+- Quên `id` khiến client không gửi được mốc để server phát bù sau khi nối lại.
+- Không đóng `EventSource` khi unmount, làm rò rỉ kết nối.
+- Dùng SSE cho lưu lượng lớn từ client lên server, vốn phù hợp hơn với WebSocket.
+
+### Tài liệu tham khảo
+
+- [Sử dụng server-sent events trên MDN](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
+- [Server-sent events trong HTML Living Standard](https://html.spec.whatwg.org/multipage/server-sent-events.html)
+
+</DeepDive>
