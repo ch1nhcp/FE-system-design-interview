@@ -230,10 +230,11 @@ The final standards and spec reviews have no unresolved findings.
 | 1         | Real-time updates              | 4                 | 1         | Merged    |
 | 2         | Architecture, State management | 9                 | 2         | In review |
 | 3         | Back end APIs, Component APIs  | 9                 | 2         | In review |
-| 4         | Networking techniques          | 8 planned         | 1 planned | Next      |
-| Remaining | The other 8 sections           | 51 planned        | 8 planned | Pending   |
+| 4         | Networking techniques          | 8                 | 1         | In review |
+| 5         | Performance                    | 14 planned        | 1 planned | Next      |
+| Remaining | The other 7 sections           | 37 planned        | 7 planned | Pending   |
 
-Vietnamese coverage is now 22 of 81 unique topics and 5 of 14 section overviews in the working branch.
+Vietnamese coverage is now 30 of 81 unique topics and 6 of 14 section overviews in the working branch.
 Shared topics reuse one translation, including Event sourcing under both State management and Common patterns.
 Case studies remain outside the completion goal.
 
@@ -285,4 +286,19 @@ All 1,066 unit tests pass with 94.49% line coverage, and all 239 desktop/mobile 
 The nine new Vietnamese summaries measure at most 782 pixels locally, preserving the Linux CI headroom.
 All 32 distinct reference URLs in this batch return HTTP 200.
 Desktop light/dark and 320-pixel mobile screenshots were checked for API diagrams, code and both section overviews.
+Standards and spec reviews report zero actionable findings.
+
+Batch 4 translates all eight Networking lessons and the section overview.
+Retry and race-condition examples reuse the existing localized animations.
+The content distinguishes request cancellation from server rollback, debounce from result guards, per-attempt timeout from overall deadlines, and local persistence from server confirmation.
+HTTP cache headers, retry budgets, generation counters and outbox identifiers retain the original contracts.
+Optimistic updates reuses one translated URL and progress state in both Networking and Performance.
+Content and browser tests require the translated section, and Vietnamese search and flashcards exercise the offline recovery material.
+
+Batch 4 validation passes the production build, type-check, lint and formatting gates.
+All 1,141 unit tests pass with 94.49% line coverage, and all 247 desktop/mobile E2E tests pass with thirteen device-specific skips.
+The eight new Vietnamese summaries measure at most 782 pixels locally.
+All 26 distinct reference URLs in this batch return HTTP 200.
+Desktop light/dark and 320-pixel mobile screenshots were checked for both animations, offline flow, cache code and the overview.
+The search regression now selects the named SSE result for an explicit query instead of assuming its rank in an expanding translated corpus.
 Standards and spec reviews report zero actionable findings.

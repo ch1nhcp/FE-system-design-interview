@@ -1,0 +1,124 @@
+---
+description: Chờ đầu vào yên lặng rồi gửi giá trị mới nhất, đồng thời giữ phản hồi nhập liệu tức thì.
+visual: code
+related: [debouncing-and-throttling, race-conditions, optimistic-updates, batching]
+---
+
+## Tóm tắt
+
+Debounce chờ khoảng yên lặng trước khi gửi đầu vào mới nhất, thay các giá trị trung gian.
+Giữ nhập liệu tức thì và chỉ trì hoãn công việc tốn kém phía sau.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Debounce một giá trị rồi dùng làm key của query có xử lý hủy và phản hồi cũ.
+
+```tsx
+import { useEffect, useState } from 'react';
+
+export function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+// Bên trong component tìm kiếm:
+// const [query, setQuery] = useState('');
+// const searchQuery = useDebouncedValue(query, 250);
+// Render input từ query; lấy kết quả bằng searchQuery.
+```
+
+Hook trì hoãn các thay đổi tiếp theo, không trì hoãn giá trị ban đầu.
+Nó không hủy request đã chạy hoặc tuần tự hóa thao tác ghi.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Luồng tìm kiếm có debounce"
+  steps={[
+    { title: 'Input cập nhật ngay', note: 'Trường controlled theo từng phím gõ' },
+    { title: 'Khởi động lại timer chờ', note: 'Đầu vào mới thay giá trị đang chờ' },
+    { title: 'Gửi query mới nhất', note: 'Khoảng yên lặng cho phép gửi một request' },
+    { title: 'Chỉ nhận kết quả hiện tại', note: 'Request cũ vẫn có thể hoàn tất sau' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Trì hoãn side effect, không trì hoãn giá trị input.
+- Hủy timer cũ khi có giá trị mới.
+- Vẫn chặn phản hồi cũ dù request đã debounce.
+- Quy định flush, cancel, chờ tối đa và thứ tự ghi.
+
+## Cân nhắc
+
+| Ưu điểm             | Hạn chế                      |
+| ------------------- | ---------------------------- |
+| Ít request dư thừa  | Chủ động thêm độ trễ         |
+| Giữ ý định mới nhất | Gõ liên tục có thể chặn việc |
+| Dễ ghép tìm kiếm    | Vẫn cần chặn kết quả cũ      |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Debounce có ngăn kết quả tìm kiếm cũ không?">
+
+Không: nó giảm số request bắt đầu, nhưng request cũ vẫn có thể xong sau request mới.
+Dùng danh tính query hiện tại, generation check hoặc thư viện query để chỉ phản hồi liên quan cập nhật màn hình.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Có flush autosave khi thoát trang không?">
+
+Xác định bảo đảm cho người dùng trước: hiển thị chưa lưu, lưu bằng thao tác tường minh khi cần và giữ bản nháp có thể khôi phục.
+Sự kiện đóng trang không đáng tin để hoàn thành lưu async thông thường; không hứa độ bền chỉ nhờ flush timer lúc đó.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Debounce khác throttle thế nào?">
+
+Trailing debounce chờ đầu vào ổn định; throttle giới hạn tần suất thực thi khi hoạt động còn tiếp diễn.
+Dùng debounce cho query tìm kiếm đã ổn định, throttle hoặc chiến lược theo frame cho tiến độ liên tục hoặc chuyển động con trỏ.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Mỗi lần đầu vào đổi sẽ hủy lịch gửi trước và tạo timer mới giữ giá trị mới nhất.
+Khi không có đầu vào mới trong khoảng đó, giá trị đang chờ được chuyển tới query hoặc effect.
+Với request, cache key phải chứa danh tính tìm kiếm đầy đủ, gồm bộ lọc và phạm vi tenant.
+
+### Chi tiết thiết kế
+
+Thực thi leading và trailing là lựa chọn riêng; thời gian chờ tối đa tùy chọn ngăn gõ liên tục trì hoãn việc vô hạn.
+Hủy timer khi unmount và khi delay thay đổi; xác định submit tường minh có bỏ qua delay không.
+Với input method editor, tránh gửi văn bản composition trung gian như ý định tìm kiếm hoặc lưu cuối cùng.
+
+### Trường hợp biên
+
+- Giá trị ban đầu không rỗng có thể cần tải ngay thay vì trì hoãn query đầu.
+- Xóa timer không hoàn tác request lưu đã chạy; dùng ghi tuần tự hoặc kiểm tra phiên bản.
+- Object không ổn định có thể khởi động lại debounce mỗi render; chọn đầu vào ổn định theo ngữ nghĩa.
+
+### Lỗi thường gặp
+
+- Tạo callback debounce mới mỗi render mà không hủy timer cũ.
+- Trì hoãn cập nhật input controlled khiến cảm giác gõ chậm.
+- Coi debounce là bảo đảm đồng thời hoặc độ bền dữ liệu.
+
+### Tài liệu tham khảo
+
+- [Debounce trên MDN](https://developer.mozilla.org/en-US/docs/Glossary/Debounce)
+- [Throttle trên MDN](https://developer.mozilla.org/en-US/docs/Glossary/Throttle)
+- [Dọn dẹp effect trong React](https://react.dev/reference/react/useEffect)
+- [Sự kiện composition trên MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/compositionend_event)
+
+</DeepDive>

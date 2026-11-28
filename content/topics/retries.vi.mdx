@@ -1,0 +1,111 @@
+---
+description: Thử lại lỗi tạm thời với số lần giới hạn, thời gian chờ tăng theo hàm mũ và jitter để tránh tải đồng loạt.
+visual: animation
+related: [timeouts, rest, optimistic-updates, offline-usage]
+---
+
+## Tóm tắt
+
+Retry có thể khôi phục lỗi tạm thời, nhưng tăng tải và có thể lặp thao tác đã ghi.
+Chỉ retry việc phù hợp, với giới hạn số lần, deadline tổng và backoff có jitter.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RetryAnimation />
+</VisualTab>
+<VisualTab kind="code">
+
+Chọn thời gian chờ full jitter sau một lần thử thất bại.
+Đây là chính sách lập lịch, chưa phải vòng lặp retry hoàn chỉnh.
+
+```ts
+function retryDelay(retryIndex: number, retryAfterMs = 0, random = Math.random) {
+  const base = 500;
+  const cap = 8_000;
+  const window = Math.min(cap, base * 2 ** retryIndex);
+  return Math.max(retryAfterMs, random() * window);
+}
+
+const policy = {
+  maxAttempts: 3, // gồm cả request đầu tiên
+  totalBudgetMs: 10_000, // gồm thời gian request và chờ
+  retryableStatuses: new Set([429, 502, 503, 504]),
+};
+```
+
+Trước mỗi retry, kiểm tra thao tác có thể lặp, tuân thủ hủy, parse gợi ý chờ từ server và bảo đảm còn đủ ngân sách thời gian.
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Retry lỗi tạm thời, không phải mọi request bị từ chối.
+- Giới hạn số lần và tổng thời gian, kể cả chờ.
+- Bảo vệ idempotency cho thao tác tạo hoặc trả tiền.
+- Thêm jitter; tôn trọng Retry-After và tín hiệu hủy.
+
+## Cân nhắc
+
+| Chính sách   | Ưu điểm          | Hạn chế               |
+| ------------ | ---------------- | --------------------- |
+| Ngay lập tức | Khôi phục nhanh  | Tải đồng loạt         |
+| Backoff      | Giảm tần suất    | Client vẫn trùng nhịp |
+| Full jitter  | Phân tán lần thử | Chờ biến thiên        |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Vì sao thêm jitter vào backoff lũy thừa?">
+
+Client thất bại cùng lúc có thể tiếp tục retry cùng lúc dù mỗi khoảng chờ đều tăng gấp đôi.
+Ngẫu nhiên hóa khoảng chờ phân tán lần thử trong cửa sổ backoff thay vì tạo lại đợt tải ở ranh giới cửa sổ.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Có retry thao tác ghi sau timeout không?">
+
+Chỉ khi hợp đồng khiến việc lặp an toàn, như thao tác idempotent hoặc idempotency key do server thực thi, dùng lại cho cùng thao tác logic.
+Timeout thể hiện client chưa biết kết quả, không chứng minh server từ chối hoặc rollback thao tác.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Nên đặt retry ở lớp nào?">
+
+Chọn chủ sở hữu và ngân sách có chủ đích, thường gần lớp hiểu ngữ nghĩa thao tác.
+Nếu nhiều lớp tự retry độc lập, số lần thử nhân lên và có thể làm quá tải dependency đang gặp sự cố.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Sau lỗi đủ điều kiện, exponential backoff tăng cửa sổ chờ có trần theo chỉ số lần retry.
+Full jitter chọn khoảng chờ từ không tới độ rộng cửa sổ; vẫn phải tôn trọng thời gian chờ tối thiểu do server cung cấp.
+Animation dùng mẫu cố định và giả định lượt đọc thứ ba của mỗi client thành công để minh họa lập lịch, không dự báo khôi phục dưới tải thực.
+
+### Chi tiết thiết kế
+
+Phân loại riêng phản hồi HTTP và lỗi mạng; phân biệt người dùng hủy với request timeout.
+Parse `Retry-After` dạng giây hoặc ngày HTTP; nếu vượt deadline còn lại, dừng thay vì thử sớm hơn.
+Lỗi ứng dụng trong HTTP 200, như lỗi field GraphQL, cần phân loại theo thao tác.
+
+### Trường hợp biên
+
+- Trình duyệt offline có thể lỗi bất kể backoff; giữ ý định chờ và kiểm tra lại khả năng kết nối mà không làm cạn pin.
+- Khoảng chờ retry dài cũng cần hủy được, không chỉ fetch đang chạy.
+- Mã lỗi khác nhau có thể cần chính sách khác; lỗi xác thực hoặc validation thường cần đổi request hoặc người dùng hành động.
+
+### Lỗi thường gặp
+
+- Tự retry mọi phản hồi 4xx hoặc mọi mutation.
+- Đặt lại deadline tổng cho mỗi lần thử.
+- Tạo idempotency key mới cho retry, biến nó thành thao tác mới.
+
+### Tài liệu tham khảo
+
+- [Exponential backoff và jitter tại AWS](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/)
+- [Timeout, retry và jitter trong AWS Builders’ Library](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/)
+- [Retry-After trên MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Retry-After)
+
+</DeepDive>

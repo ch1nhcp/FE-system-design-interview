@@ -21,6 +21,9 @@ const paths = [
   '/vi/topics/flux-architecture',
   '/vi/topics/authentication',
   '/vi/topics/render-props',
+  '/vi/topics/retries',
+  '/vi/topics/race-conditions',
+  '/vi/topics/offline-usage',
 ];
 
 for (const theme of ['light', 'dark']) {

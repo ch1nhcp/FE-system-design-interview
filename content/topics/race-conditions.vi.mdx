@@ -1,0 +1,122 @@
+---
+description: Ngăn kết quả async hoàn tất áp dụng vào UI khi không còn khớp ý định hiện tại của người dùng.
+visual: animation
+related: [debouncing-updates, timeouts, optimistic-updates, pagination]
+---
+
+## Tóm tắt
+
+Request async có thể hoàn tất khác thứ tự bắt đầu.
+Chỉ nhận kết quả còn khớp ý định hiện tại; hủy giúp tiết kiệm việc nhưng không sắp thứ tự ghi.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RaceAnimation />
+</VisualTab>
+<VisualTab kind="code">
+
+Bộ điều khiển tìm kiếm kết hợp hủy theo khả năng với kiểm tra generation.
+Gọi `cancel` khi bên sở hữu được dọn dẹp.
+
+```ts
+export function createSearch(onResult: (data: unknown) => void, onError: (error: unknown) => void) {
+  let generation = 0;
+  let active: AbortController | undefined;
+
+  return {
+    async search(query: string) {
+      const current = ++generation;
+      active?.abort();
+      const controller = new AbortController();
+      active = controller;
+      try {
+        const response = await fetch(`/api/search?${new URLSearchParams({ q: query })}`, { signal: controller.signal });
+        if (!response.ok) throw new Error(`Tìm kiếm thất bại: ${response.status}`);
+        const data: unknown = await response.json();
+        if (current === generation) onResult(data);
+      } catch (error) {
+        if (current === generation && !controller.signal.aborted) onError(error);
+      }
+    },
+    cancel() {
+      generation++;
+      active?.abort();
+    },
+  };
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Thứ tự bắt đầu không quyết định thứ tự hoàn tất.
+- Gắn lượt đọc với query hoặc generation.
+- Chặn cả dữ liệu, lỗi và loading đã cũ.
+- Hủy việc cũ; dùng phiên bản hoặc thứ tự cho ghi.
+
+## Cân nhắc
+
+| Cách             | Ưu điểm            | Hạn chế              |
+| ---------------- | ------------------ | -------------------- |
+| Generation guard | Bỏ tác động cũ     | Việc vẫn có thể chạy |
+| Abort signal     | Giảm việc thừa     | Không hoàn tác ghi   |
+| Phiên bản server | Phát hiện xung đột | Cần đối soát         |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Vì sao chỉ debounce là chưa đủ?">
+
+Debounce giới hạn số lần request bắt đầu, nhưng hai request đã chạy vẫn có thể trả về sai thứ tự.
+Quy tắc nhận kết quả phải so phản hồi với tìm kiếm hiện tại, không dựa vào giả định thời gian.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="State nào cần chặn phản hồi cũ?">
+
+Dữ liệu, lỗi và trạng thái loading đều thuộc một generation request cụ thể.
+Khối `finally` của request cũ không được giấu spinner hiện tại; lỗi của nó không được thay thành công mới bằng thông báo lỗi.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Bỏ phản hồi lưu cũ có bảo vệ ghi không?">
+
+Không: nó chỉ bảo vệ hiển thị; server vẫn có thể áp dụng lần lưu cũ sau lần lưu mới.
+Tuần tự hóa ghi xung đột hoặc dùng phiên bản có điều kiện và xử lý xung đột tại server; không dùng lọc phản hồi để bảo đảm thứ tự lưu bền vững.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Request giữ generation đang hoạt động trước khi bắt đầu công việc async.
+Khi mỗi kết quả đến, nó so generation đã giữ với generation hiện tại trước mọi thay đổi state màn hình.
+Hủy giảm việc thừa; guard còn bảo vệ biến đổi chạy sau hoặc cơ chế request không tuân thủ hủy.
+
+### Chi tiết thiết kế
+
+Cleanup của effect React có thể đánh dấu request cụ thể không còn hoạt động khi dependency đổi hoặc component unmount.
+Với cache, dùng danh tính query đầy đủ gồm tài khoản, bộ lọc và thứ tự để request độc lập không ghi đè cùng entry.
+Animation cố ý để hai lượt đọc hoàn tất nhằm tách khác biệt giữa nhận mọi kết quả và chỉ nhận ý định mới nhất.
+
+### Trường hợp biên
+
+- Quay lại cùng văn bản query chưa chắc khiến generation cũ hợp lệ; độ mới và tham số có thể đã đổi.
+- Request cũ có thể hoàn tất parse hoặc biến đổi riêng sau khi hủy mạng.
+- Widget độc lập chạy song song cần danh tính riêng, không dùng một generation toàn cục hủy cả việc không liên quan.
+
+### Lỗi thường gặp
+
+- Chặn dữ liệu thành công nhưng để lỗi cũ hoặc `finally` cập nhật UI.
+- Cho rằng mạng local nhanh tái hiện đúng thứ tự request production.
+- Dùng guard phản hồi mới nhất thay cho kiểm soát ghi đồng thời.
+
+### Tài liệu tham khảo
+
+- [Tải dữ liệu và tránh race trong effect React](https://react.dev/reference/react/useEffect#fetching-data-with-effects)
+- [AbortController trên MDN](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)
+- [Query key trong TanStack Query](https://tanstack.com/query/latest/docs/framework/react/guides/query-keys)
+
+</DeepDive>

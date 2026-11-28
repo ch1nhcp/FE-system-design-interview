@@ -1,0 +1,131 @@
+---
+description: Giữ dữ liệu đọc hữu ích và ý định người dùng có thể khôi phục khi mạng không tới được dịch vụ.
+visual: diagram
+related: [caching-and-expiry, optimistic-updates, retries, conflict-resolution]
+---
+
+## Tóm tắt
+
+Hỗ trợ offline kết hợp dữ liệu cache với ý định được lưu bền cục bộ.
+Tách lưu local khỏi xác nhận server, có quy tắc phát lại và xử lý xung đột rõ ràng.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Vòng đời outbox offline"
+  steps={[
+    { title: 'Ý định cục bộ', note: 'Hiển thị bản nháp hoặc thay đổi tạm' },
+    { title: 'Outbox được lưu bền', note: 'Lưu operation id, phạm vi tài khoản và payload' },
+    { title: 'Thử đồng bộ', note: 'Kiểm tra lại danh tính, kết nối dịch vụ và phiên bản server' },
+    { title: 'Xác nhận hoặc giải quyết', note: 'Đối soát dữ liệu server; giữ ý định bị từ chối để khôi phục' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+Bản ghi thao tác đã lưu tách độ bền cục bộ khỏi xác nhận của server.
+
+```ts
+type OutboxEntry = {
+  operationId: string; // dùng lại làm idempotency key phía server
+  accountId: string;
+  documentId: string;
+  expectedVersion: string;
+  title: string;
+  createdAt: number;
+  state: 'pending' | 'blocked';
+};
+
+const entry: OutboxEntry = {
+  operationId: crypto.randomUUID(),
+  accountId: 'user-42',
+  documentId: 'doc-7',
+  expectedVersion: 'v3',
+  title: 'Bản nháp offline',
+  createdAt: Date.now(),
+  state: 'pending',
+};
+
+// Lưu entry vào IndexedDB trước khi báo đã lưu cục bộ.
+// Chỉ gửi dưới tài khoản đã xác thực khớp với bản ghi.
+// Chỉ xóa sau khi xác nhận server đã được đối soát cục bộ.
+```
+
+Bản ghi minh họa hợp đồng, chưa phải triển khai outbox hoàn chỉnh.
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Chủ động cache app shell và dữ liệu đọc cần thiết.
+- Lưu nháp trước khi báo đã lưu bền cục bộ.
+- navigator.onLine chỉ là gợi ý kết nối.
+- Tách tài khoản; phát lại có idempotency và thứ tự.
+
+## Cân nhắc
+
+| Cách              | Ưu điểm            | Hạn chế              |
+| ----------------- | ------------------ | -------------------- |
+| Cache dữ liệu đọc | Duyệt offline      | Dữ liệu có thể cũ    |
+| Bản nháp local    | Khôi phục đầu vào  | Lưu trữ có thể lỗi   |
+| Outbox ghi        | Tiếp tục công việc | Phát lại và xung đột |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="navigator.onLine chứng minh API truy cập được không?">
+
+Không: thiết bị có giao diện mạng nhưng captive portal, sự cố dịch vụ hoặc route lỗi vẫn có thể chặn truy cập.
+Dùng kết quả request thật để điều khiển đồng bộ và cho retry, không vô hiệu mọi công việc chỉ vì gợi ý của trình duyệt.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="App đóng khi đang phát lại thao tác ghi thì sao?">
+
+Server có thể đã ghi trước khi client ghi nhận xác nhận.
+Lưu operation id ổn định trước khi gửi, dùng lại khi phát lại, với khử trùng phía server và thời hạn giữ khóa rõ ràng.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Sửa offline gặp thay đổi từ thiết bị khác thì sao?">
+
+Gửi phiên bản gốc của chỉnh sửa để server phát hiện xung đột.
+Giữ bản nháp local, hiển thị thay đổi chuẩn và cho merge hoặc người dùng quyết định; chỉ tự merge khi ngữ nghĩa nghiệp vụ cho phép.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Service worker có thể phục vụ app shell và tài nguyên đã cache; IndexedDB giữ bản nháp có cấu trúc và thao tác chờ.
+Bộ đồng bộ phát lại việc phù hợp khi tới được dịch vụ, kiểm tra danh tính hiện tại và dependency của từng thao tác.
+Ghi thành công cập nhật dữ liệu chuẩn cục bộ trước khi bỏ bản ghi chờ.
+
+### Chi tiết thiết kế
+
+Xác định ngân sách lưu trữ, phiên bản cache, eviction và nâng cấp; persistent browser storage không phải bảo đảm backup vô điều kiện.
+Background Sync giúp trên nền tảng hỗ trợ, nhưng vẫn cần retry khi app mở và nơi hiển thị công việc đang chờ.
+Không cache phản hồi riêng tư hoặc phát lại việc của tài khoản khác qua handler toàn cục bỏ qua danh tính.
+
+### Trường hợp biên
+
+- Session hết hạn khi offline có thể chặn phát lại tới khi tài khoản gốc xác thực lại.
+- Lỗi quota hoặc người dùng xóa storage có thể mất dữ liệu chỉ có local; hiển thị rõ lỗi lưu bền.
+- Lệnh xóa chờ có thể khiến chỉnh sửa sau mất hiệu lực; giữ dependency thao tác và đường giải quyết.
+
+### Lỗi thường gặp
+
+- Gắn nhãn thay đổi chỉ có local là đã đồng bộ thành công.
+- Cho rằng background sync chạy ngay hoặc có trên mọi nền tảng.
+- Xóa nháp chưa gửi khi đăng xuất mà không có chính sách khôi phục hoặc tách biệt tài khoản rõ ràng.
+
+### Tài liệu tham khảo
+
+- [Service Worker API trên MDN](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API)
+- [IndexedDB API trên MDN](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
+- [Navigator.onLine trên MDN](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/onLine)
+- [Background Synchronization API trên MDN](https://developer.mozilla.org/en-US/docs/Web/API/Background_Synchronization_API)
+
+</DeepDive>

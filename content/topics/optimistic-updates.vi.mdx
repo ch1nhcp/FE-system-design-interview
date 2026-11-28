@@ -1,0 +1,120 @@
+---
+description: Hiển thị ngay kết quả ghi dự đoán, sau đó xác nhận hoặc đối soát với server.
+visual: diagram
+related: [normalized-state, retries, conflict-resolution, error-handling]
+---
+
+## Tóm tắt
+
+Optimistic UI hiển thị kết quả ghi dự đoán trước xác nhận của server.
+Dùng cho kết quả dễ thành công, có thể xử lý lại, với pending rõ và đối soát lỗi có chủ đích.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Vòng đời mutation optimistic"
+  steps={[
+    { title: 'Ghi nhận ý định', note: 'Dùng operation id ổn định cho thay đổi đang chờ' },
+    { title: 'Tính state hiển thị tạm', note: 'Hiển thị kết quả tạm ngay lập tức' },
+    { title: 'Server chấp nhận hoặc từ chối', note: 'Server vẫn kiểm tra đầu vào và phân quyền' },
+    { title: 'Đối soát', note: 'Thay bằng dữ liệu chuẩn hoặc chỉ bỏ thay đổi chờ này' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+Tính nội dung hiển thị từ dữ liệu chuẩn và thao tác chờ thay vì ghi đè phá hủy snapshot dùng chung.
+
+```ts
+type Todo = { id: string; title: string; done: boolean };
+type PendingToggle = { operationId: string; todoId: string; done: boolean };
+
+function projectTodos(confirmed: readonly Todo[], pending: readonly PendingToggle[]): Todo[] {
+  return pending.reduce(
+    (todos, change) => todos.map((todo) => (todo.id === change.todoId ? { ...todo, done: change.done } : todo)),
+    [...confirmed],
+  );
+}
+
+// Khi bị từ chối, chỉ bỏ operationId đó khỏi pending.
+// Khi thành công, đối soát dữ liệu chuẩn trước khi bỏ lớp pending.
+```
+
+Phép chiếu này xử lý hiển thị, không quản lý thứ tự ghi server.
+Tuần tự hóa thay đổi xung đột hoặc dùng phiên bản server để xác nhận nhất quán.
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Chỉ dự đoán kết quả phù hợp để đối soát.
+- Đánh dấu dữ liệu tạm, ngăn gửi trùng.
+- Theo dõi thay đổi chờ bằng operation id ổn định.
+- Đối soát dữ liệu chuẩn; giữ thay đổi mới khi rollback.
+
+## Cân nhắc
+
+| Ưu điểm              | Hạn chế                  |
+| -------------------- | ------------------------ |
+| Phản hồi tức thì     | Đối soát phức tạp        |
+| Giảm độ trễ cảm nhận | Sửa lại khi thất bại     |
+| Thao tác lặp mượt    | Ghi đồng thời cần thứ tự |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Vì sao khôi phục snapshot có thể không an toàn?">
+
+Nếu thay đổi khác thành công sau khi chụp snapshot, khôi phục cả snapshot có thể xóa thay đổi mới đó.
+Chỉ rollback thao tác lỗi, rebase lớp pending lên dữ liệu chuẩn, hoặc tuần tự hóa việc xung đột và chủ động refetch.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Thao tác nào nên chờ xác nhận?">
+
+Kết quả không chắc chắn hoặc có hệ quả lớn, như ủy quyền thanh toán hay cấp quyền, thường cần xác nhận trước khi báo thành công.
+Vẫn có thể phản hồi click ngay và hiển thị pending mà không tuyên bố thao tác đã hoàn tất.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Đổi id tạm sang id server thế nào?">
+
+Giữ operation id phía client ổn định để đối soát, rồi ánh xạ id server đã xác nhận vào entity và các tham chiếu.
+Tránh hiển thị cả mục chờ và mục đã xác nhận khi refetch hoặc event thời gian thực đến trước phản hồi mutation.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+UI phủ thao tác chưa xác nhận lên state server gần nhất, rồi gửi ghi theo hợp đồng đồng thời và idempotency đã thống nhất.
+Thành công sẽ gộp dữ liệu chuẩn; từ chối sẽ bỏ hoặc bù trừ đúng thao tác chờ và cung cấp đường khôi phục hữu ích.
+Timeout để lại kết quả chưa biết, nên đối soát hoặc tra trạng thái thao tác trước khi kết luận ghi thất bại.
+
+### Chi tiết thiết kế
+
+Hủy hoặc phối hợp refetch có thể ghi đè optimistic view; vô hiệu hóa danh sách, số lượng và query chi tiết bị ảnh hưởng sau khi thao tác có kết quả.
+Ghi chồng lên cùng entity cần thứ tự, kiểm tra phiên bản hoặc chính sách merge rõ ràng; phép chiếu hiển thị không tự giải quyết xung đột server.
+State pending cần hỗ trợ truy cập và giữ bản nháp khi server từ chối.
+
+### Trường hợp biên
+
+- Thu hồi quyền có thể từ chối thao tác trông hợp lệ ở client.
+- Sắp xếp lại hoặc xóa ảnh hưởng cả thành viên danh sách và phân trang, không chỉ bản ghi entity.
+- Event nền có thể xác nhận trước phản hồi HTTP; đối soát bằng danh tính thay vì thêm hai lần.
+
+### Lỗi thường gặp
+
+- Coi kết quả dự đoán là xác nhận bền vững.
+- Rollback toàn cache khi một trong nhiều thao tác ghi lỗi.
+- Refetch rồi vô tình bỏ ý định người dùng vẫn đang chờ.
+
+### Tài liệu tham khảo
+
+- [Optimistic update trong TanStack Query](https://tanstack.com/query/latest/docs/framework/react/guides/optimistic-updates)
+- [useOptimistic của React](https://react.dev/reference/react/useOptimistic)
+- [Chuẩn hóa cấu trúc state trong Redux](https://redux.js.org/usage/structuring-reducers/normalizing-state-shape)
+
+</DeepDive>

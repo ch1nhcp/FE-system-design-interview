@@ -1,0 +1,120 @@
+---
+description: Giới hạn thời gian request chiếm sự chú ý và tài nguyên mà không cho rằng server đã dừng.
+visual: code
+related: [retries, race-conditions, error-handling, offline-usage]
+---
+
+## Tóm tắt
+
+Timeout giới hạn thời gian client chờ trước khi coi kết quả là chưa chắc chắn.
+Tách giới hạn từng lần thử khỏi deadline tổng và giữ đường khôi phục khi chưa biết kết quả server.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Kết hợp hủy từ người dùng và timeout từng lần thử, bao gồm thời gian đọc body phản hồi.
+
+```ts
+async function readJson(url: string, userSignal: AbortSignal) {
+  const deadline = AbortSignal.timeout(5_000);
+  const signal = AbortSignal.any([userSignal, deadline]);
+  try {
+    const response = await fetch(url, { signal });
+    if (!response.ok) throw new Error(`Đọc thất bại: ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    if (signal.aborted) throw signal.reason;
+    throw error;
+  }
+}
+```
+
+Bên gọi có thể phân biệt nguyên nhân timeout, người dùng hủy và lỗi mạng.
+Kiểm tra trình duyệt mục tiêu hoặc dùng tiện ích request có hỗ trợ hủy được duy trì nếu thiếu các API này.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Deadline của request"
+  steps={[
+    { title: 'Bắt đầu với ngân sách', note: 'Tính cả thời gian đã chờ hoặc retry' },
+    { title: 'Chờ dữ liệu', note: 'Mỗi lần thử có thời gian cho phép hữu hạn' },
+    { title: 'Phản hồi hoặc timeout', note: 'Abort dừng client chờ, chưa chắc dừng server ghi' },
+    { title: 'Khôi phục có chủ đích', note: 'Retry lượt đọc phù hợp; đối soát ghi chưa rõ kết quả' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Chọn giới hạn từ độ trễ đo được và luồng sử dụng.
+- Tính chờ backoff vào ngân sách retry tổng.
+- Hủy đọc cũ; dọn timer và listener.
+- Phân biệt hủy, timeout, lỗi HTTP; đối soát ghi.
+
+## Cân nhắc
+
+| Chính sách    | Ưu điểm          | Hạn chế            |
+| ------------- | ---------------- | ------------------ |
+| Timeout ngắn  | Khôi phục nhanh  | Nhiều lỗi giả      |
+| Timeout dài   | Chịu tác vụ chậm | Giữ tài nguyên lâu |
+| Deadline tổng | Giới hạn chờ     | Phối hợp ngân sách |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Abort fetch có hủy thao tác server không?">
+
+Nó dừng xử lý request và đọc body ở trình duyệt, nhưng server có thể đã commit thay đổi.
+Dùng operation id, tra trạng thái hoặc hợp đồng idempotency để đối soát sự chưa chắc chắn thay vì mặc định rollback.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Vì sao retry cần deadline tổng?">
+
+Ba lần thử với giới hạn năm giây mỗi lần còn có thể thêm nhiều giây backoff và xếp hàng.
+Tính thời gian cho phép mới từ ngân sách còn lại dùng chung để chính sách retry không kéo dài chờ vô hạn.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Timeout nào cũng cần lỗi toàn trang không?">
+
+Không: giữ nội dung đã tải và đầu vào người dùng, cung cấp retry cục bộ hoặc trạng thái khôi phục nền khi có thể.
+Hủy có chủ đích sau khi điều hướng thường không cần thông báo lỗi.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Lớp request kết hợp tín hiệu hủy và thực thi giới hạn hữu hạn cho lần thử hiện tại.
+Deadline của cả luồng nằm ở lớp trên, gồm retry, chờ và công việc trước đó đã tiêu thụ ngân sách người dùng.
+Nếu tự triển khai timer, xóa timer trong `finally` và gỡ listener abort khi hoàn tất.
+
+### Chi tiết thiết kế
+
+Chọn timeout theo phân bố độ trễ và tỷ lệ timeout giả chấp nhận được, thay vì sao chép một con số cho mọi endpoint.
+Thiết lập kết nối, nhận header và stream body có thể khác nhau; quyết định giới hạn tổng thời gian hay thời gian không hoạt động.
+API trình duyệt hiện đại trong ví dụ đếm thời gian hoạt động và có thể tạm dừng khi trình duyệt bị đình chỉ; deadline theo đồng hồ tuyệt đối có thể cần kiểm tra mốc hết hạn riêng.
+
+### Trường hợp biên
+
+- Phản hồi có thể trả header nhanh rồi treo trong khi tải body.
+- Công việc đồng bộ nặng CPU không thể bị ngắt chỉ bằng abort signal.
+- Request đã hủy vẫn có thể có callback ứng dụng về sau; kiểm tra kết quả có thuộc màn hình hiện tại không.
+
+### Lỗi thường gặp
+
+- Dùng `Promise.race` bỏ chờ fetch nhưng để request mạng bên dưới tiếp tục chạy.
+- Cấp ngân sách tổng mới cho mỗi retry.
+- Báo thanh toán timeout là chắc chắn thất bại và khuyến khích trả tiền trùng.
+
+### Tài liệu tham khảo
+
+- [AbortSignal.timeout trên MDN](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/timeout_static)
+- [AbortSignal.any trên MDN](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/any_static)
+- [Chọn timeout trong AWS Builders’ Library](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/)
+
+</DeepDive>

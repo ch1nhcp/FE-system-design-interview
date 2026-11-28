@@ -1,0 +1,37 @@
+## Cách lựa chọn
+
+Bắt đầu từ vấn đề: chi phí request, đầu vào cập nhật quá nhiều, lỗi chưa rõ kết quả, phản hồi cũ hoặc làm việc mất kết nối.
+Mỗi kỹ thuật xử lý một phần vòng đời request và thường cần phối hợp.
+
+| Kỹ thuật          | Dùng khi                             | Ràng buộc                                   |
+| ----------------- | ------------------------------------ | ------------------------------------------- |
+| Batching          | Việc độc lập lặp chi phí request     | Giới hạn batch, trả kết quả từng mục        |
+| Debounce          | Không cần gửi mọi giá trị trung gian | Nhập liệu tức thì, chặn phản hồi cũ         |
+| Retry             | Thao tác có thể lặp gặp lỗi tạm thời | Giới hạn số lần, backoff có jitter          |
+| Timeout           | Người dùng cần giới hạn chờ          | Giữ sự chưa chắc chắn của thao tác ghi      |
+| Chặn race         | Phản hồi có thể sai thứ tự           | Chỉ nhận query hoặc generation hiện tại     |
+| Optimistic update | Kết quả dễ đúng và có thể đối soát   | Đối soát đúng thao tác đang chờ             |
+| Offline           | Cần giữ việc qua mất kết nối         | Lưu ý định, định nghĩa phát lại và xung đột |
+| Cache và hết hạn  | Lượt đọc lặp có thể dùng lại dữ liệu | Tách danh tính, quy định độ mới và vô hiệu  |
+
+## Kết hợp các biện pháp bảo vệ
+
+Với tìm kiếm, cập nhật input ngay, debounce lúc gửi, tạo key từ query đầy đủ và bỏ kết quả cũ.
+Cache lượt đọc khớp theo chính sách độ mới rõ ràng, sau đó dùng retry có giới hạn và timeout cho lỗi tạm thời phù hợp.
+
+Với chỉnh sửa, giữ bản nháp, chỉ hiển thị state tạm khi kết quả dễ dự đoán và gửi thao tác có phiên bản hoặc idempotency.
+Nếu mất kết nối, giữ danh tính thao tác và đối soát trạng thái trước khi lặp lại.
+Phát lại offline cần cùng quy tắc phân quyền, thứ tự và chống trùng như thao tác ghi online.
+
+## Điểm cần hỏi trong phỏng vấn
+
+| Câu hỏi                    | Cần quyết định                                    |
+| -------------------------- | ------------------------------------------------- |
+| Việc này có thể lặp không? | Ngữ nghĩa đọc hoặc idempotency do server thực thi |
+| Kết quả nào là hiện tại?   | Danh tính query, generation hoặc phiên bản server |
+| Được chờ bao lâu?          | Deadline tổng, gồm khoảng chờ retry               |
+| Đã lưu nghĩa là gì?        | Lưu local, chờ đồng bộ hoặc server xác nhận       |
+| Ai được dùng lại dữ liệu?  | Phạm vi cache, độ mới và chuyển tài khoản         |
+
+Giảm số request chưa chứng minh giao diện nhanh hơn.
+So sánh thời gian tới nội dung hữu ích, tail latency, việc thừa, tải dịch vụ và đường khôi phục của người dùng.

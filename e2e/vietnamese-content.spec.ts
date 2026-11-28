@@ -25,6 +25,17 @@ const apis = [
   'composition',
 ];
 
+const networking = [
+  'batching',
+  'retries',
+  'debouncing-updates',
+  'optimistic-updates',
+  'timeouts',
+  'race-conditions',
+  'offline-usage',
+  'caching-and-expiry',
+];
+
 test('reads the complete real-time section in Vietnamese without a fallback notice', async ({ page }) => {
   for (const topic of realtime) {
     await page.goto(`/vi/topics/${topic}`);
@@ -47,7 +58,7 @@ test('reads the complete real-time section in Vietnamese without a fallback noti
 test('keeps every translated summary within one desktop screen', async ({ page, isMobile }) => {
   test.skip(isMobile, 'The desktop summary and sticky panel are checked at 1440px');
   await page.setViewportSize({ width: 1440, height: 900 });
-  for (const topic of [...realtime, ...foundations, ...apis]) {
+  for (const topic of [...realtime, ...foundations, ...apis, ...networking]) {
     await page.goto(`/vi/topics/${topic}`);
     await page.evaluate(() => document.fonts.ready);
     const start = await page.getByRole('heading', { name: 'Tóm tắt', exact: true }).boundingBox();
@@ -61,8 +72,8 @@ test('keeps every translated summary within one desktop screen', async ({ page, 
 test('searches translated questions and studies translated flashcard answers', async ({ page }) => {
   await page.goto('/vi');
   await page.getByRole('button', { name: /Tìm chủ đề/ }).click();
-  await page.getByRole('combobox', { name: 'Tìm chủ đề', exact: true }).fill('khôi phục');
-  await page.getByRole('option').first().click();
+  await page.getByRole('combobox', { name: 'Tìm chủ đề', exact: true }).fill('SSE khôi phục');
+  await page.getByRole('option', { name: /Server-sent events/ }).click();
   await expect(page).toHaveURL('/vi/topics/server-sent-events');
   await page.goto('/vi/topics/websockets');
   await page.getByRole('button', { name: 'Cần ôn lại', exact: true }).click();
@@ -80,7 +91,7 @@ test('searches translated questions and studies translated flashcard answers', a
 
 test('keeps translated lessons and the overview readable at 320px', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 900 });
-  for (const topic of [...realtime, ...foundations, ...apis]) {
+  for (const topic of [...realtime, ...foundations, ...apis, ...networking]) {
     await page.goto(`/vi/topics/${topic}`);
     await expect(page.getByRole('heading', { name: 'Tóm tắt', exact: true })).toBeVisible();
     const codeTab = page.getByRole('tab', { name: 'Code', exact: true });
@@ -109,6 +120,11 @@ for (const { group, topics, overviews } of [
       ['backend-apis', 'Hợp đồng truy cập'],
       ['component-apis', 'Xác định hợp đồng'],
     ],
+  },
+  {
+    group: 'Networking',
+    topics: networking,
+    overviews: [['networking', 'Kết hợp các biện pháp bảo vệ']],
   },
 ]) {
   test(`reads ${group} with translated examples and metadata`, async ({ page }) => {
@@ -187,5 +203,28 @@ test('finds Vietnamese access guidance and studies its actual translated answer'
   );
   await page.getByRole('button', { name: 'Xem đáp án', exact: true }).click();
   await expect(page.locator('#flashcard-answer')).toContainText('kiểm tra quyền trên đúng tài nguyên');
+  await expect(page.locator('#flashcard-answer')).toHaveAttribute('lang', 'vi');
+});
+
+test('shares Vietnamese optimistic progress and searches recoverable offline work', async ({ page }) => {
+  for (const section of ['networking', 'performance']) {
+    await page.goto(`/vi/sections/${section}`);
+    await page.getByRole('main').locator('a[href="/vi/topics/optimistic-updates"]').click();
+    await expect(page).toHaveURL('/vi/topics/optimistic-updates');
+    if (section === 'networking') await page.getByRole('checkbox', { name: 'Đã học', exact: true }).check();
+    await expect(page.getByRole('checkbox', { name: 'Đã học', exact: true })).toBeChecked();
+  }
+  await page.getByRole('button', { name: /Tìm chủ đề/ }).click();
+  await page.getByRole('combobox', { name: 'Tìm chủ đề', exact: true }).fill('captive portal');
+  await page.getByRole('option', { name: /offline/i }).click();
+  await expect(page).toHaveURL('/vi/topics/offline-usage');
+  await page.getByRole('button', { name: 'Cần ôn lại', exact: true }).click();
+  await page.goto('/vi/flashcards');
+  await page.getByRole('radio', { name: 'Cần ôn lại', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'navigator.onLine chứng minh API truy cập được không?', exact: true }),
+  ).toHaveAttribute('lang', 'vi');
+  await page.getByRole('button', { name: 'Xem đáp án', exact: true }).click();
+  await expect(page.locator('#flashcard-answer')).toContainText('kết quả request thật');
   await expect(page.locator('#flashcard-answer')).toHaveAttribute('lang', 'vi');
 });
