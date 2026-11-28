@@ -1,6 +1,7 @@
 import { useTranslations } from 'next-intl';
 
 import { LocaleSwitcher } from '@/components/locale-switcher';
+import { SearchLauncher } from '@/components/search/search-launcher';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Link } from '@/i18n/navigation';
 
@@ -16,12 +17,13 @@ export function SiteHeader() {
         <MobileNav />
         <Link
           href="/"
-          className="focus-visible:ring-ring/50 rounded-md text-sm font-semibold whitespace-nowrap outline-none focus-visible:ring-3"
+          className="focus-visible:ring-ring/50 min-w-0 truncate rounded-md text-sm font-semibold outline-none focus-visible:ring-3"
         >
           {t('name')}
         </Link>
         <MainNavLinks className="hidden sm:block" />
         <div className="ml-auto flex items-center gap-2">
+          <SearchLauncher />
           <ThemeToggle />
           <LocaleSwitcher />
         </div>

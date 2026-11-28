@@ -22,4 +22,5 @@ export function Link({
 export const usePathname = () => navigationState.pathname;
 
 export const replace = vi.fn();
-export const useRouter = () => ({ replace });
+export const push = vi.fn();
+export const useRouter = () => ({ replace, push });
