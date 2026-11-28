@@ -1,0 +1,134 @@
+---
+description: Server giữ request đến khi có dữ liệu mới hoặc hết thời gian chờ, rồi client gửi request tiếp theo.
+visual: animation
+related: [short-polling, server-sent-events, websockets, retries]
+---
+
+## Tóm tắt
+
+Server giữ request HTTP cho đến khi có cập nhật rồi mới trả lời; client lập tức hỏi tiếp.
+Hết thời gian chờ thì server trả phản hồi rỗng và client hỏi lại.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RealtimeTransportAnimation initialMode="longPolling" />
+</VisualTab>
+<VisualTab kind="code">
+
+```ts
+type Batch<T> = { events: T[]; cursor: string };
+
+// Hoàn tất sau `ms` hoặc ngay khi bị hủy, không bắt cleanup chờ hết backoff.
+function wait(ms: number, signal: AbortSignal) {
+  return new Promise<void>((resolve) => {
+    const onAbort = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort); // Không tích lũy listener trên signal sống lâu.
+      resolve();
+    }, ms);
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+// Mỗi lúc một request; cursor giúp lấy đủ sự kiện phát sinh giữa hai lượt hỏi.
+export async function longPoll<T>(url: string, onEvents: (events: T[]) => void, signal: AbortSignal) {
+  let cursor = '';
+  let failures = 0;
+
+  while (!signal.aborted) {
+    try {
+      const response = await fetch(`${url}?after=${encodeURIComponent(cursor)}`, { signal });
+      if (response.status === 204) continue; // Hết thời gian chờ mà chưa có tin: hỏi tiếp.
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const batch = (await response.json()) as Batch<T>;
+      cursor = batch.cursor;
+      failures = 0;
+      onEvents(batch.events);
+    } catch {
+      if (signal.aborted) return;
+      // Backoff lũy thừa kèm full jitter để tránh cả đám client cùng kết nối lại.
+      failures += 1;
+      const delay = Math.random() * Math.min(30_000, 1000 * 2 ** failures);
+      await wait(delay, signal);
+    }
+  }
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Gần thời gian thực qua HTTP thông thường.
+- Mỗi cập nhật vẫn tốn cả request, response và header.
+- Server phải giữ nhiều request chờ với chi phí thấp.
+- Trả lời trước ngưỡng timeout của proxy và cân bằng tải.
+- Dùng cursor để không mất sự kiện giữa hai lần hỏi.
+
+## Cân nhắc
+
+| Ưu điểm                              | Hạn chế                         |
+| ------------------------------------ | ------------------------------- |
+| Gần tức thì, không cần giao thức mới | Mỗi cập nhật cần một lượt HTTP  |
+| Dùng được khi WebSocket bị chặn      | Server giữ nhiều request mở     |
+| Ít phản hồi rỗng hơn short polling   | Cần cursor và khử sự kiện trùng |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Long polling khác short polling ở đâu?">
+
+Short polling hỏi theo lịch và thường không nhận được dữ liệu mới.
+Với long polling, server chờ đến khi có dữ liệu rồi mới trả lời, nên phần lớn phản hồi có ích và đến ngay sau cập nhật.
+Đổi lại, mỗi client đang chờ chiếm một request mở trên server.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Làm sao không mất sự kiện giữa hai request?">
+
+Gắn cho mỗi sự kiện một ID tăng dần hoặc cursor.
+Client gửi cursor gần nhất đã nhận; server lưu các sự kiện gần đây trong bộ đệm một khoảng thời gian và trả mọi sự kiện sau cursor đó.
+Client bỏ qua ID đã có để việc thử lại request không gây xử lý trùng.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Nhiều client long polling cùng lúc gây vấn đề gì?">
+
+Mỗi request chờ chiếm kết nối và bộ nhớ; mô hình một thread cho mỗi request còn giữ cả thread, nên cần server xử lý theo sự kiện.
+Proxy và bộ cân bằng tải có thể cắt kết nối nhàn rỗi; timeout phía server phải ngắn hơn ngưỡng đó, thường khoảng 20 đến 60 giây tùy hạ tầng.
+Sau mỗi lần triển khai, client có thể cùng kết nối lại nếu không dùng backoff kèm jitter.
+Với HTTP/1.1, trình duyệt thường chỉ mở khoảng sáu kết nối cho mỗi domain và mỗi long poll chiếm một kết nối.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Server tạm giữ request thay vì trả lời ngay.
+Khi có sự kiện hoặc hết thời gian chờ, server ghi phản hồi; client lập tức gửi request tiếp theo kèm cursor.
+Độ trễ sau khi dữ liệu sẵn sàng xấp xỉ một lượt khứ hồi mạng.
+Phản hồi hết thời gian chờ thường là `204 No Content` hoặc danh sách rỗng, không phải lỗi.
+
+### Trường hợp biên
+
+- Sự kiện phát sinh khi request tiếp theo còn đang trên đường phải được server lưu đệm để trả trong request đó.
+- Nhiều tab cùng giữ long poll có thể chiếm hết khoảng sáu kết nối mỗi domain của HTTP/1.1, khiến request khác phải chờ.
+- Server, proxy và trình duyệt đều có timeout; server cần trả lời trước khi bất kỳ thành phần nào khác bỏ cuộc.
+
+### Lỗi thường gặp
+
+- Không có cursor nên sự kiện bị mất hoặc xử lý hai lần.
+- Thử lại ngay sau lỗi, tiếp tục dồn tải lên server đang gặp vấn đề.
+- Không hủy request đang chờ khi component unmount, giữ kết nối mà không còn nhu cầu sử dụng.
+
+### Tài liệu tham khảo
+
+- [RFC 6202: Vấn đề và thực hành tốt cho long polling và streaming](https://www.rfc-editor.org/rfc/rfc6202.html)
+- [AbortController trên MDN](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)
+
+</DeepDive>

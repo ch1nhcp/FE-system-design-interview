@@ -222,3 +222,23 @@ The actual production domain remains a deployment configuration input; no deploy
 The remaining implementation phase is all 81 Vietnamese topic translations and all 14 Vietnamese section overviews.
 Phase 5 validation passes 853 unit tests with 94.48% line coverage and 222 E2E tests, with ten device-specific skips.
 The final standards and spec reviews have no unresolved findings.
+
+## Phase 6 progress
+
+| Batch | Sections                  | Topics | Status      |
+| ----- | ------------------------- | ------ | ----------- |
+| 1     | Real-time updates         | 4      | In review   |
+| 2+    | The remaining 13 sections | 77     | Not started |
+
+Batch 1 translates the four Real-time updates topics and the section overview, the same section that piloted the English template.
+Vietnamese pages use fixed headings: Tóm tắt, Ý chính, Cân nhắc, Câu hỏi phỏng vấn and, inside the deep dive, Cơ chế hoạt động, Trường hợp biên, Lỗi thường gặp and Tài liệu tham khảo.
+Established English terms such as polling, WebSocket, cursor, jitter and backoff stay in English; the surrounding explanation is Vietnamese.
+Code comments and sample strings are translated, while identifiers, APIs and protocol fields stay unchanged.
+Reference links keep the English URLs with Vietnamese link text.
+Content tests apply the one-screen rules to Vietnamese headings and check that each translation keeps its English file's visual, related topics, number of interview questions, code block languages and reference URLs.
+Flashcard tests now build cards from every topic file, including translations.
+The fallback notice E2E test moves to a topic that is still untranslated, and a new E2E test reads the whole Vietnamese section with `inLanguage: vi` JSON-LD and no fallback notice.
+Vietnamese summaries follow the same 820-pixel desktop budget as Batch 2 onwards; trade-off cells are kept short enough not to wrap, since each wrapped row adds about 20 pixels.
+Linux CI renders text slightly taller than macOS, so a page measured at 819 pixels locally failed at 820 in CI; keep at least one line (about 25 pixels) of local headroom.
+The English pilot pages predate that budget and measure 954 to 1075 pixels, so they do not meet it yet.
+Batch 1 validation passes 892 unit tests with 94.48% line coverage and 225 E2E tests, with eleven device-specific skips.

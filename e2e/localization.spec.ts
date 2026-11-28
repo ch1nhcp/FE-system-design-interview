@@ -16,7 +16,7 @@ test.describe('localization', () => {
   });
 
   test('shows English content with a notice when a topic is not translated', async ({ page }) => {
-    await page.goto('/vi/topics/websockets');
+    await page.goto('/vi/topics/https');
 
     await expect(page.getByRole('note')).toHaveText(
       'Chủ đề này chưa có bản tiếng Việt nên đang hiển thị bằng tiếng Anh.',
