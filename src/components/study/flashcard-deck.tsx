@@ -126,7 +126,9 @@ export function FlashcardDeck({ topics }: { topics: readonly StudyTopic[] }) {
                 aria-pressed={progress[current.topic] === 'learned'}
                 onClick={() => {
                   focusRequested.current = filter === 'review';
-                  if (filter === 'review') setRevealed(null);
+                  if (filter === 'review') {
+                    goToCard(cards.slice(0, position).filter((card) => card.topic !== current.topic).length);
+                  }
                   setStatus(current.topic, 'learned');
                 }}
               >

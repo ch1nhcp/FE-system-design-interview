@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { StudyTopic } from '@/lib/content/study-types';
 import { useProgressStore } from '@/stores/use-progress-store';
 import { renderWithIntl } from '@/test/render-with-intl';
 
@@ -9,7 +10,7 @@ import { FlashcardDeck } from './flashcard-deck';
 
 vi.mock('@/i18n/navigation', () => import('@/test/mock-navigation'));
 
-const topics = [
+const topics: [StudyTopic] = [
   {
     topic: 'websockets' as const,
     title: 'WebSockets',
@@ -66,5 +67,27 @@ describe('FlashcardDeck', () => {
     expect(screen.getByText('No cards to review')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Show all cards' }));
     expect(screen.getByRole('heading', { name: 'How do you reconnect?' })).toBeInTheDocument();
+  });
+
+  it('starts the next reviewed topic at its first question when learning a topic from a later card', async () => {
+    const user = userEvent.setup();
+    useProgressStore.setState({ topics: { websockets: 'review', graphql: 'review' } });
+    const nextTopic = {
+      ...topics[0],
+      topic: 'graphql' as const,
+      title: 'GraphQL',
+      cards: topics[0].cards.map((card, index) => ({
+        ...card,
+        id: `graphql:${index + 1}`,
+        topic: 'graphql' as const,
+        question: `GraphQL question ${index + 1}`,
+      })),
+    };
+    renderWithIntl(<FlashcardDeck topics={[...topics, nextTopic]} />);
+    await user.click(screen.getByRole('radio', { name: 'Review again' }));
+    await user.click(screen.getByRole('button', { name: 'Next card' }));
+    await user.click(screen.getByRole('button', { name: 'Mark topic learned' }));
+    expect(screen.getByRole('heading', { name: 'GraphQL question 1' })).toHaveFocus();
+    expect(screen.getByRole('status')).toHaveTextContent('Card 1 of 2');
   });
 });
