@@ -203,3 +203,22 @@ The keyboard flow covers section selection, review filtering, empty recovery, an
 Navigation clears the revealed answer even when returning to a previously viewed card.
 Desktop and 320-pixel mobile layouts were checked in both themes, including search focus visibility and empty review states.
 Standards and spec reviews have no unresolved findings.
+
+A subsequent PR review reproduced skipped questions when a reviewed topic was marked learned from a later card.
+The deck now adjusts its index for all removed cards, and browser regressions verify that the next topic starts at its first question.
+
+## Phase 5 progress
+
+- All 196 public pages and 196 Open Graph images now prerender, with `dynamic = 'error'` preventing a silent return to request-time rendering.
+- Metadata, canonical URLs, reciprocal language alternatives, the sitemap and escaped JSON-LD share the registry and localized page information.
+- Share images use a locally bundled font with Vietnamese glyphs and remain crawlable.
+- Production requires a validated `SITE_URL` at build time; CI validates an explicit HTTPS fixture origin and Docker retains the build argument.
+- Accessibility checks cover representative templates and every animation family in both themes on desktop/mobile, plus search and revealed answers.
+- Browser audits fixed search naming, text/syntax contrast, 200% text resizing and navigation visibility at responsive boundaries.
+- The reproducible performance audit records three Lighthouse mobile lab runs on each of four routes and a separate browser interaction sample.
+
+Detailed measurements, reproduction commands, release configuration and the limits of the lab/accessibility evidence live in [the Phase 5 audit](./PHASE_5_AUDIT.md).
+The actual production domain remains a deployment configuration input; no deployment or field Core Web Vitals result is claimed.
+The remaining implementation phase is all 81 Vietnamese topic translations and all 14 Vietnamese section overviews.
+Phase 5 validation passes 853 unit tests with 94.48% line coverage and 222 E2E tests, with ten device-specific skips.
+The final standards and spec reviews have no unresolved findings.

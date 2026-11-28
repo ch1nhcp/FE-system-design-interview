@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 
+import { PageStructuredData } from '@/components/site/page-structured-data';
 import { TopicLabel } from '@/components/site/topic-label';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -14,6 +15,8 @@ import {
 } from '@/components/ui/card';
 import { Link } from '@/i18n/navigation';
 import { resolveLocale } from '@/i18n/resolve-locale';
+import { createPageMetadata } from '@/lib/seo/metadata';
+import { getPageInfo } from '@/lib/seo/page-info';
 
 const STAGES = [
   { key: 'requirements', letter: 'R', minutes: 5, topics: ['authorization', 'ui-states'] },
@@ -27,8 +30,8 @@ type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = await resolveLocale(params);
-  const t = await getTranslations({ locale, namespace: 'Framework' });
-  return { title: t('title'), description: t('description') };
+  const info = await getPageInfo(locale, 'framework');
+  return info ? createPageMetadata(info, locale) : {};
 }
 
 export default async function FrameworkPage({ params }: Props) {
@@ -37,6 +40,7 @@ export default async function FrameworkPage({ params }: Props) {
   const t = await getTranslations('Framework');
   return (
     <article className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+      <PageStructuredData info={await getPageInfo(locale, 'framework')} locale={locale} />
       <header className="flex flex-col gap-3">
         <h1 className="text-2xl font-semibold">{t('title')}</h1>
         <p className="text-muted-foreground max-w-3xl">{t('guideIntro')}</p>

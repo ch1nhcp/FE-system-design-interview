@@ -20,6 +20,8 @@ COPY . .
 
 # Env vars required at build time (T3 Env validates these); pass as build args if needed.
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG SITE_URL
+ENV SITE_URL=${SITE_URL}
 
 RUN corepack enable && corepack prepare --activate $(node -p "require('./package.json').packageManager") \
   && pnpm build
@@ -30,6 +32,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG SITE_URL
+ENV SITE_URL=${SITE_URL}
 
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs

@@ -84,7 +84,9 @@ export default function SearchCommand({ onNavigate }: { onNavigate: () => void }
                       <span className="flex min-w-0 flex-1 flex-col gap-1">
                         <span>{item.content}</span>
                         {item.breadcrumbs && (
-                          <span className="text-muted-foreground text-xs">{item.breadcrumbs.join(' / ')}</span>
+                          <span className="text-muted-foreground group-data-selected/command-item:text-foreground text-xs">
+                            {item.breadcrumbs.join(' / ')}
+                          </span>
                         )}
                       </span>
                     </CommandItem>

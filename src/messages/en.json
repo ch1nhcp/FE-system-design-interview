@@ -552,5 +552,10 @@
     "errorDescription": "Check your connection and try again.",
     "retry": "Try again",
     "keyboardHint": "Use arrow keys to choose, Enter to open and Escape to close."
+  },
+  "OpenGraph": {
+    "eyebrow": "INTERVIEW PREPARATION",
+    "stats": "81 topics / 14 sections",
+    "footer": "Learn. Explain. Review."
   }
 }
