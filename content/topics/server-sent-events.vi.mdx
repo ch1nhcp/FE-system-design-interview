@@ -57,7 +57,7 @@ data: {"id":"42","title":"Có bình luận mới trong bài viết của bạn"}
 
 ## Ý chính
 
-- Một chiều qua HTTP `text/event-stream`; client gửi lên bằng request riêng.
+- Một chiều; client gửi lên bằng request riêng.
 - Tự kết nối lại, gửi `Last-Event-ID` để server phát bù.
 - Chỉ truyền văn bản; `EventSource` không đặt header tùy ý.
 - Hợp thông báo, tiến độ, bảng tin và phản hồi AI dạng luồng.
@@ -101,7 +101,7 @@ Proxy có bộ đệm làm sự kiện đến chậm: tắt buffering, chẳng h
 
 ### Cơ chế hoạt động
 
-Response giữ mở để server ghi từng khối gồm các dòng `field: value`, ngăn cách các khối bằng một dòng trống.
+Server trả `Content-Type: text/event-stream` và giữ response mở để ghi từng khối gồm các dòng `field: value`, ngăn cách các khối bằng một dòng trống.
 `data` chứa nội dung, `event` đặt tên loại sự kiện, `id` cập nhật ID gần nhất và `retry` thay đổi thời gian chờ nối lại.
 Dòng bắt đầu bằng dấu hai chấm là comment, phù hợp để làm heartbeat.
 ID và kết nối lại là cơ chế của giao thức; việc lưu và phát bù dữ liệu vẫn cần server triển khai.

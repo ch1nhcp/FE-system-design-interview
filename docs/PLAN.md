@@ -239,5 +239,6 @@ Content tests apply the one-screen rules to Vietnamese headings and check that e
 Flashcard tests now build cards from every topic file, including translations.
 The fallback notice E2E test moves to a topic that is still untranslated, and a new E2E test reads the whole Vietnamese section with `inLanguage: vi` JSON-LD and no fallback notice.
 Vietnamese summaries follow the same 820-pixel desktop budget as Batch 2 onwards; trade-off cells are kept short enough not to wrap, since each wrapped row adds about 20 pixels.
+Linux CI renders text slightly taller than macOS, so a page measured at 819 pixels locally failed at 820 in CI; keep at least one line (about 25 pixels) of local headroom.
 The English pilot pages predate that budget and measure 954 to 1075 pixels, so they do not meet it yet.
 Batch 1 validation passes 892 unit tests with 94.48% line coverage and 225 E2E tests, with eleven device-specific skips.

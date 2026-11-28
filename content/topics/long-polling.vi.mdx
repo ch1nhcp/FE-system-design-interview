@@ -7,7 +7,7 @@ related: [short-polling, server-sent-events, websockets, retries]
 ## Tóm tắt
 
 Server giữ request HTTP cho đến khi có cập nhật rồi mới trả lời; client lập tức hỏi tiếp.
-Nếu hết thời gian chờ mà chưa có dữ liệu, server trả phản hồi rỗng để client mở lượt chờ mới.
+Hết thời gian chờ thì server trả phản hồi rỗng và client hỏi lại.
 
 <VisualPanel tabs={['animation', 'code']}>
 <VisualTab kind="animation">
