@@ -1,0 +1,122 @@
+---
+description: Delivering playable media through appropriate formats, segments and buffering while planning adaptive quality, browser support and playback recovery.
+visual: diagram
+related: [adaptive-loading, caching-and-expiry, https, error-handling]
+---
+
+## TL;DR
+
+Media playback balances delivery, buffering and decoding.
+Choose native playback or a streaming pipeline from the task, support matrix and latency needs.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram label="Adaptive playback pipeline" steps={[
+  {
+    "title": "Describe available media",
+    "note": "A manifest can identify renditions and segment timelines"
+  },
+  {
+    "title": "Choose a supported representation",
+    "note": "Consider codecs, viewport, throughput and user preferences"
+  },
+  {
+    "title": "Fetch and buffer useful segments",
+    "note": "Coordinate append order, memory and recovery"
+  },
+  {
+    "title": "Decode and present accessibly",
+    "note": "Keep controls, captions and error feedback usable"
+  }
+]} highlight={1} />
+</VisualTab>
+<VisualTab kind="code">
+
+Start from a labeled native player and captions before choosing a more complex adaptive pipeline.
+
+```html
+<video controls playsinline preload="metadata" poster="/lesson-poster.webp">
+  <source src="/lesson.mp4" type="video/mp4" />
+  <track kind="captions" src="/lesson.en.vtt" srclang="en" label="English" default />
+  <a href="/lesson.mp4">Download the lesson video</a>
+</video>
+```
+
+```ts
+const canUseMse = 'MediaSource' in window && MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
+```
+
+This feature check is not an adaptive player.
+HLS or DASH support may use a browser-native path or a maintained player using MSE, depending on the browser and format.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Distinguish progressive files from adaptive streams.
+- Verify container and codec support together.
+- Choose quality from buffer and throughput evidence.
+- Bound retained buffers and clean up resources.
+- Provide captions and usable playback recovery.
+
+## Trade-offs
+
+| Approach          | Strengths          | Weaknesses         |
+| ----------------- | ------------------ | ------------------ |
+| Progressive file  | Simple delivery    | Limited adaptation |
+| Adaptive segments | Quality switching  | Player complexity  |
+| Low-latency live  | Near-live feedback | Less buffer margin |
+
+## Interview questions
+
+<InterviewQuestion question="Must the whole video download before playback?">
+
+No: progressive delivery and byte-range support can allow playback before the full resource arrives.
+Adaptive streaming adds a manifest and rendition or segment selection policy beyond that basic behavior.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What drives adaptive bitrate selection?">
+
+Estimate sustainable delivery and available buffer while considering decoding capability, viewport and explicit quality preferences.
+Avoid treating a single bandwidth sample or connection label as a reliable permanent budget.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What must be cleaned up when the player unmounts?">
+
+Stop owned requests and listeners, release relevant media or MSE resources and revoke owned object URLs.
+Also bound retained buffers during long playback so a successful stream does not grow memory indefinitely.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+A media container and its encoded audio or video codecs are separate compatibility choices.
+Adaptive protocols describe available renditions and time-aligned segments so a player can change quality without restarting the whole task.
+MSE lets JavaScript supply media data to a browser playback pipeline, but it does not provide the manifest parser, adaptation algorithm or full error recovery itself.
+Appending to a SourceBuffer requires coordination with its update lifecycle, codec support and buffer limits.
+For live media, end-to-end latency includes capture, encoding, segmenting, distribution and player buffering; reducing one layer can reduce resilience elsewhere.
+
+### Edge cases
+
+- Autoplay can be blocked, so playback initiation needs a rejected-promise recovery path.
+- A live window can move past the user's paused position and require an explicit resume policy.
+- Cross-origin media or segment fetching needs the appropriate CORS and credential configuration for its access path.
+
+### Common mistakes
+
+- Assuming an mp4 extension proves codec support.
+- Calling MSE an adaptive streaming solution by itself.
+- Ignoring caption, keyboard and memory behavior while optimizing bitrate.
+
+### References
+
+- [MDN Media Source Extensions](https://developer.mozilla.org/en-US/docs/Web/API/Media_Source_Extensions_API)
+- [MDN video element](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/video)
+- [MDN media buffering](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Audio_and_video_delivery/buffering_seeking_time_ranges)
+
+</DeepDive>

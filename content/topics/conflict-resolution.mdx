@@ -1,0 +1,126 @@
+---
+description: Detecting concurrent edits and choosing an explicit merge or reconciliation policy instead of silently overwriting another accepted change.
+visual: diagram
+related: [optimistic-updates, event-sourcing, undo-redo, race-conditions]
+---
+
+## TL;DR
+
+Concurrent edits need a shared version and an explicit resolution policy.
+Detect stale writes before overwriting, then merge, retry or ask the user deliberately.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram label="Detect and resolve a concurrent edit" steps={[
+  {
+    "title": "Read a known base version",
+    "note": "Keep local intent and the version it was based on"
+  },
+  {
+    "title": "Attempt a conditional write",
+    "note": "The server checks version and permissions atomically"
+  },
+  {
+    "title": "Compare on conflict",
+    "note": "Use base, local and current remote state"
+  },
+  {
+    "title": "Apply an explicit policy",
+    "note": "Merge safely, request a decision or submit a new version"
+  }
+]} highlight={1} />
+</VisualTab>
+<VisualTab kind="code">
+
+A server can atomically reject a stale conditional update using a strong ETag and If-Match.
+
+```ts
+async function saveDraft(id: string, title: string, etag: string) {
+  const response = await fetch(`/api/drafts/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'If-Match': etag,
+    },
+    body: JSON.stringify({ title }),
+  });
+  if (response.status === 412) return { kind: 'conflict' } as const;
+  if (!response.ok) throw new Error('Save was not confirmed');
+  return { kind: 'saved' } as const;
+}
+```
+
+Pass the exact strong ETag returned by the versioned resource, including its quotes.
+The server must atomically check the version and apply the authorized write; client checks alone cannot prevent lost updates.
+
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Detect stale writes at the authoritative boundary.
+- Keep the base version and local intent.
+- Choose resolution by domain semantics.
+- Preserve user work during reconciliation.
+- Make retries safe and version-aware.
+
+## Trade-offs
+
+| Approach          | Strengths           | Weaknesses         |
+| ----------------- | ------------------- | ------------------ |
+| Last write wins   | Simple convergence  | Can discard intent |
+| Conditional write | Detects lost update | Requires recovery  |
+| CRDT or OT        | Collaborative model | Domain constraints |
+
+## Interview questions
+
+<InterviewQuestion question="Is accepting the last arriving response a conflict policy?">
+
+It is a client display ordering rule, not necessarily an authoritative policy for concurrent edits.
+Use server versions and domain rules to determine whether a write is valid and how competing intent is reconciled.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="When can a three-way merge be automatic?">
+
+When changes relative to the common base are compatible under the domain's rules, such as independent fields with no cross-field invariant.
+Overlapping edits or violated invariants need another policy or an explicit user decision.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does a CRDT remove every product conflict?">
+
+It can provide convergence for supported operations under its model.
+The product must still decide meaningful intent, permissions, schema evolution and invariants that convergence alone does not guarantee.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+A lost update occurs when a write based on old state replaces a newer accepted change without detecting that the base is stale.
+Optimistic concurrency sends a version precondition, allowing the server to reject an update whose assumptions no longer hold.
+A three-way merge compares the base with the local and current remote changes so untouched information is not overwritten accidentally.
+After conflict, preserve the local draft and fetch or receive the current remote version before presenting or computing a resolution.
+Distinguish a conditional-write conflict from a transport timeout, because an absent response can leave the write outcome uncertain.
+
+### Edge cases
+
+- Weak ETags do not satisfy If-Match strong comparison.
+- Clock-based last-write-wins ordering needs a specified authority and can still lose meaningful intent.
+- Offline edits can accumulate several dependent changes that cannot be merged safely as one unversioned replacement.
+
+### Common mistakes
+
+- Checking a version only in the browser before an unconditional write.
+- Retrying a stale replacement until it overwrites the remote state.
+- Equating convergence with preservation of every user intention.
+
+### References
+
+- [MDN If-Match](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/If-Match)
+- [MDN conditional requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Conditional_requests)
+- [Yjs introduction](https://docs.yjs.dev/)
+
+</DeepDive>

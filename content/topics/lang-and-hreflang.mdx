@@ -1,0 +1,123 @@
+---
+description: Declaring the language actually delivered in HTML and linking genuine localized URL variants without confusing content language with translation availability.
+visual: code
+related: [right-to-left, title-and-meta, sitemap, locale-formatting]
+---
+
+## TL;DR
+
+lang describes the content being read; hreflang identifies alternate language URLs.
+Use real translations and consistent reciprocal links, including the current page.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A translated Vietnamese page declares its language and advertises its genuine English counterpart.
+
+```html
+<html lang="vi">
+  <head>
+    <link rel="alternate" hreflang="vi" href="https://study.example/vi/lesson" />
+    <link rel="alternate" hreflang="en" href="https://study.example/lesson" />
+  </head>
+  <body>
+    <p>Bài học về thiết kế hệ thống giao diện.</p>
+    <p lang="en">A short quotation in English.</p>
+  </body>
+</html>
+```
+
+Publish the matching alternate set on the English page too.
+Do not advertise an untranslated fallback as a Vietnamese translation of the main content.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Language and alternate identity" steps={[
+  {
+    "title": "Identify delivered language",
+    "note": "Describe actual content rather than the selected navigation label"
+  },
+  {
+    "title": "Declare document and passage language",
+    "note": "Use valid language tags and local overrides where needed"
+  },
+  {
+    "title": "Link genuine alternate URLs",
+    "note": "Keep reciprocal, self-inclusive alternate sets consistent"
+  },
+  {
+    "title": "Verify content and discovery",
+    "note": "Inspect direct loads, metadata and fallback behavior"
+  }
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Declare the document language on html.
+- Override language for meaningful foreign passages.
+- Use valid BCP 47 language tags.
+- Link genuine alternate pages reciprocally.
+- Keep fallback content language honest.
+
+## Trade-offs
+
+| Approach       | Strengths           | Weaknesses             |
+| -------------- | ------------------- | ---------------------- |
+| lang attribute | Reading semantics   | Not a translation link |
+| hreflang links | Alternate discovery | Needs real variants    |
+| Locale routing | Stable destinations | Publication policy     |
+
+## Interview questions
+
+<InterviewQuestion question="Does lang set the text direction?">
+
+No: language and direction are different properties.
+Use dir for the base direction and lang for language, even when one language commonly uses a particular script direction.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should all locale routes be advertised as translated alternates?">
+
+Only when they deliver the corresponding localized content.
+A route with translated navigation but an English main article needs honest language markup and a deliberate alternate-publication policy.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What does x-default mean?">
+
+It can identify a default or language-selection destination for users not matched by the listed language variants.
+It does not replace valid language tags or automatically translate the destination.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The HTML language declaration helps speech pronunciation, language-sensitive processing and other user-agent behavior.
+A page can contain multiple languages, so nested declarations identify meaningful passages that differ from the document default.
+Search alternate annotations associate URLs for localized versions; they do not change the language of the document they reference.
+Keep canonical identity, alternate annotations and sitemap publication aligned rather than generating each from a different locale inventory.
+Use region subtags only when they represent an intended regional variant; language is not interchangeable with country.
+
+### Edge cases
+
+- A Vietnamese UI can display an English fallback article that requires a local lang=en wrapper.
+- A missing translation should not redirect every deep link to an unrelated language home page.
+- An alternate pointing to a redirect or unpublished page can break the intended variant relationship.
+
+### Common mistakes
+
+- Using a country code alone as a language tag.
+- Assuming hreflang changes pronunciation or document direction.
+- Publishing alternate links for content that does not exist in that language.
+
+### References
+
+- [W3C language declarations](https://www.w3.org/International/questions/qa-html-language-declarations)
+- [W3C language tags](https://www.w3.org/International/articles/language-tags/)
+- [Google localized versions](https://developers.google.com/search/docs/specialty/international/localized-versions)
+
+</DeepDive>

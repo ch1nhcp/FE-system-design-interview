@@ -5,29 +5,33 @@ import { useTranslations } from 'next-intl';
 
 import { TopicLabel } from '@/components/site/topic-label';
 import { Link } from '@/i18n/navigation';
-import type { Section, TopicSlug } from '@/lib/topics/registry';
+import type { TopicSlug } from '@/lib/topics/registry';
 import { countLearned, useProgressStore } from '@/stores/use-progress-store';
 
 type Props = {
-  section: Section;
-  /** Summary from each topic's content, when the topic has a cheatsheet. */
-  summaries: Partial<Record<TopicSlug, string>>;
+  topics: readonly { topic: TopicSlug; summary: string }[];
 };
 
-export function SectionTopicList({ section, summaries }: Props) {
+export function SectionTopicList({ topics: items }: Props) {
   const t = useTranslations('Section');
   const tTopic = useTranslations('Topic');
   const topics = useProgressStore((state) => state.topics);
-  const total = section.topics.length;
+  const total = items.length;
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-muted-foreground text-sm tabular-nums">
         {t('topicCount', { count: total })} ·{' '}
-        {t('learnedCount', { learned: countLearned(topics, section.topics), total })}
+        {t('learnedCount', {
+          learned: countLearned(
+            topics,
+            items.map(({ topic }) => topic),
+          ),
+          total,
+        })}
       </p>
       <ol className="flex flex-col gap-3">
-        {section.topics.map((topic: TopicSlug) => {
+        {items.map(({ topic, summary }) => {
           const status = topics[topic];
           return (
             // The link stretches over the card, so its accessible name stays just the topic title.
@@ -52,7 +56,7 @@ export function SectionTopicList({ section, summaries }: Props) {
                   </span>
                 )}
               </div>
-              <p className="text-muted-foreground text-sm">{summaries[topic] ?? t('comingSoon')}</p>
+              <p className="text-muted-foreground text-sm">{summary}</p>
             </li>
           );
         })}

@@ -13,24 +13,26 @@ const section = getSection('real-time-updates');
 if (!section) {
   throw new Error('Expected the real-time-updates section');
 }
+const topics = section.topics.map((topic) => ({ topic, summary: `Summary for ${topic}.` }));
 
 describe('SectionTopicList', () => {
   beforeEach(() => {
     useProgressStore.setState({ topics: {} });
   });
 
-  it('lists topics with their summary, or a placeholder when there is no cheatsheet yet', () => {
-    renderWithIntl(<SectionTopicList section={section} summaries={{ websockets: 'Two-way connection.' }} />);
+  it('lists completed topics with their summaries', () => {
+    renderWithIntl(<SectionTopicList topics={topics} />);
 
     expect(screen.getAllByRole('listitem')).toHaveLength(4);
     expect(screen.getByRole('link', { name: 'WebSockets' })).toHaveAttribute('href', '/topics/websockets');
-    expect(screen.getByText('Two-way connection.')).toBeInTheDocument();
-    expect(screen.getAllByText('Cheatsheet coming soon')).toHaveLength(3);
+    for (const topic of topics) {
+      expect(screen.getByText(topic.summary)).toBeInTheDocument();
+    }
   });
 
   it('shows how many topics are learned and the status of each', () => {
     useProgressStore.setState({ topics: { 'short-polling': 'learned', 'long-polling': 'review' } });
-    renderWithIntl(<SectionTopicList section={section} summaries={{}} />);
+    renderWithIntl(<SectionTopicList topics={topics} />);
 
     expect(screen.getByText('4 topics · 1/4 learned')).toBeInTheDocument();
     const shortPolling = screen.getByRole('link', { name: 'Short polling' }).closest('li');

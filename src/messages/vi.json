@@ -33,8 +33,7 @@
   },
   "Section": {
     "topicCount": "{count} chủ đề",
-    "learnedCount": "Đã học {learned}/{total}",
-    "comingSoon": "Cheatsheet sắp có"
+    "learnedCount": "Đã học {learned}/{total}"
   },
   "Topic": {
     "breadcrumb": "Đường dẫn",
@@ -42,8 +41,6 @@
     "learned": "Đã học",
     "reviewAgain": "Cần ôn lại",
     "progress": "Tiến độ",
-    "comingSoonTitle": "Cheatsheet sắp có",
-    "comingSoonBody": "Chủ đề này chưa có cheatsheet. Nội dung sẽ gồm TL;DR, ý chính, trade-off, câu hỏi phỏng vấn và hình minh hoạ.",
     "translationMissing": "Chủ đề này chưa có bản tiếng Việt nên đang hiển thị bằng tiếng Anh.",
     "previous": "Trước",
     "next": "Tiếp",

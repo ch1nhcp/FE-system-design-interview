@@ -33,8 +33,7 @@
   },
   "Section": {
     "topicCount": "{count, plural, one {# topic} other {# topics}}",
-    "learnedCount": "{learned}/{total} learned",
-    "comingSoon": "Cheatsheet coming soon"
+    "learnedCount": "{learned}/{total} learned"
   },
   "Topic": {
     "breadcrumb": "Breadcrumb",
@@ -42,8 +41,6 @@
     "learned": "Learned",
     "reviewAgain": "Review again",
     "progress": "Progress",
-    "comingSoonTitle": "Cheatsheet coming soon",
-    "comingSoonBody": "This topic does not have a cheatsheet yet. It will include a TL;DR, key points, trade-offs, interview questions and a visual.",
     "translationMissing": "This topic is not translated yet, so it is shown in English.",
     "previous": "Previous",
     "next": "Next",

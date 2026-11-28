@@ -1,0 +1,119 @@
+---
+description: Keeping essential text as real document content so it can translate, reflow, remain sharp and expose meaningful alternatives.
+visual: code
+related: [alt-text, responsive-images, visual-accessibility, long-strings]
+---
+
+## TL;DR
+
+Keep important text in HTML when its presentation can be achieved there.
+Real text translates and reflows; image alternatives still depend on context.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A promotional image can be decorative while the actual message and action remain selectable document text.
+
+```html
+<section aria-labelledby="course-title">
+  <img src="/study-desk.webp" alt="" width="960" height="540" />
+  <h2 id="course-title">Prepare for your next system design interview</h2>
+  <p>Compare trade-offs and practice explaining your decisions.</p>
+  <a href="/topics">Explore lessons</a>
+</section>
+```
+
+Use an empty alternative only because the image adds decoration in this example.
+A diagram or informative image may need its own short alternative and a fuller textual explanation.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Separate message from artwork" steps={[
+  {
+    "title": "Identify essential information",
+    "note": "List text, data and actions the user needs"
+  },
+  {
+    "title": "Render real document text",
+    "note": "Let layout, translation and resizing work on actual characters"
+  },
+  {
+    "title": "Choose meaningful image alternatives",
+    "note": "Describe purpose without duplicating adjacent content needlessly"
+  },
+  {
+    "title": "Verify alternate presentation",
+    "note": "Check zoom, language expansion, contrast and image failure"
+  }
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Keep essential copy as selectable text.
+- Let translations change length and layout.
+- Use image alternatives based on purpose.
+- Preserve contrast over artwork in every crop.
+- Check the experience when images do not load.
+
+## Trade-offs
+
+| Approach          | Strengths              | Weaknesses       |
+| ----------------- | ---------------------- | ---------------- |
+| HTML text         | Reflow and translation | Layout work      |
+| Text in artwork   | Fixed composition      | Poor adaptation  |
+| Image alternative | Nonvisual meaning      | No visual reflow |
+
+## Interview questions
+
+<InterviewQuestion question="Does alt text replace real visible text?">
+
+No: it helps provide a text alternative but does not let the visible lettering reflow, resize independently or translate in the same way.
+Prefer real text when the desired presentation can be achieved with text and styling.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Are logos always prohibited?">
+
+No: the relevant images-of-text criteria have exceptions for essential presentations, including logotypes.
+Apply the criterion in context and still provide a meaningful accessible name where the logo serves as a control or link.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="What about a complex chart?">
+
+Keep the chart when the visualization is useful, with an appropriate alternative and access to the relevant explanation or data.
+Do not flatten its important message into an unexplained bitmap and assume a file name is sufficient.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+Real text exposes character content to translation systems, assistive technology, selection and adaptive layout.
+A bitmap couples lettering to a fixed pixel composition and can become unreadable when its containing image is reduced.
+If text sits over an image, assess actual background contrast across responsive crops and states rather than testing one screenshot.
+The alternative for an image depends on its purpose in the page, including whether adjacent real text already supplies the same information.
+A workflow that genuinely requires localized artwork also needs version tracking so visible images and text alternatives do not drift across locales.
+
+### Edge cases
+
+- A decorative image with duplicated visible heading text can produce redundant announcements if given the same alternative.
+- A meaningful screenshot may require descriptive context rather than reproducing every pixel as a long alt attribute.
+- A crop can move bright artwork behind a heading and invalidate a previously acceptable contrast combination.
+
+### Common mistakes
+
+- Baking the only actionable message into a background image.
+- Using alt text as a substitute for a readable visual presentation.
+- Assuming one translated image asset scales to every locale and viewport.
+
+### References
+
+- [WCAG images of text](https://www.w3.org/WAI/WCAG22/Understanding/images-of-text.html)
+- [WAI image tutorial](https://www.w3.org/WAI/tutorials/images/)
+- [WAI complex images](https://www.w3.org/WAI/tutorials/images/complex/)
+
+</DeepDive>

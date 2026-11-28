@@ -1,0 +1,125 @@
+---
+description: Controlling browser access to cross-origin responses through explicit origins, credentials and preflight policy without confusing CORS with authorization.
+visual: code
+related: [csrf, authentication, authorization, https]
+---
+
+## TL;DR
+
+CORS lets a server opt into browser sharing across origins.
+Configure exact origins and credentials deliberately; response sharing is not authorization.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A credentialed response allows a specific trusted origin and varies when the allowed origin is selected dynamically.
+
+```http
+Access-Control-Allow-Origin: https://app.example
+Access-Control-Allow-Credentials: true
+Vary: Origin
+```
+
+A matching preflight response must also allow the requested method and headers.
+Choose an origin from an exact server allowlist, never by blindly reflecting the request Origin.
+
+```ts
+const response = await fetch('https://api.example/profile', {
+  credentials: 'include',
+});
+if (!response.ok) throw new Error('Profile request failed');
+```
+
+Browser cookie and third-party-storage policies still apply.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Cross-origin browser decision" steps={[
+  {
+    "title": "Compare origins",
+    "note": "Scheme, host and port define origin identity"
+  },
+  {
+    "title": "Preflight when required",
+    "note": "Check requested method and headers before the actual request"
+  },
+  {
+    "title": "Enforce response-sharing policy",
+    "note": "Read access depends on allowed origin and credential rules"
+  },
+  {
+    "title": "Apply server access controls",
+    "note": "Every real operation still needs authentication and authorization"
+  }
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Match exact trusted origins on the server.
+- Use explicit origins with credentialed sharing.
+- Handle preflight and actual responses consistently.
+- Vary caches when response policy varies by origin.
+- Keep authorization and CSRF defenses independent.
+
+## Trade-offs
+
+| Approach        | Strengths          | Weaknesses           |
+| --------------- | ------------------ | -------------------- |
+| Same-origin API | Fewer boundaries   | Deployment coupling  |
+| Explicit CORS   | Controlled sharing | Policy configuration |
+| Public wildcard | Open read access   | No credentialed read |
+
+## Interview questions
+
+<InterviewQuestion question="Why does a request work in curl but fail in a browser?">
+
+CORS is a browser response-access mechanism, not a general prohibition on network clients.
+Inspect the browser request, preflight and response headers rather than treating a successful command-line request as proof of a correct browser policy.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Can credentials be combined with an allow-origin wildcard?">
+
+A browser does not permit a credentialed response to be shared with Access-Control-Allow-Origin: \*.
+Use the specific allowed origin and a deliberate credential policy, while remembering that browser cookie rules may still block transmission.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Does a preflight replace authorization?">
+
+No: it negotiates browser permission for a request shape.
+The actual request must enforce its own authentication, authorization and mutation protections even if preflight succeeded or is cached.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The same-origin policy limits how scripts interact with resources from another origin, and CORS provides a controlled response-sharing mechanism.
+Some requests are sent without preflight, so a blocked read does not mean that no state-changing request reached the server.
+For preflight, inspect Access-Control-Request-Method and Access-Control-Request-Headers against the API's actual supported policy.
+Expose non-safelisted response headers explicitly when client code needs them, such as a version header used for concurrency.
+Opaque no-cors responses are not a workaround for reading an API whose CORS configuration is incorrect.
+
+### Edge cases
+
+- A redirect can introduce another origin and an unexpected credential or sharing boundary.
+- Cached origin-specific headers can leak policy or break access if the cache ignores Origin variation.
+- The string null can be an Origin value and should not be accepted casually as a trusted application.
+
+### Common mistakes
+
+- Blindly reflecting any Origin with credentials enabled.
+- Trying to fix server response policy through a frontend request header.
+- Using mode no-cors and expecting readable JSON.
+
+### References
+
+- [MDN CORS guide](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS)
+- [OWASP CORS security](https://cheatsheetseries.owasp.org/cheatsheets/CORS_Security_Cheat_Sheet.html)
+- [MDN same-origin policy](https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy)
+
+</DeepDive>

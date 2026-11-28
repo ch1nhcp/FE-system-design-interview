@@ -1,0 +1,124 @@
+---
+description: Centralizing related state transitions in a pure reducer while keeping event handling, asynchronous effects and persistence outside that transition function.
+visual: code
+related: [flux-architecture, normalized-state, undo-redo, event-sourcing]
+---
+
+## TL;DR
+
+A reducer computes the next state from the current state and an action.
+Keep transitions pure and effects outside; the pattern does not require a global store.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A small reducer keeps related editing transitions together without performing network work.
+
+```ts
+type State = { title: string; saved: boolean };
+type Action = { type: 'titleChanged'; title: string } | { type: 'saveConfirmed' };
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'titleChanged':
+      return { title: action.title, saved: false };
+    case 'saveConfirmed':
+      return { ...state, saved: true };
+  }
+}
+```
+
+The action handler performs the save and dispatches saveConfirmed only after the appropriate server confirmation.
+Concurrent saves need an operation or version identity so an old confirmation cannot mark a newer draft as saved.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="One transition boundary" steps={[
+  {
+    "title": "Receive a meaningful action",
+    "note": "Describe what happened with enough domain context"
+  },
+  {
+    "title": "Read current state",
+    "note": "Use the state supplied to this transition"
+  },
+  {
+    "title": "Compute the next state",
+    "note": "Remain pure and preserve immutable history"
+  },
+  {
+    "title": "Run effects outside the reducer",
+    "note": "Feed later outcomes back as explicit actions"
+  }
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Group related transitions behind one reducer.
+- Describe meaningful actions, not arbitrary setters.
+- Keep network calls and timers outside transitions.
+- Preserve previous state through immutable updates.
+- Use operation ids for concurrent async outcomes.
+
+## Trade-offs
+
+| Approach     | Strengths            | Weaknesses            |
+| ------------ | -------------------- | --------------------- |
+| Local state  | Small API surface    | Scattered transitions |
+| Reducer      | Explicit transitions | Action vocabulary     |
+| Shared store | Cross-view ownership | Broader coupling      |
+
+## Interview questions
+
+<InterviewQuestion question="When does a reducer improve local state?">
+
+When several events update related fields and the transition rules are difficult to keep consistent across handlers.
+A few independent values may still be clearer as simple local state.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why must a reducer stay pure?">
+
+Repeated evaluation should produce the same result without duplicating a request, timer or external write.
+Purity makes transitions easier to test, replay and reason about under rendering behavior that can invoke code more than once.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Is a reducer the same as event sourcing?">
+
+No: a reducer describes a state transition function, while event sourcing makes a durable event history the source of truth.
+An application can use a reducer without persisting actions or being able to reconstruct authoritative server state.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+A reducer concentrates the rules that connect a known state and a meaningful action to a new state.
+The caller owns dispatch and effects, allowing rendering and asynchronous outcomes to remain separate from deterministic transitions.
+Choose action names around product events and include the identity needed to reject stale outcomes.
+Immutable updates preserve earlier values for comparison and history; shallow copies alone do not protect nested objects that are later mutated.
+Keep state at the narrowest owner that needs it instead of turning every reducer into a global store.
+
+### Edge cases
+
+- An async confirmation can arrive after the user edits again and needs version-aware handling.
+- Random ids and timestamps should be created at the appropriate event boundary and supplied as data when determinism matters.
+- Persisted actions need schema and migration rules beyond the reducer itself.
+
+### Common mistakes
+
+- Starting fetch or mutating browser storage inside a transition.
+- Mutating nested state after returning a shallow copy.
+- Adding a global action framework for unrelated local values.
+
+### References
+
+- [React reducers](https://react.dev/learn/extracting-state-logic-into-a-reducer)
+- [React useReducer](https://react.dev/reference/react/useReducer)
+- [Redux reducer prerequisites](https://redux.js.org/usage/structuring-reducers/prerequisite-concepts)
+
+</DeepDive>

@@ -1,0 +1,116 @@
+---
+description: Protecting HTTP traffic with TLS while keeping certificate operations, mixed content and application authorization as separate responsibilities.
+visual: code
+related: [authentication, authorization, csrf, csp]
+---
+
+## TL;DR
+
+HTTPS protects traffic in transit and authenticates the server through TLS.
+Use it throughout the delivery path; encryption does not make application logic safe.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+An HTTPS response can set transport and session policies after the deployment supports them.
+
+```http
+HTTP/1.1 200 OK
+Strict-Transport-Security: max-age=31536000
+Set-Cookie: __Host-session=opaque-token; Path=/; Secure; HttpOnly; SameSite=Lax
+```
+
+This HSTS policy applies to the host after a browser learns it securely.
+Include subdomains or request preload only after verifying their HTTPS readiness and the operational consequences.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Transport protection boundaries" steps={[
+  {
+    "title": "Resolve the intended origin",
+    "note": "A URL identifies the scheme, host and port"
+  },
+  {
+    "title": "Establish a trusted TLS connection",
+    "note": "Validate the certificate and protect bytes in transit"
+  },
+  {
+    "title": "Serve secure dependencies",
+    "note": "Avoid insecure scripts, media and API endpoints"
+  },
+  {
+    "title": "Enforce application permissions",
+    "note": "Transport security does not authorize the task"
+  }
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Use HTTPS for the page and its dependencies.
+- Automate certificate issuance and renewal.
+- Plan HSTS rollout and recovery deliberately.
+- Secure the connection behind a TLS terminator too.
+- Keep authorization and input defenses in place.
+
+## Trade-offs
+
+| Approach      | Strengths             | Weaknesses               |
+| ------------- | --------------------- | ------------------------ |
+| HTTPS         | Transit protection    | Certificate operations   |
+| HSTS          | Upgrade policy        | Persistent browser state |
+| Secure cookie | Transport restriction | No action authorization  |
+
+## Interview questions
+
+<InterviewQuestion question="Does HTTPS stop XSS or CSRF?">
+
+No: an encrypted connection can still deliver vulnerable code or carry a forged authenticated action.
+Apply context-aware output handling, request authenticity checks and server authorization independently.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why is an HTTP redirect not the same as HSTS?">
+
+An initial HTTP request can be exposed before a redirect arrives.
+HSTS upgrades future requests after a trusted policy is learned; preload has separate enrollment and removal implications.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Where does TLS termination change the threat model?">
+
+A proxy can decrypt traffic before forwarding it to the origin.
+Protect that hop according to its network boundary, and trust forwarded scheme or identity headers only from configured proxies.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+TLS provides confidentiality and integrity for the connection and validates the server identity through the certificate trust chain.
+It does not prove that the business behind a site is trustworthy or that returned content is free from vulnerabilities.
+Monitor certificate expiration, supported protocol configuration and successful secure redirects as operational properties.
+Browsers apply secure-context rules to many powerful APIs, with limited potentially trustworthy local-development exceptions.
+Keep HTTP assets and API URLs out of secure pages; mixed content can be blocked or upgraded depending on resource and browser behavior.
+
+### Edge cases
+
+- A local loopback URL may count as trustworthy without representing a safe production HTTP deployment.
+- HSTS includeSubDomains can break a subdomain that is not ready for HTTPS.
+- An expired certificate can disrupt the whole task before application recovery code runs.
+
+### Common mistakes
+
+- Treating encryption as a substitute for authentication or authorization.
+- Sending sensitive data through an insecure backend hop without assessing that boundary.
+- Enabling preload or broad HSTS coverage without an inventory and rollout plan.
+
+### References
+
+- [MDN TLS configuration](https://developer.mozilla.org/en-US/docs/Web/Security/Practical_implementation_guides/TLS)
+- [MDN HSTS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security)
+- [MDN secure contexts](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Secure_Contexts)
+
+</DeepDive>

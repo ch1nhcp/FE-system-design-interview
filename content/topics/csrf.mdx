@@ -1,0 +1,125 @@
+---
+description: Protecting state-changing authenticated requests from cross-site initiation with validated request authenticity and layered cookie policies.
+visual: code
+related: [authentication, authorization, cors, xss, https]
+---
+
+## TL;DR
+
+CSRF abuses credentials the browser attaches to a forged request.
+Validate state-changing request authenticity on the server and layer cookie protections.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+A same-origin client can send a server-issued token with a mutation; the server must verify it against the authenticated session.
+
+```ts
+async function saveSettings(csrfToken: string, settings: { dailyMinutes: number }) {
+  const response = await fetch('/api/settings', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken,
+    },
+    body: JSON.stringify(settings),
+  });
+  if (!response.ok) throw new Error('Settings were not confirmed saved');
+}
+```
+
+A token is not protection unless the server validates its binding and rejects missing or invalid values.
+Do not place CSRF tokens in URLs or logs.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Authenticate the request intent" steps={[
+  {
+    "title": "Browser attaches ambient credentials",
+    "note": "An attacker may cause a request without reading its response"
+  },
+  {
+    "title": "Server checks the mutation boundary",
+    "note": "Reject state changes through safe methods such as GET"
+  },
+  {
+    "title": "Validate authenticity and policy",
+    "note": "Use a session-bound token and appropriate origin checks"
+  },
+  {
+    "title": "Authorize the operation",
+    "note": "CSRF protection does not grant resource permissions"
+  }
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Protect every relevant state-changing endpoint.
+- Validate tokens and origin policy on the server.
+- Keep safe methods free of state-changing actions.
+- Treat SameSite as a deliberate defense layer.
+- Prevent XSS, which can undermine CSRF defenses.
+
+## Trade-offs
+
+| Approach         | Strengths              | Weaknesses            |
+| ---------------- | ---------------------- | --------------------- |
+| Token validation | Session-bound intent   | Lifecycle and binding |
+| Origin checks    | Useful request signal  | Deployment policy     |
+| SameSite cookie  | Reduces cross-site use | Site is not origin    |
+
+## Interview questions
+
+<InterviewQuestion question="Does blocking CORS prevent CSRF?">
+
+No: browsers can send some cross-origin requests even when scripts cannot read their responses.
+Protect state-changing requests independently from cross-origin response sharing.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Is SameSite always sufficient?">
+
+Its protection depends on the deployment, request methods and same-site trust boundaries.
+Use layered server checks and a well-defined token mechanism for the application rather than assuming a cookie attribute covers every endpoint.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should a CSRF token be stored in a URL?">
+
+No: URLs can leak through history, referrers or logs.
+Deliver the token through the application's protected mechanism and submit it through the chosen form or header contract.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+A browser can attach session cookies to requests initiated outside the intended application workflow.
+A synchronizer token ties an unpredictable value to the session, while a correctly designed signed double-submit mechanism has a different binding contract.
+Use the framework's maintained protection when available and review exceptions such as webhooks explicitly.
+Origin and Referer validation need an exact trusted-origin policy and proxy awareness; substring matching is not an allowlist.
+Cookies with SameSite reduce some cross-site transmission, but sibling subdomains and same-site attackers require separate consideration.
+
+### Edge cases
+
+- An attacker can trigger a simple form submission without a successful CORS read.
+- Session rotation and multiple tabs require a deliberate token lifetime strategy.
+- An XSS vulnerability can allow actions from the trusted page context.
+
+### Common mistakes
+
+- Validating only that a CSRF token field exists.
+- Using GET for a destructive operation.
+- Skipping server authorization because a request passed CSRF validation.
+
+### References
+
+- [OWASP CSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
+- [MDN CSRF](https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/CSRF)
+- [MDN SameSite cookie policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie)
+
+</DeepDive>

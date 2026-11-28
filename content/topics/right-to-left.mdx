@@ -1,0 +1,125 @@
+---
+description: Supporting right-to-left documents and mixed-direction text through semantic direction, logical layout and deliberate icon and interaction policies.
+visual: code
+related: [lang-and-hreflang, long-strings, mobile-friendliness, template-strings]
+---
+
+## TL;DR
+
+Set base direction with dir and build layouts with logical start/end properties.
+Isolate mixed-direction values; do not reverse strings or mirror everything.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Direction belongs in markup, while logical CSS lets the layout follow that direction.
+
+```html
+<section lang="ar" dir="rtl">
+  <h2>إعدادات الحساب</h2>
+  <p>المستخدم: <bdi>linh_42</bdi></p>
+  <label>الاسم <input dir="auto" name="displayName" /></label>
+</section>
+```
+
+```css
+.account-card {
+  padding-inline: 1rem;
+  border-inline-start: 2px solid currentColor;
+  text-align: start;
+}
+```
+
+Use dir=rtl on html for a fully RTL document; this section shows a local direction change.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram label="Directional content contract" steps={[
+  {
+    "title": "Set the base direction",
+    "note": "Use dir in document or structural markup"
+  },
+  {
+    "title": "Lay out logical relationships",
+    "note": "Prefer inline-start and inline-end over fixed left and right"
+  },
+  {
+    "title": "Isolate embedded values",
+    "note": "Names, identifiers and URLs may have another direction"
+  },
+  {
+    "title": "Test actual reading and actions",
+    "note": "Check punctuation, focus order, selection and directional icons"
+  }
+]} highlight={1} />
+</VisualTab>
+</VisualPanel>
+
+## Key points
+
+- Keep language and base direction separate.
+- Use logical spacing and alignment properties.
+- Isolate unknown-direction inline values.
+- Mirror only genuinely directional visuals.
+- Test mixed text and keyboard reading order.
+
+## Trade-offs
+
+| Approach         | Strengths              | Weaknesses          |
+| ---------------- | ---------------------- | ------------------- |
+| Logical CSS      | Shared layout rules    | Requires audit      |
+| bdi isolation    | Stable mixed text      | Needs correct scope |
+| Manual mirroring | Specific visual intent | Easy overreach      |
+
+## Interview questions
+
+<InterviewQuestion question="Should every icon be flipped in an RTL layout?">
+
+No: navigation arrows can carry directional meaning, but logos, media controls and other symbols need their own policy.
+Decide from the action and cultural convention rather than transforming the entire interface.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Why can punctuation move around a user name?">
+
+Bidirectional text layout combines character directions with the surrounding base direction.
+Isolate unknown-direction values with suitable markup and test adjacent punctuation rather than inserting arbitrary spaces.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Should RTL text be reversed in storage?">
+
+No: store text in logical order and let the browser apply the Unicode bidirectional algorithm.
+Reversing characters corrupts reading, selection, searching and copying.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### How it works
+
+The browser combines a base direction with Unicode character properties to display mixed-direction text.
+Direction changes layout and text relationships, while the content should remain in meaningful DOM and logical storage order.
+Use bdi or a deliberate dir=auto boundary for unknown-direction inline content, such as user-provided names.
+Apply fixed ltr direction only where the content contract requires it, such as certain identifiers, instead of treating every embedded value alike.
+Check form fields, validation messages, tables and focus paths as well as the top-level page layout.
+
+### Edge cases
+
+- Numbers and punctuation inside RTL prose can produce surprising display order.
+- A physical margin-left rule can break spacing when surrounding direction changes.
+- Visual reordering must not make keyboard navigation contradict the task sequence.
+
+### Common mistakes
+
+- Reversing strings before rendering them.
+- Setting only CSS direction instead of meaningful markup.
+- Flipping all icons or changing stored data to match a screenshot.
+
+### References
+
+- [W3C structural RTL markup](https://www.w3.org/International/questions/qa-html-dir)
+- [W3C inline bidi markup](https://www.w3.org/International/articles/inline-bidi-markup/)
+- [MDN logical properties](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Logical_properties_and_values)
+
+</DeepDive>

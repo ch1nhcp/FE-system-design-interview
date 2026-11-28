@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 
 import { routing } from '@/i18n/routing';
-import { getSection, isSectionSlug, isTopicSlug } from '@/lib/topics/registry';
+import { SECTIONS, getSection, isSectionSlug, isTopicSlug } from '@/lib/topics/registry';
 
 import { topicFrontmatterSchema } from './topic-frontmatter';
 
@@ -17,22 +17,7 @@ const EM_DASH = String.fromCodePoint(0x20_14);
 const topicFiles = readdirSync(TOPICS_DIR);
 const sectionFiles = readdirSync(SECTIONS_DIR);
 
-// Extend this list as each English content batch lands, so completed sections cannot silently lose pages.
-const COMPLETED_ENGLISH_SECTIONS = [
-  'architecture',
-  'state-management',
-  'real-time-updates',
-  'backend-apis',
-  'component-apis',
-  'networking',
-  'performance',
-  'images',
-  'accessibility',
-  'seo',
-  'user-experience',
-] as const;
-
-describe.each(COMPLETED_ENGLISH_SECTIONS)('completed English section: %s', (slug) => {
+describe.each(SECTIONS.map(({ slug }) => slug))('completed English section: %s', (slug) => {
   it('has a cheatsheet for every registered topic', () => {
     const section = getSection(slug);
     expect(section).toBeDefined();
