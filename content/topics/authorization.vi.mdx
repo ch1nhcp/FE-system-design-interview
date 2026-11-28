@@ -1,0 +1,128 @@
+---
+description: Quyết định người gọi đã được xác minh có thể thực hiện hành động nào trên từng tài nguyên.
+visual: diagram
+related: [authentication, graphql, error-handling]
+---
+
+## Tóm tắt
+
+Authorization quyết định hành động được phép trên tài nguyên.
+Kiểm tra mọi request tại server; capability trên UI chỉ hướng dẫn và có thể đã cũ.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Phân quyền tài nguyên"
+  steps={[
+    { title: 'Người gọi đã xác minh', note: 'Danh tính lấy từ session đã kiểm tra trên server' },
+    { title: 'Hành động và tài nguyên', note: 'Ví dụ: sửa tài liệu 42 trong tenant A' },
+    { title: 'Kiểm tra chính sách tin cậy', note: 'Kiểm tra thành viên, vai trò và quan hệ tài nguyên' },
+    { title: 'Cho phép hoặc từ chối', note: 'Trả trường được phép hoặc phản hồi lỗi theo thiết kế' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+Capability API trả về giúp UI giải thích thao tác có thể dùng.
+Endpoint ghi phải tự thực thi cùng chính sách đó.
+
+```ts
+type DocumentView = {
+  id: string;
+  title: string;
+  capabilities: { canEdit: boolean };
+};
+
+async function renameDocument(document: DocumentView, title: string) {
+  if (!document.capabilities.canEdit) {
+    throw new Error('Bạn chỉ có quyền đọc.');
+  }
+  const response = await fetch(`/api/documents/${encodeURIComponent(document.id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+    // API xác thực bằng cookie còn cần biện pháp chống CSRF.
+  });
+  if (response.status === 401) throw new Error('Đăng nhập để tiếp tục.');
+  if (response.status === 403) throw new Error('Quyền sửa của bạn đã thay đổi.');
+  if (!response.ok) throw new Error(`Lưu thất bại: ${response.status}`);
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Kiểm tra quyền object và field trên server mỗi lần.
+- Xét người gọi, hành động, tài nguyên và tenant.
+- Mặc định từ chối, chỉ cấp quyền tối thiểu.
+- Capability UI là gợi ý, không phải credential.
+
+## Cân nhắc
+
+| Mô hình    | Ưu điểm          | Hạn chế              |
+| ---------- | ---------------- | -------------------- |
+| Vai trò    | Nhóm nhiệm vụ    | Dễ tăng số vai trò   |
+| Thuộc tính | Xét ngữ cảnh     | Chính sách tương tác |
+| Quan hệ    | Chủ sở hữu; nhóm | Tra cứu; cache cũ    |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Vì sao ẩn nút admin là chưa đủ?">
+
+Người gọi có thể gửi request API trực tiếp hoặc sửa state trình duyệt.
+Endpoint phải lấy danh tính từ credential đã xác minh và kiểm tra quyền trên đúng tài nguyên, bất kể UI đã render nút nào.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Ngăn truy cập chéo tenant thế nào?">
+
+Kiểm tra người gọi thuộc tenant được yêu cầu rồi giới hạn thao tác đọc, ghi tài nguyên trong tenant đã được phép.
+Không tin tenant id hoặc resource id chỉ vì nó đến từ UI; thử request với id của tenant khác và đảm bảo cache cũng tách theo phạm vi này.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Quyền sửa bị thu hồi giữa chừng thì sao?">
+
+Server từ chối lần ghi tiếp theo dù trang vẫn bật nút Lưu.
+Giữ bản nháp, tải lại capability và giải thích thay đổi; đăng nhập lại không sửa được tình trạng session hợp lệ nhưng thiếu quyền.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Luồng xử lý request tin cậy xác định người gọi và áp dụng chính sách trước khi trả dữ liệu hoặc commit mutation.
+Đặt kiểm tra dùng chung trong lớp chính sách hoặc truy cập dữ liệu nhất quán để route khác, export và field GraphQL không bỏ qua được.
+Với thao tác nhạy cảm, giữ việc xét quyền và mutation nhất quán khi tư cách thành viên hoặc chủ sở hữu thay đổi đồng thời.
+
+### Chi tiết thiết kế
+
+- Thực thi quyền trên server tin cậy cho mọi thao tác, bao gồm quyền object và field.
+- Kết hợp người gọi, hành động, tài nguyên và tenant; vai trò chung chưa chắc chứng minh quyền sở hữu hay thành viên.
+- Mặc định từ chối hành động chưa biết và chỉ cấp quyền từng luồng cần.
+- Capability trên UI có thể cũ; không coi giá trị client gửi lại là credential cho phép ghi.
+- Phân biệt chưa xác thực, bị cấm và tài nguyên được cố ý che giấu trong hợp đồng API và UI.
+
+### Trường hợp biên
+
+- 404 có thể cố ý giấu sự tồn tại của tài nguyên; không làm lộ qua số lượng, gợi ý tìm kiếm hoặc chi tiết lỗi khác.
+- Cache quyền có thể còn sống sau khi thu hồi; xác định cách vô hiệu và độ mới cho thao tác nhạy cảm.
+- Quyền truy cập bản ghi không tự cho phép mọi field, tệp đính kèm hoặc bản ghi liên quan.
+
+### Lỗi thường gặp
+
+- Tin `isAdmin`, `ownerId` hoặc cờ capability client gửi là bằng chứng quyền.
+- Chỉ kiểm tra route một lần nhưng cho phép đọc dữ liệu lồng nhau không giới hạn phạm vi.
+- Cho rằng id khó đoán hoặc chính sách CORS là cơ chế kiểm soát truy cập.
+
+### Tài liệu tham khảo
+
+- [Hướng dẫn phân quyền OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)
+- [Phân quyền trong GraphQL](https://graphql.org/learn/authorization/)
+- [Ngăn tham chiếu object trực tiếp không an toàn theo OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html)
+
+</DeepDive>

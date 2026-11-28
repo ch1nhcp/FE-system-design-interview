@@ -229,10 +229,11 @@ The final standards and spec reviews have no unresolved findings.
 | --------- | ------------------------------ | ----------------- | --------- | --------- |
 | 1         | Real-time updates              | 4                 | 1         | Merged    |
 | 2         | Architecture, State management | 9                 | 2         | In review |
-| 3         | Back end APIs, Component APIs  | 9 planned         | 2 planned | Next      |
-| Remaining | The other 9 sections           | 59 planned        | 9 planned | Pending   |
+| 3         | Back end APIs, Component APIs  | 9                 | 2         | In review |
+| 4         | Networking techniques          | 8 planned         | 1 planned | Next      |
+| Remaining | The other 8 sections           | 51 planned        | 8 planned | Pending   |
 
-Vietnamese coverage is now 13 of 81 unique topics and 3 of 14 section overviews in the working branch.
+Vietnamese coverage is now 22 of 81 unique topics and 5 of 14 section overviews in the working branch.
 Shared topics reuse one translation, including Event sourcing under both State management and Common patterns.
 Case studies remain outside the completion goal.
 
@@ -270,3 +271,18 @@ All 81 English summaries and all 13 available Vietnamese summaries pass the desk
 The newly compacted English summaries stay below 788 pixels locally, and the translated summaries stay below 795 pixels, preserving the Linux CI headroom.
 Desktop light/dark and 320-pixel mobile screenshots were checked for code, diagrams and both translated overviews.
 The standards review has no findings; the spec review's ISR call-site timing finding was corrected in both languages and rechecked with no unresolved findings.
+
+Batch 3 translates all five Back end APIs lessons, all four Component APIs lessons and their two overviews.
+It preserves the original API contracts, code languages and reference URLs while translating explanations, diagrams, example feedback and interview answers.
+Identifiers, HTTP headers and GraphQL operation syntax remain intact.
+Server-enforced permissions, cursor scope, idempotency and component state ownership retain their explicit boundaries.
+Content tests make both translated sections mandatory, and reading tests verify Vietnamese content, schema language, diagrams, code and deep-dive references.
+Search and flashcards use the translated authorization question and answer; the former component fallback test now expects actual Vietnamese content.
+Desktop summary and 320-pixel reading checks cover all 22 available Vietnamese lessons.
+
+Batch 3 validation passes the production build, type-check, lint and formatting gates.
+All 1,066 unit tests pass with 94.49% line coverage, and all 239 desktop/mobile E2E tests pass with thirteen device-specific skips.
+The nine new Vietnamese summaries measure at most 782 pixels locally, preserving the Linux CI headroom.
+All 32 distinct reference URLs in this batch return HTTP 200.
+Desktop light/dark and 320-pixel mobile screenshots were checked for API diagrams, code and both section overviews.
+Standards and spec reviews report zero actionable findings.

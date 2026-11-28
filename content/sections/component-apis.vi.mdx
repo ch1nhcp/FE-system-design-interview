@@ -1,0 +1,28 @@
+## Cách lựa chọn
+
+Bắt đầu với trách nhiệm component: nó sở hữu gì, bên gọi cung cấp gì và nó báo lại gì.
+Chọn API nhỏ nhất đáp ứng biến thể cần thiết, đồng thời giữ hành vi bàn phím và cấu trúc hỗ trợ truy cập.
+
+| Nhu cầu                       | Dạng API                           | Ví dụ                          |
+| ----------------------------- | ---------------------------------- | ------------------------------ |
+| Đổi giao diện nhất quán       | Token theme ngữ nghĩa              | Token nền và chữ cho sáng, tối |
+| Báo ý định người dùng         | Callback prop có kiểu              | `onQuantityChange(next)`       |
+| Đặt nội dung bên gọi          | Children hoặc JSX slot có tên      | Phần chính và vùng actions     |
+| Tùy chỉnh theo dữ liệu nội bộ | Render prop                        | `renderItem(item)` cho mỗi mục |
+| Phối hợp phần tương tác       | Compound component hỗ trợ truy cập | Tab, trigger và panel liên kết |
+
+Các pattern có thể kết hợp.
+Danh sách có theme có thể nhận render prop và báo lựa chọn qua callback event, trong khi cha sở hữu giá trị được chọn.
+
+## Xác định hợp đồng
+
+| Câu hỏi                   | Quyết định trước khi thêm prop                                          |
+| ------------------------- | ----------------------------------------------------------------------- |
+| Ai sở hữu state?          | Giá trị controlled kèm callback, hoặc state nội bộ kèm mặc định         |
+| Bên gọi thay thế được gì? | Slot nội dung, variant hữu hạn hoặc toàn bộ hàm render mục              |
+| Ai quản lý tương tác?     | Component hoặc primitive sở hữu focus và bàn phím                       |
+| Phần nào chạy ở đâu?      | JSX slot có thể qua ranh giới server/client; hàm thông thường không thể |
+| Lỗi thì sao?              | Một nơi sở hữu pending, lỗi và chống thao tác trùng                     |
+
+Tránh thêm đường tùy chỉnh cho nhu cầu giả định.
+Khi có yêu cầu mới, thêm slot hoặc callback tập trung có mục đích rõ cho người dùng tiếp theo.

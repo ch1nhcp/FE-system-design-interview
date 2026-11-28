@@ -1,0 +1,25 @@
+## Cách lựa chọn
+
+Bắt đầu từ dữ liệu mỗi màn hình cần, danh tính người gọi và thao tác được phép.
+REST và GraphQL xác định hợp đồng dữ liệu; phân trang giới hạn tập kết quả; xác thực và phân quyền bảo vệ truy cập bất kể kiểu API.
+
+| Quyết định    | Bắt đầu với                                  | Cân nhắc cách khác khi                            |
+| ------------- | -------------------------------------------- | ------------------------------------------------- |
+| REST          | Thao tác tài nguyên dễ dự đoán và cache HTTP | Màn hình cần nhiều tổ hợp dữ liệu liên quan       |
+| GraphQL       | Đồ thị có kiểu dùng chung cho nhiều client   | Endpoint tài nguyên hoặc tổng hợp đơn giản đã đủ  |
+| Offset        | Danh sách nhỏ, ổn định, cần nhảy trang       | Offset sâu hoặc chèn thường xuyên khiến duyệt kém |
+| Keyset cursor | Duyệt tuần tự với khóa sắp xếp ổn định       | Cần nhảy trang tùy ý hoặc snapshot cố định        |
+
+Một request không tự động có chi phí thấp.
+So sánh kích thước payload, round trip mạng, thực thi server và cache theo màn hình thực tế.
+
+## Hợp đồng truy cập
+
+| Vấn đề     | Trách nhiệm server                              | Trách nhiệm front end                          |
+| ---------- | ----------------------------------------------- | ---------------------------------------------- |
+| Xác thực   | Xác minh danh tính; hết hạn và thu hồi session  | Hiển thị đang kiểm tra, hết hạn và khôi phục   |
+| Phân quyền | Kiểm tra hành động, tài nguyên, field và tenant | Hiển thị capability, xử lý thao tác bị từ chối |
+| Phân trang | Kiểm tra cursor, giới hạn cỡ trang, giữ thứ tự  | Gắn trang với bộ lọc và bỏ phản hồi cũ         |
+
+Ẩn nút là quyết định về trải nghiệm, không phải kiểm tra quyền.
+Thống nhất phản hồi chưa xác thực, bị cấm, không tồn tại và xung đột để UI khôi phục mà không làm mất công việc người dùng.

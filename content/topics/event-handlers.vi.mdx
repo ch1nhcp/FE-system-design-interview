@@ -1,0 +1,139 @@
+---
+description: Thiết kế callback prop thể hiện ý định người dùng và giữ hành vi tương tác native.
+visual: code
+related: [composition, render-props, keyboard-interactions]
+---
+
+## Tóm tắt
+
+Callback prop báo ý định người dùng; bên gọi quyết định bước tiếp theo.
+Chọn giá trị nghiệp vụ hoặc event native, với một nơi sở hữu state và tác vụ async.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Stepper controlled báo số lượng tiếp theo mà không giữ thêm bản sao state.
+
+```tsx
+type QuantityStepperProps = {
+  quantity: number;
+  disabled?: boolean;
+  onQuantityChange: (next: number) => void;
+};
+
+export function QuantityStepper({ quantity, disabled = false, onQuantityChange }: QuantityStepperProps) {
+  return (
+    <div role="group" aria-label="Số lượng">
+      <button
+        type="button"
+        aria-label="Giảm số lượng"
+        disabled={disabled || quantity <= 1}
+        onClick={() => onQuantityChange(quantity - 1)}
+      >
+        −
+      </button>
+      <output aria-live="polite">{quantity}</output>
+      <button
+        type="button"
+        aria-label="Tăng số lượng"
+        disabled={disabled}
+        onClick={() => onQuantityChange(quantity + 1)}
+      >
+        +
+      </button>
+    </div>
+  );
+}
+```
+
+Component cha cung cấp số nguyên dương và cập nhật `quantity` khi chấp nhận thay đổi.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Luồng event của component controlled"
+  steps={[
+    { title: 'Tương tác native', note: 'Nút hỗ trợ kích hoạt bằng con trỏ và bàn phím' },
+    { title: 'Callback thể hiện ý định', note: 'onQuantityChange báo giá trị tiếp theo được đề xuất' },
+    { title: 'Quyết định của cha', note: 'Kiểm tra và cập nhật nguồn dữ liệu chuẩn' },
+    { title: 'Props mới', note: 'Component render số lượng đã chấp nhận' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Prop callback bắt đầu bằng `on`, handler dùng `handle`.
+- Chọn payload nghiệp vụ, event native hoặc cả hai.
+- Cha giữ giá trị; component controlled báo thay đổi.
+- Giữ hành vi native; quy định hủy và lỗi async.
+
+## Cân nhắc
+
+| API               | Ưu điểm              | Hạn chế               |
+| ----------------- | -------------------- | --------------------- |
+| Giá trị nghiệp vụ | Độc lập DOM          | Ít điều khiển event   |
+| Event native      | Khả năng trình duyệt | Phụ thuộc DOM         |
+| Callback async    | Quản lý pending rõ   | Chính sách lỗi, retry |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Vì sao báo đổi số lượng thay vì click?">
+
+Bên gọi quan tâm số lượng mới, không phải người dùng dùng con trỏ, bàn phím hay một control tương lai.
+Callback nghiệp vụ tách ý định khỏi cách triển khai; primitive cấp thấp vẫn có thể chuyển tiếp event native khi phù hợp.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Hủy mặc định khác dừng propagation thế nào?">
+
+`preventDefault` hủy hành vi mặc định có thể hủy của trình duyệt, như gửi form; `stopPropagation` ngăn event tới handler tổ tiên.
+Hai việc không tự kéo theo nhau; callback tùy chỉnh chỉ hủy được khi hợp đồng của nó hỗ trợ.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Ai sở hữu pending và lỗi async?">
+
+Chọn một nơi: cha truyền prop pending và error, hoặc component await callback trả promise đã được quy định và xử lý rejection.
+Tránh hai state pending độc lập; vô hiệu hóa hoặc khử trùng thao tác lặp khi đang xử lý.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+React nhận tương tác native và gọi handler gắn với phần tử tương ứng.
+Component chuyển nó thành payload callback; cha quyết định cập nhật state hoặc bắt đầu tác vụ như lưu dữ liệu.
+Truyền hàm handler trì hoãn thực thi tới lúc tương tác; gọi hàm khi render không có tính chất đó.
+
+### Chi tiết thiết kế
+
+- Đặt tên prop callback bằng `on`, hàm triển khai cục bộ bằng `handle`; mô tả chính xác event hoặc ý định.
+- Chọn payload có chủ đích: giá trị nghiệp vụ, event native hoặc tổ hợp đã ghi rõ.
+- Component controlled báo thay đổi; cha cung cấp giá trị chuẩn ở lần render sau.
+- Button và input native giữ ngữ nghĩa bàn phím, disabled; event handler không thay thế chúng.
+- Quy định tương tác giữa handler kết hợp, `preventDefault`, propagation và tác vụ async đang chờ.
+
+### Trường hợp biên
+
+- Button trong form mặc định submit; control không submit cần `type="button"`.
+- Callback có thể giữ state của lần render cũ trong closure; dùng hàm cập nhật state khi giá trị sau phụ thuộc các cập nhật đang chờ.
+- Khi ghép handler nội bộ với handler bên gọi, ghi rõ thứ tự và liệu `defaultPrevented` có bỏ qua hành động nội bộ không.
+
+### Lỗi thường gặp
+
+- Gọi `onClick={handleClick()}` thay vì truyền handler.
+- Cập nhật state cục bộ và prop controlled độc lập khiến chúng lệch nhau.
+- Dùng `div` có click và chỉ thêm handler chuột, bỏ ngỏ tương tác bàn phím.
+
+### Tài liệu tham khảo
+
+- [Phản hồi event trong React](https://react.dev/learn/responding-to-events)
+- [Chia sẻ state giữa component trong React](https://react.dev/learn/sharing-state-between-components)
+- [Event.preventDefault trên MDN](https://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault)
+- [Event.stopPropagation trên MDN](https://developer.mozilla.org/en-US/docs/Web/API/Event/stopPropagation)
+
+</DeepDive>

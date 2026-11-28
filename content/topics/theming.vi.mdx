@@ -1,0 +1,133 @@
+---
+description: Tạo giao diện component tái sử dụng bằng token ngữ nghĩa, ghi đè theo phạm vi và lựa chọn theme nhất quán.
+visual: code
+related: [composition, visual-accessibility, server-side-rendering]
+---
+
+## Tóm tắt
+
+Theme ánh xạ token ngữ nghĩa như nền và chữ sang giá trị cụ thể.
+Component dùng token; lựa chọn theme ban đầu cần được phối hợp trước khi vẽ.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Component phụ thuộc ý nghĩa token; phạm vi theme cung cấp giá trị.
+
+```css
+:root {
+  color-scheme: light;
+  --surface: #ffffff;
+  --text: #171717;
+  --border: #737373;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --surface: #171717;
+  --text: #fafafa;
+  --border: #a3a3a3;
+}
+
+.study-card {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+```
+
+```html
+<section data-theme="dark" aria-label="Xem trước theme tối">
+  <article class="study-card">Token theo phạm vi theme gần nhất.</article>
+</section>
+```
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Xác định giá trị token theme"
+  steps={[
+    { title: 'Lựa chọn', note: 'Chọn sáng, tối hoặc theo hệ điều hành' },
+    { title: 'Phạm vi theme đã xác định', note: 'Áp dụng chế độ ở gốc hoặc cây con' },
+    { title: 'Token ngữ nghĩa', note: 'Giá trị nền, chữ, viền, focus và trạng thái' },
+    { title: 'Style của component', note: 'Cùng component dùng bộ giá trị đang hoạt động' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Đặt tên token theo mục đích, không theo màu cố định.
+- Dùng biến CSS có phạm vi; context cho hành vi JS.
+- Tách lựa chọn hệ thống khỏi chế độ đã xác định.
+- Đồng bộ theme sớm với HTML; kiểm tra mọi theme.
+
+## Cân nhắc
+
+| Cách                | Ưu điểm            | Hạn chế             |
+| ------------------- | ------------------ | ------------------- |
+| Token CSS           | Kế thừa theo scope | Quản lý token       |
+| State theme JS      | Hành vi ngoài CSS  | Thiết lập hydration |
+| Style từng instance | Ghi đè chính xác   | Dễ thiếu nhất quán  |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Vì sao dùng token theme theo ngữ nghĩa?">
+
+Bên gọi nên chọn vai trò như destructive hoặc muted thay vì biết bảng màu của từng theme.
+Lớp ngữ nghĩa giúp một thay đổi theme cập nhật nhiều component nhất quán, đồng thời tập trung quyết định tương phản vào ít cặp token hơn.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Tránh nháy sai theme ban đầu thế nào?">
+
+Xác định lựa chọn trước lần vẽ đầu bằng tích hợp theme được duy trì, hoặc lựa chọn server đọc được kết hợp fallback chế độ hệ thống chạy sớm.
+Giữ markup server và client tương thích, tính đến CSP và chưa render nhãn điều khiển phụ thuộc chế độ khi chưa biết chế độ.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Theme có phạm vi cục bộ có thể lỗi gì?">
+
+Portal thường render dưới body, bên ngoài cây con có theme, nên nội dung có thể kế thừa token khác.
+Đặt portal trong phạm vi dự định nếu được hỗ trợ, hoặc áp dụng cùng theme đã xác định cho container portal.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Design token là hợp đồng giữa người thiết kế theme và người viết component.
+CSS xác định custom property qua cascade và kế thừa, cho phép trang hoặc cây con ghi đè giá trị mà không sửa code component.
+Nếu có chế độ hệ thống, chỉ theo dõi thay đổi hệ điều hành khi lựa chọn đó đang bật và lưu lựa chọn tường minh khi storage dùng được.
+
+### Chi tiết thiết kế
+
+- Đặt tên theo vai trò như nền và chữ để component dùng được cho nhiều thương hiệu, chế độ sáng và tối.
+- Dùng CSS custom property kế thừa để ghi đè theo phạm vi; dùng context khi JavaScript cũng cần state theme.
+- Lưu lựa chọn tách khỏi chế độ đã xác định để thay đổi hệ thống vẫn có hiệu lực trong chế độ hệ thống.
+- Phối hợp markup server và chọn theme sớm; server render không truy cập được browser storage.
+- Kiểm tra tương phản, focus, control native, biểu đồ và hình ảnh trong mọi theme được hỗ trợ.
+
+### Trường hợp biên
+
+- Browser storage có thể không dùng được; vẫn giữ theme hệ thống hoặc mặc định có thể sử dụng mà không crash.
+- Chỉ đặt nền và chữ khiến input native, scrollbar thiếu nhất quán; khai báo `color-scheme` hỗ trợ.
+- Chế độ forced-colors và style in cần hành vi riêng ngoài bảng màu sáng, tối.
+
+### Lỗi thường gặp
+
+- Hard-code màu theme trong component tái sử dụng thay vì định nghĩa token ngữ nghĩa.
+- Coi dark mode là đảo màu máy móc cho mọi màu và hình ảnh.
+- Lưu chế độ hệ thống đã xác định thành lựa chọn tường minh, khiến các thay đổi hệ điều hành sau đó không còn được theo dõi.
+
+### Tài liệu tham khảo
+
+- [CSS custom property trên MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties)
+- [color-scheme trên MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme)
+- [prefers-color-scheme trên MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-color-scheme)
+- [createPortal của React](https://react.dev/reference/react-dom/createPortal)
+
+</DeepDive>

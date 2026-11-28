@@ -190,7 +190,7 @@ test.describe('cheatsheet', () => {
     }
   });
 
-  test('reads every component API cheatsheet and its English fallback', async ({ page }) => {
+  test('reads every component API cheatsheet in both languages', async ({ page }) => {
     const topics = [
       { slug: 'theming', label: 'Theming config' },
       { slug: 'event-handlers', label: 'Event handlers' },
@@ -213,8 +213,8 @@ test.describe('cheatsheet', () => {
       expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
 
       await page.goto(`/vi/topics/${topic.slug}`);
-      await expect(page.getByRole('note')).toBeVisible();
-      await expect(page.locator('[lang="en"]').getByRole('heading', { name: 'TL;DR', exact: true })).toBeVisible();
+      await expect(page.getByRole('note')).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Tóm tắt', exact: true })).toBeVisible();
     }
   });
 

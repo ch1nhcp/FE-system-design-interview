@@ -17,7 +17,7 @@ const EM_DASH = String.fromCodePoint(0x20_14);
 const topicFiles = readdirSync(TOPICS_DIR);
 const sectionFiles = readdirSync(SECTIONS_DIR);
 
-describe.each(['real-time-updates', 'architecture', 'state-management'] as const)(
+describe.each(['real-time-updates', 'architecture', 'state-management', 'backend-apis', 'component-apis'] as const)(
   'completed Vietnamese section: %s',
   (slug) => {
     it('has a translated overview and every registered lesson', () => {

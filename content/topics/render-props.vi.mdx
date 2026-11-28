@@ -1,0 +1,142 @@
+---
+description: Cho phép bên gọi tùy chỉnh nội dung render bằng hàm nhận dữ liệu do component quản lý.
+visual: code
+related: [composition, event-handlers, memoization, server-components]
+---
+
+## Tóm tắt
+
+Render prop biến dữ liệu component quản lý thành UI do bên gọi định nghĩa.
+Dùng khi JSX slot thông thường không cung cấp được dữ liệu mà bên gọi cần.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Collection quản lý cấu trúc danh sách và key; bên gọi quản lý nội dung mỗi mục.
+
+```tsx
+import type { ReactNode } from 'react';
+
+type ItemListProps<T> = {
+  items: readonly T[];
+  getKey: (item: T) => string;
+  renderItem: (item: T) => ReactNode;
+};
+
+export function ItemList<T>({ items, getKey, renderItem }: ItemListProps<T>) {
+  return (
+    <ul>
+      {items.map((item) => (
+        <li key={getKey(item)}>{renderItem(item)}</li>
+      ))}
+    </ul>
+  );
+}
+
+const lessons = [{ id: 'rest', title: 'REST', learned: false }];
+
+export function LessonList() {
+  return (
+    <ItemList
+      items={lessons}
+      getKey={(lesson) => lesson.id}
+      renderItem={(lesson) => (
+        <a href={`/vi/topics/${lesson.id}`}>
+          {lesson.title}
+          {lesson.learned ? ' (đã học)' : ''}
+        </a>
+      )}
+    />
+  );
+}
+```
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Phân chia trách nhiệm render prop"
+  steps={[
+    { title: 'Bên gọi truyền dữ liệu và hàm render', note: 'Các mục có kiểu cùng renderItem(item)' },
+    { title: 'Danh sách quản lý cấu trúc', note: 'Chọn thứ tự và áp dụng key ổn định' },
+    { title: 'Hàm render nhận một mục', note: 'Trả JSX, không tạo side effect hay cập nhật state' },
+    { title: 'Nội dung do bên gọi định nghĩa', note: 'Danh sách giữ phần tử bao đúng ngữ nghĩa' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Render prop trả UI; callback event báo tương tác.
+- Truyền payload nhỏ có kiểu, trả `ReactNode`.
+- Render thuần; gọi Hook trong component riêng.
+- Giữ key, cấu trúc đúng; hàm thường không qua RSC.
+
+## Cân nhắc
+
+| Pattern     | Ưu điểm             | Hạn chế                 |
+| ----------- | ------------------- | ----------------------- |
+| JSX slot    | Ghép đơn giản       | Không có dữ liệu nội bộ |
+| Render prop | Render theo dữ liệu | Phụ thuộc callback      |
+| Custom Hook | Tách hành vi        | Bên gọi quản lý markup  |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Khi nào render prop tốt hơn children?">
+
+Khi nội dung bên gọi cần phụ thuộc dữ liệu component nhận cung cấp, như một mục, trạng thái chọn hoặc kết quả validation.
+Nếu bên gọi đã có đủ dữ liệu, truyền JSX thông thường qua `children` hoặc slot có tên.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Có gọi Hook trong renderItem được không?">
+
+Không: danh sách có thể gọi callback số lần thay đổi, phá thứ tự Hook.
+Trả về component riêng từ hàm render để component đó gọi Hook ở cấp cao nhất của nó.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Render prop có luôn gây chậm không?">
+
+Không: hàm mới chủ yếu ảnh hưởng khi so sánh tham chiếu được dùng để bỏ qua công việc; render rẻ có thể không cần tối ưu.
+Đo trước, giữ payload nhỏ và chỉ ổn định hàm khi nó tạo ranh giới memoization hữu ích.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Component gọi hàm do bên gọi cung cấp trong quá trình tạo kết quả render.
+Hàm nhận một góc nhìn dữ liệu do component quản lý và trả về node; component nhận quyết định đặt node ở đâu.
+Prop `children` chứa hàm cũng là pattern này với tên khác, tiện khi chỉ có một điểm tùy chỉnh.
+
+### Chi tiết thiết kế
+
+- Render prop trả UI trong lúc render; callback event báo tương tác về sau.
+- Dùng `ReactNode` cho kết quả tổng quát và payload có kiểu chỉ chứa dữ liệu bên gọi cần.
+- Hàm render phải thuần; Hook nằm trong component hoặc custom Hook, không nằm trong callback gọi trong vòng lặp.
+- Component collection sở hữu key ổn định và các phần tử cấu trúc có ngữ nghĩa hỗ trợ truy cập.
+- Hàm render thông thường không thể serialize từ Server Component sang Client Component làm prop.
+
+### Trường hợp biên
+
+- Nội dung trả về phải hợp ngữ nghĩa phần tử bao; hàm render mục danh sách không nên bọc thêm `li` quanh chính nó.
+- Truyền định nghĩa component inline làm element type có thể khiến remount khi cha render; truyền render callback là hợp đồng khác.
+- Payload generic dùng chung có thể lộ object nội bộ mutable; cung cấp góc nhìn hẹp chỉ đọc khi không cho phép sửa.
+
+### Lỗi thường gặp
+
+- Bắt đầu request hoặc cập nhật state bên trong hàm render.
+- Thêm nhiều render prop trong khi vài JSX slot có tên sẽ rõ hơn.
+- Chuyển hành vi vào Hook rồi cho rằng đã có tương tác bàn phím và markup hỗ trợ truy cập.
+
+### Tài liệu tham khảo
+
+- [Gọi render prop để tùy chỉnh nội dung trong React](https://react.dev/reference/react/Children#calling-a-render-prop-to-customize-rendering)
+- [Quy tắc Hook](https://react.dev/reference/rules/rules-of-hooks)
+- [Component và Hook React phải thuần](https://react.dev/reference/rules/components-and-hooks-must-be-pure)
+- [Prop serialize được tại ranh giới use client](https://react.dev/reference/rsc/use-client#serializable-types-returned-by-server-components)
+
+</DeepDive>
