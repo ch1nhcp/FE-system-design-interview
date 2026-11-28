@@ -1,0 +1,140 @@
+---
+description: API có kiểu dữ liệu, cho phép client chọn trường và quan hệ mà từng màn hình cần.
+visual: code
+related: [rest, pagination, normalized-state, authorization]
+---
+
+## Tóm tắt
+
+GraphQL cho client chọn trường và quan hệ từ schema có kiểu.
+Phù hợp với nhiều nhu cầu dữ liệu, nhưng cần giới hạn chi phí, cache và xử lý lỗi từng phần.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Operation có tên và biến giúp tách đầu vào người dùng khỏi văn bản query.
+
+```graphql
+query ProjectCard($id: ID!) {
+  project(id: $id) {
+    id
+    name
+    owner {
+      id
+      name
+    }
+  }
+}
+```
+
+```ts
+async function loadProject(id: string, signal: AbortSignal) {
+  const response = await fetch('/graphql', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/graphql-response+json, application/json',
+    },
+    body: JSON.stringify({
+      query: `query ProjectCard($id: ID!) {
+        project(id: $id) { id name owner { id name } }
+      }`,
+      variables: { id },
+    }),
+    signal,
+  });
+  if (!response.ok) throw new Error(`Request thất bại: ${response.status}`);
+  // Bên gọi phải xử lý cả data và lỗi GraphQL, kể cả khi HTTP 200.
+  return response.json();
+}
+```
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Thực thi GraphQL"
+  steps={[
+    { title: 'Operation của màn hình', note: 'Chọn trường và truyền biến' },
+    { title: 'Kiểm tra schema', note: 'Từ chối trường lạ và đối số sai kiểu' },
+    { title: 'Resolver có kiểm tra quyền', note: 'Lấy dữ liệu từng trường; gộp các lượt đọc liên quan' },
+    { title: 'Dữ liệu và lỗi', note: 'Hiển thị dữ liệu có sẵn, xử lý nhánh bị lỗi' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Query đọc, mutation sửa, subscription nhận cập nhật.
+- Dùng biến, fragment và kiểu sinh từ operation.
+- Kiểm tra cả `data` và `errors`, kể cả HTTP 200.
+- Giới hạn query; gộp lượt đọc và chọn cache client.
+
+## Cân nhắc
+
+| Ưu điểm                | Hạn chế               |
+| ---------------------- | --------------------- |
+| Chọn trường và quan hệ | Resolver và lỗi N+1   |
+| Schema và codegen      | Phải giới hạn chi phí |
+| Hợp đồng dùng chung    | Tự thiết kế cache     |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Một request GraphQL có giải quyết N+1 không?">
+
+Nó giảm round trip ở trình duyệt, nhưng mỗi resolver lồng nhau vẫn có thể tạo một query database riêng.
+Gộp và khử trùng lặp các lượt đọc trong request; đo công việc database thay vì chỉ đếm HTTP request.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="UI xử lý lỗi GraphQL từng phần thế nào?">
+
+Kiểm tra cả `data`, `errors` và path của từng lỗi.
+Hiển thị vùng dữ liệu hợp lệ khi hữu ích, cho vùng thiếu dữ liệu báo lỗi hoặc retry, và tính đến lỗi non-null lan lên tổ tiên nullable.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="GraphQL có dùng cache HTTP được không?">
+
+Có: query có thể dùng GET nếu server hỗ trợ; mã định danh persisted operation giúp URL gọn hơn.
+Cache header và key phải xét biến và danh tính; không gửi mutation bằng GET.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Server parse và kiểm tra operation theo schema rồi chạy resolver cho các trường được chọn.
+Kiểu trong schema mô tả dữ liệu; kiểm tra quyền phải nằm trong business logic đáng tin cậy, không dựa vào việc schema giấu trường.
+Kiểu sinh tự động phía client mô tả kết quả operation; UI vẫn phải xử lý lỗi runtime, nullability và trạng thái tải.
+
+### Chi tiết thiết kế
+
+- Query đọc dữ liệu, mutation yêu cầu thay đổi, subscription nhận kết quả liên tục qua transport được hỗ trợ.
+- Dùng biến và fragment tái sử dụng; sinh kiểu client từ schema và operation.
+- Tách lỗi transport khỏi lỗi GraphQL, vì lỗi GraphQL có thể đi kèm dữ liệu từng phần trong HTTP 200.
+- Giới hạn kích thước danh sách và chi phí query; một request trình duyệt vẫn có thể gây nhiều lượt đọc backend.
+- Chọn cache theo operation hoặc cache entity chuẩn hóa; GraphQL không tự cung cấp chúng.
+
+### Trường hợp biên
+
+- Trường lồng nhau bị cấm có thể lỗi trong khi phần khác của phản hồi vẫn dùng được.
+- Cache chuẩn hóa cần định danh entity ổn định và cách cập nhật thành viên danh sách sau mutation.
+- Upload và subscription cần lựa chọn transport ngoài endpoint query và mutation cơ bản.
+
+### Lỗi thường gặp
+
+- Coi HTTP 200 là bằng chứng mọi trường đều thành công.
+- Cho phép danh sách vô hạn hoặc query lồng sâu tùy ý.
+- Cho rằng schema thay thế phân quyền server hoặc kiểm tra đầu vào runtime.
+
+### Tài liệu tham khảo
+
+- [Query trong tài liệu GraphQL](https://graphql.org/learn/queries/)
+- [Phục vụ GraphQL qua HTTP](https://graphql.org/learn/serving-over-http/)
+- [Hiệu năng GraphQL](https://graphql.org/learn/performance/)
+- [Định dạng phản hồi GraphQL](https://graphql.org/learn/response/)
+
+</DeepDive>

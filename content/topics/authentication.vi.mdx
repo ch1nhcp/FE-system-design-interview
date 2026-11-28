@@ -1,0 +1,127 @@
+---
+description: Xác minh danh tính người dùng và duy trì session có thể kiểm chứng qua các request.
+visual: diagram
+related: [authorization, csrf, xss, https]
+---
+
+## Tóm tắt
+
+Authentication xác minh danh tính; session duy trì danh tính qua các request.
+Thiết kế đăng nhập, hết hạn, gia hạn và đăng xuất cùng nhau; phân quyền kiểm tra riêng.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Vòng đời session cookie"
+  steps={[
+    { title: 'Đăng nhập', note: 'Server tin cậy xác minh thông tin đăng nhập hoặc kết quả từ nhà cung cấp danh tính' },
+    { title: 'Cấp session mới', note: 'Đặt cookie opaque; giữ state session trên server' },
+    { title: 'Xác minh từng request', note: 'Kiểm tra session hợp lệ rồi kiểm tra quyền tài nguyên' },
+    { title: 'Hết hạn hoặc đăng xuất', note: 'Thu hồi session trên server và xóa cookie' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+Server cấp cookie qua HTTPS sau khi đăng nhập thành công:
+
+```http
+Set-Cookie: __Host-session=<opaque-random-secret>; Path=/; Secure; HttpOnly; SameSite=Lax
+Cache-Control: no-store
+```
+
+Trình duyệt gửi cookie cùng origin mà không cho JavaScript đọc bí mật HttpOnly này.
+
+```ts
+async function loadCurrentUser(signal: AbortSignal) {
+  const response = await fetch('/api/session', {
+    credentials: 'same-origin',
+    cache: 'no-store',
+    signal,
+  });
+  if (response.status === 401) return null;
+  if (!response.ok) throw new Error('Không kiểm tra được session. Hãy thử lại.');
+  return response.json();
+}
+```
+
+Tách các trạng thái UI: đang kiểm tra, đã xác thực, chưa đăng nhập và kiểm tra thất bại.
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Xác minh trên server; cờ client không phải bằng chứng.
+- Tách session bị từ chối khỏi lỗi mạng.
+- HttpOnly chặn đọc bí mật; ghi vẫn cần chống CSRF.
+- Thu hồi session, xóa cache khi đổi tài khoản.
+
+## Cân nhắc
+
+| Cách           | Ưu điểm           | Hạn chế             |
+| -------------- | ----------------- | ------------------- |
+| Session cookie | HttpOnly; thu hồi | Lưu trữ; chống CSRF |
+| Bearer token   | Gửi tường minh    | Lộ qua JS; gia hạn  |
+| Nhà cung cấp   | Đăng nhập; MFA    | Redirect; gián đoạn |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Authentication khác authorization thế nào?">
+
+Authentication xác định người gọi; authorization quyết định người đó có được thực hiện hành động trên tài nguyên hay không.
+Người đã đăng nhập vẫn cần kiểm tra quyền trên server trước khi đọc tài liệu của người khác.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Có lưu session token trong localStorage không?">
+
+Trước tiên hỏi JavaScript trình duyệt có cần token không; backend cùng origin thường có thể giữ credential và cấp session cookie HttpOnly.
+Nếu tích hợp API trực tiếp cần bearer token, đánh giá khả năng lộ, thời hạn và gia hạn thay vì mặc định lưu lâu dài ở nơi JavaScript đọc được.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Session hết hạn khi đang sửa thì xử lý sao?">
+
+Giữ bản nháp, giải thích cần đăng nhập và chỉ tiếp tục sau khi kiểm tra danh tính, quyền mới.
+Không tự phát lại thao tác ghi chưa rõ kết quả trên server; đối soát hoặc dùng hợp đồng idempotency của thao tác.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Dịch vụ xác thực kiểm tra mật khẩu, passkey hoặc phản hồi nhà cung cấp danh tính, rồi tạo session có thời hạn do server thực thi.
+Request mang session identifier hoặc token để hạ tầng tin cậy kiểm tra trước khi tạo danh tính người gọi.
+Với OpenID Connect, dùng authorization-code flow có PKCE được nhà cung cấp hỗ trợ cùng các kiểm tra state, nonce và redirect của thư viện.
+
+### Chi tiết thiết kế
+
+- Xác minh danh tính qua dịch vụ tin cậy; cờ client và claim token chỉ được decode không phải bằng chứng.
+- Tách session bị từ chối khỏi lỗi mạng để sự cố dịch vụ không âm thầm đăng xuất người dùng.
+- Chống CSRF cho thao tác ghi dùng cookie; HttpOnly hạn chế đọc token nhưng không vô hiệu hóa XSS.
+- Hết hạn, thu hồi session trên server, đổi identifier sau đăng nhập và xóa cache riêng tư khi danh tính đổi.
+- Dùng OIDC client được duy trì cho đăng nhập liên kết; OAuth tự nó ủy quyền truy cập, không định nghĩa xác thực người dùng.
+
+### Trường hợp biên
+
+- Nhiều tab có thể cùng thấy hết hạn; phối hợp gia hạn và tránh vòng lặp refresh khi liên tục nhận 401.
+- Chỉ xóa cookie không thu hồi credential đã bị sao chép; đăng xuất phải vô hiệu session trên server.
+- Đổi tài khoản phải xóa dữ liệu cache của người trước trước khi hiển thị tài khoản mới.
+
+### Lỗi thường gặp
+
+- Chuyển tới đăng nhập với mọi fetch lỗi, kể cả mất mạng và server gián đoạn.
+- Cho rằng JWT được mã hóa hoặc decode là đã kiểm tra chữ ký, issuer, audience và thời hạn.
+- Coi `SameSite` thay thế toàn bộ biện pháp chống CSRF trên endpoint thay đổi state.
+
+### Tài liệu tham khảo
+
+- [Hướng dẫn xác thực OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)
+- [Hướng dẫn quản lý session OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
+- [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html)
+- [Set-Cookie trên MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie)
+
+</DeepDive>

@@ -1,0 +1,139 @@
+---
+description: Xây API component linh hoạt bằng children, slot có tên và các phần nhỏ phối hợp rõ trách nhiệm.
+visual: code
+related: [render-props, event-handlers, theming, server-components]
+---
+
+## Tóm tắt
+
+Composition kết hợp component qua children và slot có tên.
+Container giữ cấu trúc, hành vi; bên gọi truyền nội dung theo hợp đồng state và khả năng truy cập.
+
+<VisualPanel tabs={['code', 'diagram']}>
+<VisualTab kind="code">
+
+Container quản lý cấu trúc ngữ nghĩa; bên gọi truyền tiêu đề, nội dung và thao tác tùy chọn.
+
+```tsx
+import { useId } from 'react';
+import type { ReactNode } from 'react';
+
+type StudyPanelProps = {
+  title: string;
+  children: ReactNode;
+  actions?: ReactNode;
+};
+
+export function StudyPanel({ title, children, actions }: StudyPanelProps) {
+  const titleId = useId();
+  return (
+    <section aria-labelledby={titleId}>
+      <header>
+        <h2 id={titleId}>{title}</h2>
+        {actions}
+      </header>
+      <div>{children}</div>
+    </section>
+  );
+}
+
+export function RestSummary() {
+  return (
+    <StudyPanel title="REST" actions={<a href="/vi/topics/rest">Đọc tóm tắt</a>}>
+      <p>API HTTP theo tài nguyên với ngữ nghĩa method rõ ràng.</p>
+    </StudyPanel>
+  );
+}
+```
+
+Ví dụ giả định panel nằm dưới `h1` của trang; cấp heading là một phần hướng dẫn sử dụng.
+
+</VisualTab>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Kết hợp component"
+  steps={[
+    { title: 'Nội dung bên gọi', note: 'Tiêu đề, nội dung và thao tác tùy chọn' },
+    { title: 'Slot có tên', note: 'Chỉ rõ vị trí của từng phần' },
+    { title: 'Hợp đồng container', note: 'Quản lý layout, ngữ nghĩa và hành vi nhất quán' },
+    { title: 'Giao diện kết hợp', note: 'Nội dung mới không cần variant container mới' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Dùng children cho phần chính, slot cho vùng khác.
+- State controlled hoặc uncontrolled có chủ rõ ràng.
+- Ưu tiên variant có nghĩa hơn các cờ chồng chéo.
+- Các phần phối hợp id, focus và cấu trúc hợp lệ.
+
+## Cân nhắc
+
+| API            | Ưu điểm            | Hạn chế          |
+| -------------- | ------------------ | ---------------- |
+| Cấu hình       | Mặc định dễ đoán   | Có thể cứng nhắc |
+| JSX slot       | Nội dung linh hoạt | Có thể lồng sai  |
+| Compound parts | Hành vi dùng chung | Phối hợp context |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Khi nào prop nên nhận JSX?">
+
+Dùng cấu hình cho lựa chọn ngữ nghĩa hữu hạn như size; dùng JSX cho nội dung bên gọi cần sắp xếp hoặc bổ sung.
+Slot `actions` rõ hơn danh sách cờ tăng dần cho mọi tổ hợp link, menu và button.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Khi nào dùng compound component?">
+
+Khi nhiều phần chia sẻ hành vi nhưng bên gọi cần tự do bố trí, như danh sách tab và panel.
+Dùng primitive đã kiểm chứng khả năng truy cập để phối hợp selection, focus và id thay vì để bên gọi tự nối hợp đồng tương tác.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Slot đi qua ranh giới server/client thế nào?">
+
+Server Component có thể tạo nội dung render trên server rồi truyền làm JSX slot vào Client Component.
+Wrapper client thêm tương tác mà không import triển khai chỉ chạy server; render prop là hàm thông thường không serialize được qua ranh giới đó.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+React truyền element qua prop; component nhận đặt chúng vào vị trí mà không cần kiểm tra triển khai bên trong.
+Slot có tên làm rõ trách nhiệm layout; context dùng chung phối hợp compound parts khi chỉ dùng prop trở nên khó xử lý.
+Giữ context gần các phần phối hợp và báo lỗi rõ khi phần bắt buộc được dùng ngoài provider.
+
+### Chi tiết thiết kế
+
+- Dùng `children` cho nội dung chính, slot có tên cho vùng riêng như actions hoặc footer.
+- State controlled nằm ở bên gọi, state uncontrolled nằm trong component; luôn xác định rõ bên sở hữu.
+- Ưu tiên ít variant có ý nghĩa hơn boolean chồng chéo cho phép tổ hợp không hợp lệ.
+- Compound parts có thể dùng context chung, nhưng cha phải phối hợp id, focus và bàn phím khi cần.
+- Ghi rõ cấu trúc bắt buộc và cách lồng hợp lệ; linh hoạt thị giác vẫn phải giữ HTML đúng ngữ nghĩa.
+
+### Trường hợp biên
+
+- Nhiều instance cần id label và control riêng; id hard-code tạo quan hệ truy cập sai.
+- Slot có thể đưa vào button, link lồng nhau hoặc heading sai cấp, nên cần nêu rõ nội dung cho phép.
+- Duyệt `Children` và `cloneElement` không thể kiểm tra đáng tin cậy kết quả render của child component bất kỳ; ưu tiên slot và hợp đồng tường minh.
+
+### Lỗi thường gặp
+
+- Thêm boolean cho từng thiết kế mới đến mức các tổ hợp mâu thuẫn nhau.
+- Tạo framework compound component cho card đơn giản chỉ cần `children`.
+- Cho rằng mọi descendant chạy trên client chỉ vì wrapper client nhận chúng qua slot.
+
+### Tài liệu tham khảo
+
+- [Truyền JSX qua children trong React](https://react.dev/learn/passing-props-to-a-component#passing-jsx-as-children)
+- [Cách thay thế thao tác children](https://react.dev/reference/react/Children#alternatives)
+- [Chia sẻ state giữa component](https://react.dev/learn/sharing-state-between-components)
+- [Kết hợp Server Component và Client Component trong Next.js](https://nextjs.org/docs/app/getting-started/server-and-client-components#interleaving-server-and-client-components)
+
+</DeepDive>

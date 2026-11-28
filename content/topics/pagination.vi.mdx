@@ -1,0 +1,131 @@
+---
+description: Tải từng phần có giới hạn của một tập dữ liệu bằng offset hoặc cursor với thứ tự ổn định.
+visual: diagram
+related: [rest, graphql, infinite-scrolling, race-conditions]
+---
+
+## Tóm tắt
+
+Phân trang chia tập dữ liệu thành phần có giới hạn.
+Offset hỗ trợ nhảy trang; keyset cursor duyệt tuần tự, cần thứ tự ổn định và tín hiệu hết dữ liệu.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Phân trang cursor"
+  steps={[
+    { title: 'Trang đầu', note: 'Yêu cầu 20 mục với bộ lọc và thứ tự cố định' },
+    { title: 'Kết quả có thứ tự', note: 'Server dùng thứ tự ổn định như createdAt cùng id' },
+    { title: 'Cursor tiếp theo dạng opaque', note: 'Phản hồi xác định điểm bắt đầu phần tiếp theo' },
+    { title: 'Tiếp tục hoặc kết thúc', note: 'Gửi cursor; null nghĩa là không còn trang' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+Hợp đồng API ví dụ: `{ items, nextCursor }`, với `null` khi hết dữ liệu.
+
+```ts
+async function loadPage(cursor: string | null, signal: AbortSignal) {
+  const params = new URLSearchParams({
+    limit: '20',
+    sort: 'createdAt:desc,id:desc',
+  });
+  if (cursor !== null) params.set('after', cursor);
+
+  const response = await fetch(`/api/posts?${params}`, { signal });
+  if (!response.ok) throw new Error(`Tải trang thất bại: ${response.status}`);
+  return response.json();
+}
+```
+
+Với keyset giảm dần, server tiếp tục sau toàn bộ khóa sắp xếp của mục cuối:
+
+```sql
+SELECT id, title, created_at
+FROM posts
+WHERE (created_at, id) < (:last_created_at, :last_id)
+ORDER BY created_at DESC, id DESC
+LIMIT 21;
+```
+
+Đọc dư một dòng giúp server phát hiện trang tiếp; phản hồi trả 20 dòng và cursor của dòng cuối được trả.
+Trang đầu bỏ điều kiện cursor.
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Offset cho nhảy trang; thay đổi dữ liệu làm lệch mốc.
+- Keyset cần khóa phân định duy nhất và index khớp.
+- Giữ cursor gắn với cùng bộ lọc và thứ tự.
+- Bỏ phản hồi cũ; tách lỗi, rỗng và hết dữ liệu.
+
+## Cân nhắc
+
+| Cách     | Ưu điểm       | Hạn chế              |
+| -------- | ------------- | -------------------- |
+| Offset   | Nhảy trang    | Lệch mốc; quét sâu   |
+| Cursor   | Đọc tuần tự   | Không nhảy trực tiếp |
+| Snapshot | Duyệt ổn định | Thời hạn và lưu trữ  |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Vì sao offset có thể bỏ sót hoặc lặp mục?">
+
+Chèn trước offset đẩy mục đã xem sang trang sau; xóa có thể kéo mục chưa xem ra phía trước offset.
+Keyset cursor tránh kiểu lệch này bằng cách tiếp tục sau giá trị khóa thay vì đếm dòng, nhưng không phải snapshot bất biến.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Vì sao sắp xếp theo cả timestamp và id?">
+
+Nhiều bản ghi có thể có cùng timestamp.
+Id duy nhất phá hòa, và cursor phải chứa cả hai giá trị để request sau tiếp tục từ ranh giới không mơ hồ.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Đổi bộ lọc khi request đang chạy thì sao?">
+
+Dùng cache key mới và đặt lại chuỗi cursor theo bộ lọc, thứ tự mới.
+Hủy request cũ khi có thể, chỉ gộp phản hồi thuộc query đang hoạt động; giữ các mục hiện có nếu trang sau lỗi.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Offset yêu cầu server bỏ qua một số dòng đã sắp xếp; keyset dùng điều kiện tìm sau khóa của dòng cuối được trả.
+Cursor có thể mã hóa khóa cùng phiên bản bộ lọc hoặc mã snapshot; mã hóa không khiến nó đáng tin cậy.
+Server kiểm tra cursor, áp dụng lại phân quyền và giới hạn kích thước trang ở mọi request.
+
+### Chi tiết thiết kế
+
+- Offset hỗ trợ nhảy trang trực tiếp, nhưng offset sâu tốn công hơn và có thể lệch khi chèn hoặc xóa dòng.
+- Keyset tiếp tục từ giá trị sắp xếp; cần khóa phân định duy nhất và index khớp query.
+- Client coi cursor là opaque, gắn nó với cùng bộ lọc, thứ tự và phạm vi truy cập.
+- Đặt lại trang khi đổi bộ lọc, bỏ phản hồi cũ và ngăn request trang tiếp bị trùng.
+- Tách tải lần đầu, tải thêm, tập rỗng, hết danh sách và lỗi tải trang.
+
+### Trường hợp biên
+
+- Khóa sắp xếp đổi giữa các request vẫn có thể khiến keyset bỏ sót hoặc lặp; dùng thứ tự bất biến hoặc snapshot nếu cần duyệt ổn định.
+- Xóa bản ghi tại cursor không nhất thiết làm hỏng keyset nếu cursor chứa giá trị sắp xếp thay vì yêu cầu bản ghi còn tồn tại.
+- Tổng số mục có thể tốn chi phí và cũ ngay; nhiều feed chỉ cần `nextCursor` hoặc `hasNextPage`.
+
+### Lỗi thường gặp
+
+- Cho rằng offset mã hóa Base64 có hiệu năng hoặc tính nhất quán của keyset.
+- Dùng lại cursor sau khi đổi thứ tự, tenant hoặc bộ lọc.
+- Coi trang ngắn là hết dữ liệu khi API chưa quy định như vậy.
+
+### Tài liệu tham khảo
+
+- [Phân trang trong tài liệu GraphQL](https://graphql.org/learn/pagination/)
+- [LIMIT và OFFSET trong PostgreSQL](https://www.postgresql.org/docs/current/queries-limit.html)
+- [So sánh hàng trong PostgreSQL](https://www.postgresql.org/docs/current/functions-comparisons.html#ROW-WISE-COMPARISON)
+
+</DeepDive>

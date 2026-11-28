@@ -1,0 +1,123 @@
+---
+description: API HTTP theo tài nguyên, với method, mã trạng thái và hành vi cache rõ ràng.
+visual: diagram
+related: [graphql, pagination, caching-and-expiry, optimistic-updates]
+---
+
+## Tóm tắt
+
+API kiểu REST dùng URL tài nguyên và ngữ nghĩa HTTP.
+Phù hợp khi màn hình xoay quanh tài nguyên, với hợp đồng rõ về dữ liệu, lỗi và cache.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Cập nhật REST có điều kiện"
+  steps={[
+    { title: 'Đọc dự án', note: 'GET /projects/42 trả dữ liệu và strong ETag' },
+    { title: 'Gửi chỉnh sửa', note: 'PATCH gửi ETag đã đọc trong If-Match' },
+    { title: 'Kiểm tra phiên bản', note: 'Server chỉ sửa khi phiên bản còn khớp' },
+    { title: 'Cập nhật hoặc đối soát', note: '200 / 204 thành công; 412 yêu cầu tải lại và xử lý' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+Ví dụ API nhận JSON chứa các trường cần sửa, trả tài nguyên mới hoặc không có body:
+
+```ts
+async function renameProject(id: string, name: string, etag: string) {
+  const response = await fetch(`/api/projects/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'If-Match': etag,
+    },
+    body: JSON.stringify({ name }),
+  });
+
+  if (response.status === 412) {
+    throw new Error('Dự án đã thay đổi. Tải lại trước khi lưu.');
+  }
+  if (!response.ok) throw new Error(`Lưu thất bại: ${response.status}`);
+  return response.status === 204 ? null : response.json();
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Dùng danh từ cho URL, HTTP method cho thao tác.
+- GET là safe; PUT và DELETE có tính idempotent.
+- Kiểm tra status; phản hồi 204 không có body.
+- Dùng cache header, ETag và làm mới query bị cũ.
+
+## Cân nhắc
+
+| Ưu điểm                 | Hạn chế                 |
+| ----------------------- | ----------------------- |
+| Công cụ HTTP quen thuộc | Có thể thêm round trip  |
+| Cache HTTP              | Có thể lấy thừa dữ liệu |
+| Hợp đồng CRUD đơn giản  | Client tự ghép dữ liệu  |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Khi nào chọn REST thay GraphQL?">
+
+Khi UI ánh xạ rõ vào tài nguyên, payload dễ dự đoán và cache HTTP có giá trị.
+Endpoint tổng hợp theo màn hình cũng có thể bỏ waterfall mà không cần schema và lớp thực thi GraphQL.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Có thể retry thao tác ghi bị lỗi không?">
+
+Lỗi mạng không cho biết server đã áp dụng thao tác hay chưa.
+Dựa vào ngữ nghĩa method và hợp đồng API: tạo mới hoặc thanh toán thường cần idempotency key do server thực thi, dùng lại cùng key khi retry cùng thao tác.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Ngăn xung đột chỉnh sửa thế nào?">
+
+Đọc strong ETag của tài nguyên rồi gửi trong `If-Match` khi ghi.
+Server phải kiểm tra và cập nhật nguyên tử; phiên bản cũ nhận 412 để UI tải lại, so sánh và giải quyết xung đột.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Client yêu cầu một biểu diễn của tài nguyên; server xác thực, phân quyền và kiểm tra đầu vào trước khi đọc hoặc sửa.
+HTTP method xác định ngữ nghĩa thao tác; JSON là định dạng phổ biến, không phải yêu cầu của REST.
+REST đầy đủ còn có hypermedia và các ràng buộc kiến trúc khác; trong phỏng vấn, REST thường được dùng để chỉ API HTTP theo tài nguyên.
+
+### Chi tiết thiết kế
+
+- Dùng danh từ cho tài nguyên; method thể hiện đọc, tạo, thay thế và xóa.
+- GET là safe; PUT và DELETE là idempotent theo ngữ nghĩa, còn POST và PATCH cần hợp đồng retry rõ ràng.
+- Kiểm tra status trước khi đọc body: `fetch` không tự reject vì 4xx hay 5xx; 204 không có body.
+- Dùng cache header và validator như ETag; vô hiệu hóa query client bị ảnh hưởng sau khi ghi.
+- Thống nhất cấu trúc lỗi, phân trang, trường tùy chọn và tương thích ngược trước khi xây UI.
+
+### Trường hợp biên
+
+- DELETE thành công rồi retry nhận 404 vẫn có thể là idempotent: trạng thái tài nguyên mong muốn không đổi.
+- Hủy request ở trình duyệt không đảm bảo hủy thao tác ghi trên server.
+- Phản hồi cá nhân cần chính sách cache riêng tư rõ ràng để shared cache không trả dữ liệu người này cho người khác.
+
+### Lỗi thường gặp
+
+- Đọc mọi phản hồi như JSON, kể cả 204.
+- Retry thao tác không idempotent sau timeout mà không chống trùng.
+- Đổi ý nghĩa trường hiện có mà không bảo vệ client phiên bản cũ.
+
+### Tài liệu tham khảo
+
+- [HTTP request method trên MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods)
+- [If-Match trên MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/If-Match)
+- [Ngữ nghĩa HTTP, RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html)
+
+</DeepDive>

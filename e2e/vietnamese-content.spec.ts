@@ -13,6 +13,18 @@ const foundations = [
   'normalized-state',
 ];
 
+const apis = [
+  'rest',
+  'graphql',
+  'pagination',
+  'authentication',
+  'authorization',
+  'theming',
+  'event-handlers',
+  'render-props',
+  'composition',
+];
+
 test('reads the complete real-time section in Vietnamese without a fallback notice', async ({ page }) => {
   for (const topic of realtime) {
     await page.goto(`/vi/topics/${topic}`);
@@ -35,7 +47,7 @@ test('reads the complete real-time section in Vietnamese without a fallback noti
 test('keeps every translated summary within one desktop screen', async ({ page, isMobile }) => {
   test.skip(isMobile, 'The desktop summary and sticky panel are checked at 1440px');
   await page.setViewportSize({ width: 1440, height: 900 });
-  for (const topic of [...realtime, ...foundations]) {
+  for (const topic of [...realtime, ...foundations, ...apis]) {
     await page.goto(`/vi/topics/${topic}`);
     await page.evaluate(() => document.fonts.ready);
     const start = await page.getByRole('heading', { name: 'Tóm tắt', exact: true }).boundingBox();
@@ -68,7 +80,7 @@ test('searches translated questions and studies translated flashcard answers', a
 
 test('keeps translated lessons and the overview readable at 320px', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 900 });
-  for (const topic of [...realtime, ...foundations]) {
+  for (const topic of [...realtime, ...foundations, ...apis]) {
     await page.goto(`/vi/topics/${topic}`);
     await expect(page.getByRole('heading', { name: 'Tóm tắt', exact: true })).toBeVisible();
     const codeTab = page.getByRole('tab', { name: 'Code', exact: true });
@@ -81,31 +93,51 @@ test('keeps translated lessons and the overview readable at 320px', async ({ pag
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
 });
 
-test('reads Architecture and State management with translated examples and metadata', async ({ page }) => {
-  test.setTimeout(90_000);
-  for (const topic of foundations) {
-    await page.goto(`/vi/topics/${topic}`);
-    await expect(page.getByRole('note')).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'Tóm tắt', exact: true })).toBeVisible();
-    const schema = JSON.parse(await page.locator('script[type="application/ld+json"]').innerText());
-    expect(schema.inLanguage).toBe('vi');
-    const panel = page.getByRole('region', { name: 'Hình minh hoạ', exact: true });
-    const diagram = panel.getByRole('tab', { name: 'Sơ đồ', exact: true });
-    if (await diagram.count()) {
-      await diagram.click();
-      await expect(panel.getByRole('figure')).toBeVisible();
+for (const { group, topics, overviews } of [
+  {
+    group: 'Architecture and State management',
+    topics: foundations,
+    overviews: [
+      ['architecture', 'Chọn chiến lược render'],
+      ['state-management', 'Chọn cách tổ chức state'],
+    ],
+  },
+  {
+    group: 'Back end and Component APIs',
+    topics: apis,
+    overviews: [
+      ['backend-apis', 'Hợp đồng truy cập'],
+      ['component-apis', 'Xác định hợp đồng'],
+    ],
+  },
+]) {
+  test(`reads ${group} with translated examples and metadata`, async ({ page }) => {
+    test.setTimeout(90_000);
+    for (const topic of topics) {
+      await page.goto(`/vi/topics/${topic}`);
+      await expect(page.getByRole('note')).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Tóm tắt', exact: true })).toBeVisible();
+      const schema = JSON.parse(await page.locator('script[type="application/ld+json"]').innerText());
+      expect(schema.inLanguage).toBe('vi');
+      const panel = page.getByRole('region', { name: 'Hình minh hoạ', exact: true });
+      const diagram = panel.getByRole('tab', { name: 'Sơ đồ', exact: true });
+      if (await diagram.count()) {
+        await diagram.click();
+        await expect(panel.getByRole('figure')).toBeVisible();
+      }
+      const code = panel.getByRole('tab', { name: 'Code', exact: true });
+      if (await code.count()) await code.click();
+      await expect(panel.locator('pre').first()).toBeVisible();
+      await page.getByText('Đào sâu', { exact: true }).click();
+      await expect(page.getByRole('heading', { name: 'Tài liệu tham khảo', exact: true })).toBeVisible();
     }
-    const code = panel.getByRole('tab', { name: 'Code', exact: true });
-    if (await code.count()) await code.click();
-    await expect(panel.locator('pre').first()).toBeVisible();
-    await page.getByText('Đào sâu', { exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Tài liệu tham khảo', exact: true })).toBeVisible();
-  }
-  await page.goto('/vi/sections/architecture');
-  await expect(page.getByRole('heading', { name: 'Chọn chiến lược render', exact: true })).toBeVisible();
-  await page.goto('/vi/sections/state-management');
-  await expect(page.getByRole('heading', { name: 'Chọn cách tổ chức state', exact: true })).toBeVisible();
-});
+    for (const [section, heading] of overviews) {
+      await page.goto(`/vi/sections/${section}`);
+      await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+    }
+  });
+}
 
 test('shares translated Event sourcing across sections, search and flashcards', async ({ page }) => {
   for (const section of ['state-management', 'common-patterns']) {
@@ -138,4 +170,22 @@ test('keeps a long sticky code panel within the viewport and scrollable by keybo
   await panel.focus();
   await page.keyboard.press('End');
   await expect.poll(() => panel.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+});
+
+test('finds Vietnamese access guidance and studies its actual translated answer', async ({ page }) => {
+  await page.goto('/vi');
+  await page.getByRole('button', { name: /Tìm chủ đề/ }).click();
+  await page.getByRole('combobox', { name: 'Tìm chủ đề', exact: true }).fill('chéo tenant');
+  await page.getByRole('option', { name: /Phân quyền/ }).click();
+  await expect(page).toHaveURL('/vi/topics/authorization');
+  await page.getByRole('button', { name: 'Cần ôn lại', exact: true }).click();
+  await page.goto('/vi/flashcards');
+  await page.getByRole('radio', { name: 'Cần ôn lại', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Vì sao ẩn nút admin là chưa đủ?', exact: true })).toHaveAttribute(
+    'lang',
+    'vi',
+  );
+  await page.getByRole('button', { name: 'Xem đáp án', exact: true }).click();
+  await expect(page.locator('#flashcard-answer')).toContainText('kiểm tra quyền trên đúng tài nguyên');
+  await expect(page.locator('#flashcard-answer')).toHaveAttribute('lang', 'vi');
 });

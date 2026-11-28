@@ -19,6 +19,8 @@ const paths = [
   '/topics/normalized-state',
   '/vi/topics/normalized-state',
   '/vi/topics/flux-architecture',
+  '/vi/topics/authentication',
+  '/vi/topics/render-props',
 ];
 
 for (const theme of ['light', 'dark']) {
