@@ -1,0 +1,21 @@
+## Chọn chiến lược render
+
+Quyết định theo từng trang, không buộc cả ứng dụng dùng một cách: trang marketing, sản phẩm và dashboard có thể khác nhau.
+Hỏi HTML có thể được dựng lúc nào và nội dung có phụ thuộc người gửi request không.
+Nếu nội dung giống nhau với mọi người và ít thay đổi, tạo trước bằng SSG hoặc ISR.
+Nếu nội dung phụ thuộc request, dùng SSR và có thể stream phần chậm với Server Component.
+Nếu ứng dụng nằm sau đăng nhập và không cần SEO, CSR là lựa chọn đơn giản với hạ tầng file tĩnh.
+
+|                   | CSR                                | SSR                                   | SSG                       | ISR                                | Server Component có streaming                |
+| ----------------- | ---------------------------------- | ------------------------------------- | ------------------------- | ---------------------------------- | -------------------------------------------- |
+| Lúc tạo nội dung  | Trong trình duyệt                  | Theo từng request                     | Khi build                 | Khi build rồi tái tạo theo nhu cầu | Khi build hoặc có request                    |
+| Nội dung đầu tiên | Chờ JavaScript và dữ liệu          | Nhận HTML sớm                         | Đọc HTML tĩnh từ CDN      | Đọc HTML đã cache                  | Phần nhanh trước, phần chậm sau              |
+| Tương tác         | Khi component và dữ liệu sẵn sàng  | Sau hydration phần client             | Sau hydration phần client | Sau hydration phần client          | Tùy phần client và dữ liệu; ít mã client hơn |
+| Chi phí server    | Chủ yếu phục vụ file tĩnh          | Render theo request                   | Không render mỗi lượt xem | Các lượt tái tạo                   | Tùy route tĩnh hay động                      |
+| Độ mới dữ liệu    | Theo chính sách fetch/cache client | Theo chính sách dữ liệu/cache request | Đến build tiếp theo       | Đến lần tái tạo thành công         | Theo chính sách dữ liệu/cache                |
+| Phù hợp           | Ứng dụng sau đăng nhập             | Nội dung cá nhân hóa, trang cần SEO   | Tài liệu, marketing       | Danh mục, blog                     | UI nhiều dữ liệu và các phần tải chậm        |
+
+Server Component mô tả nơi mã component chạy, không phải chính sách độ mới riêng; có thể kết hợp nó với trang tĩnh hoặc render theo request.
+
+Nơi chạy mã server là lựa chọn khác với cách render.
+Hàm serverless mở rộng theo nhu cầu trong một vùng; hàm edge chạy gần người dùng với tập API và giới hạn runtime tùy nền tảng.

@@ -1,0 +1,13 @@
+## Chọn cách tổ chức state
+
+Bắt đầu bằng nguồn dữ liệu và phạm vi sử dụng state.
+Dữ liệu server thuộc cache lấy dữ liệu, state của form và UI nên ở component, chỉ state mà nhiều phần cùng dùng mới cần store chung.
+Các mẫu dưới đây giải quyết những khía cạnh khác nhau của cách tổ chức và thay đổi state.
+
+| Mẫu             | Vấn đề giải quyết                                | Khi nên cân nhắc                                         |
+| --------------- | ------------------------------------------------ | -------------------------------------------------------- |
+| Kiến trúc Flux  | Thay đổi khó truy vết từ nhiều nơi               | Nhiều component cùng đọc và thay đổi state               |
+| State chuẩn hóa | Nhiều bản sao cùng dữ liệu nhưng không đồng nhất | Một thực thể xuất hiện trong nhiều danh sách và màn hình |
+| Event sourcing  | Mất lịch sử và khả năng phát lại                 | Cần undo, kiểm toán, đồng bộ offline hoặc time travel    |
+
+Có thể kết hợp các mẫu: Flux quản lý luồng cập nhật, chuẩn hóa tổ chức thực thể, còn event sourcing lưu lịch sử.

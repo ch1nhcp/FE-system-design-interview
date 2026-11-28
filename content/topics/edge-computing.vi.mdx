@@ -1,0 +1,121 @@
+---
+description: 'Chạy mã ở các vị trí CDN gần người dùng để giảm độ trễ cho redirect, kiểm tra xác thực và chọn nội dung.'
+visual: diagram
+related: [serverless, incremental-static-regeneration, caching-and-expiry, image-cdn]
+---
+
+## Tóm tắt
+
+Edge xử lý quyết định nhanh ở gần người dùng.
+Dữ liệu ở xa và giới hạn runtime có thể xóa lợi ích độ trễ.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="Ví dụ request đi qua edge"
+  steps={[
+    { title: 'Người dùng ở Hà Nội', note: 'Request tới vị trí gần nhất đang phục vụ' },
+    { title: 'Hàm edge ở Singapore', note: 'Kiểm tra cookie, vị trí, xác thực; rewrite hoặc redirect' },
+    { title: 'Cache tại edge', note: 'Cache hit: trả lời ngay' },
+    { title: 'Origin ở Virginia', note: 'Chỉ gọi khi cache miss hoặc cần dữ liệu mới' },
+  ]}
+  highlight={1}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+```ts
+// Ví dụ hàm edge cho A/B test, chạy gần người dùng với Web API.
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const cookie = request.headers.get('cookie') ?? '';
+    const variant = /(?:^|; )ab=(a|b)/.exec(cookie)?.[1] ?? (Math.random() < 0.5 ? 'a' : 'b');
+
+    // Mỗi biến thể được cache riêng để edge có thể trả lời mà không gọi origin.
+    const url = new URL(request.url);
+    url.pathname = `/${variant}${url.pathname}`;
+    const response = await fetch(new Request(url, request));
+
+    const headers = new Headers(response.headers);
+    headers.append('Set-Cookie', `ab=${variant}; Path=/; Max-Age=2592000; SameSite=Lax`);
+    return new Response(response.body, { status: response.status, headers });
+  },
+};
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Hợp logic nhỏ, không giữ state trước nội dung cache.
+- Runtime nhẹ có tập API và giới hạn riêng.
+- Đặt dữ liệu gần nơi tính toán hoặc xử lý gần database.
+- Chú ý CPU, bộ nhớ, bundle và tính nhất quán.
+
+## Cân nhắc
+
+| Ưu điểm                     | Hạn chế                    |
+| --------------------------- | -------------------------- |
+| Khứ hồi ngắn tới người dùng | API và runtime hạn chế     |
+| Khởi tạo runtime nhẹ        | Dữ liệu có thể ở rất xa    |
+| Chọn biến thể đã cache      | Khó gỡ lỗi trên nhiều vùng |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Việc nào nên đặt ở edge, việc nào không?">
+
+Các quyết định nhanh chỉ cần request, cookie hoặc ít dữ liệu ở edge: redirect, kiểm tra token, chia nhóm A/B, vị trí địa lý và sửa header.
+Tính toán nặng hoặc xử lý cần cơ sở dữ liệu tập trung nên ở origin, gần dữ liệu.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Edge khác serverless theo vùng thế nào?">
+
+Hàm serverless theo vùng thường chạy trên runtime đầy đủ như Node.js, có thể có cold start và cho thời gian thực thi dài hơn.
+Hàm edge triển khai ở nhiều vị trí, thường dùng runtime nhẹ với startup nhanh hơn nhưng giới hạn CPU, bộ nhớ và API chặt hơn.
+Khả năng tương thích Node.js phụ thuộc nền tảng, không phải cứ chạy gần người dùng là có cùng tập API.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Cá nhân hóa thế nào mà vẫn cache CDN được?">
+
+Cache một số ít biến thể, chẳng hạn theo quốc gia hoặc nhóm thử nghiệm, rồi để edge chọn từ cookie hoặc header.
+Render phần riêng theo người dùng, như menu tài khoản, ở client hoặc bằng request không cache riêng biệt.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Chi tiết thiết kế
+
+- Triển khai ở nhiều vị trí CDN giúp giảm quãng đường request từ người dùng, thay vì luôn đi đến một vùng xa.
+- Nhiều runtime edge dùng isolate nhẹ và Web API; hỗ trợ Node.js và thời gian startup tùy nền tảng.
+- Redirect, rewrite, kiểm tra xác thực, sửa header và chia nhóm A/B thường hợp với logic ngắn trước nội dung cache.
+- Gọi database một vùng ở xa có thể lấy lại toàn bộ độ trễ vừa tiết kiệm; cân nhắc dữ liệu ở edge hoặc tính toán gần origin.
+- CPU, bộ nhớ và kích thước bundle thường có giới hạn chặt.
+
+### Cơ chế hoạt động
+
+CDN triển khai hàm đến các vị trí của nó và chuyển request đến vị trí phù hợp gần người dùng.
+Hàm có thể trả lời ngay, rewrite URL, sửa header hoặc đọc từ cache hay origin.
+Nền tảng dựa trên isolate tái sử dụng runtime nhẹ thay vì khởi tạo một container mới cho từng request.
+
+### Trường hợp biên
+
+- Kho key-value phân tán thường nhất quán cuối cùng; thay đổi ở một vùng có thể chưa xuất hiện ngay tại vùng khác.
+- Thời gian và giá trị ngẫu nhiên có thể khác giữa các vùng, ảnh hưởng thử nghiệm và cache key.
+- Thư viện phụ thuộc API Node.js không được hỗ trợ sẽ không chạy trên runtime đã chọn.
+
+### Lỗi thường gặp
+
+- Thực hiện nhiều lượt khứ hồi tới database ở origin cho mỗi request edge.
+- Đưa vào dependency lớn, vượt giới hạn bundle hoặc làm mọi request chậm hơn.
+- Phân chia cache theo quá nhiều header khiến tỷ lệ cache hit giảm mạnh.
+
+### Tài liệu tham khảo
+
+- [Rendering trên web tại web.dev](https://web.dev/articles/rendering-on-the-web)
+- [Cách Workers hoạt động trong tài liệu Cloudflare](https://developers.cloudflare.com/workers/reference/how-workers-works/)
+
+</DeepDive>

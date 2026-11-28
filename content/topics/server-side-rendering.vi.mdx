@@ -1,0 +1,120 @@
+---
+description: 'Server render HTML cho từng request để nội dung xuất hiện sớm, rồi trình duyệt hydrate để gắn tương tác.'
+visual: animation
+related: [client-side-rendering, incremental-static-regeneration, server-components, prerendering]
+---
+
+## Tóm tắt
+
+SSR tạo HTML theo từng request rồi hydrate mã client.
+Nội dung theo người dùng đổi lấy chi phí render trên server.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RenderingTimelineAnimation initialMode="ssr" />
+</VisualTab>
+<VisualTab kind="code">
+
+```tsx
+// server.tsx: render từng request, rồi hydrate cùng cây component trong trình duyệt.
+import { renderToPipeableStream } from 'react-dom/server';
+
+app.get('/products/:id', async (request, response) => {
+  const product = await getProduct(request.params.id); // Lấy dữ liệu trước, ở server.
+
+  const { pipe } = renderToPipeableStream(<App product={product} />, {
+    bootstrapScripts: ['/client.js'],
+    bootstrapScriptContent: `window.__DATA__ = ${serialize(product)}`,
+    onShellReady() {
+      response.setHeader('Content-Type', 'text/html');
+      pipe(response); // Stream HTML ngay khi phần khung sẵn sàng.
+    },
+  });
+});
+```
+
+```tsx
+// client.tsx: gắn event handler vào HTML đang hiển thị.
+import { hydrateRoot } from 'react-dom/client';
+
+hydrateRoot(document, <App product={window.__DATA__} />);
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Crawler và bản xem trước nhận HTML có nội dung.
+- Tương tác React chờ hydration.
+- Render mỗi request có thể làm tăng TTFB.
+- Dùng cache chung, streaming và tải dữ liệu song song.
+
+## Cân nhắc
+
+| Ưu điểm                         | Hạn chế                  |
+| ------------------------------- | ------------------------ |
+| Nội dung đầu tiên xuất hiện sớm | Tốn render mỗi request   |
+| Nội dung tùy request            | TTFB cao hơn file tĩnh   |
+| Có HTML trước JavaScript        | Chờ hydrate để tương tác |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Hydration là gì, vì sao có thể bị lỗi?">
+
+Hydration là bước React đi qua HTML do server tạo để gắn state và event handler, thay vì dựng lại DOM từ đầu.
+Mismatch xảy ra khi client render khác server, chẳng hạn do `Date.now()`, `Math.random()`, kiểm tra `window` hoặc định dạng theo locale.
+Giữ kết quả render xác định, truyền dữ liệu server sang client và đọc giá trị chỉ có trên trình duyệt trong effect.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Khi nào chọn SSR thay cho tạo trang tĩnh?">
+
+Khi trang phụ thuộc vào request: nội dung cá nhân hóa, dữ liệu đổi nhanh hoặc có quá nhiều trang để dựng trước.
+Nếu nội dung giống nhau cho mọi người và ít thay đổi, tạo trang tĩnh hoặc ISR thường nhanh và tiết kiệm hơn.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Làm sao giữ SSR nhanh khi tải tăng?">
+
+Stream response để gửi phần khung trước dữ liệu chậm và đặt phần tải chậm sau `Suspense`.
+Cache trang dùng chung ở CDN và cache dữ liệu trên server.
+Lấy dữ liệu song song, gần cơ sở dữ liệu để giảm các lượt khứ hồi mà server phải chờ.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Chi tiết thiết kế
+
+- Nội dung đến sau một lượt khứ hồi giúp First Contentful Paint và Largest Contentful Paint.
+- Crawler và bản xem trước liên kết không cần chạy JavaScript để đọc nội dung HTML.
+- Trang có thể trông như đã sẵn sàng trong khi nút chưa nhận tương tác vì hydration chưa xong.
+- Render từng request tiêu tốn tài nguyên và có thể làm tăng Time to First Byte khi tải cao.
+- Cache trang công khai ở CDN và streaming giúp giảm tác động này.
+
+### Cơ chế hoạt động
+
+Server chạy các component React cùng dữ liệu đã lấy, rồi gửi HTML và dữ liệu được serialize.
+Trình duyệt vẽ HTML trước, sau đó tải JavaScript và hydrate trên DOM sẵn có.
+Streaming SSR gửi phần khung trước rồi lần lượt gửi các vùng `Suspense` khi dữ liệu sẵn sàng.
+
+### Trường hợp biên
+
+- Khoảng chờ hydration: trang trông tương tác được nhưng bấm nút chưa có tác dụng.
+  Giữ bundle nhỏ và ưu tiên hydrate phần quan trọng.
+- `window` và `localStorage` không tồn tại trên server; chỉ đọc chúng trong effect phía client.
+- Không chia sẻ trang cá nhân hóa qua cache CDN nếu chưa tách riêng phần dữ liệu theo người dùng.
+
+### Lỗi thường gặp
+
+- Lấy dữ liệu tuần tự trong các component lồng nhau, tạo waterfall trên server.
+- Serialize vào HTML nhiều dữ liệu hơn trang cần.
+- Render dữ liệu không xác định, gây hydration mismatch.
+
+### Tài liệu tham khảo
+
+- [Rendering trên web tại web.dev](https://web.dev/articles/rendering-on-the-web)
+- [renderToPipeableStream trong tài liệu React](https://react.dev/reference/react-dom/server/renderToPipeableStream)
+
+</DeepDive>

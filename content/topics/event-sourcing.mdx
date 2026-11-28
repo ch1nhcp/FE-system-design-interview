@@ -6,9 +6,8 @@ related: [flux-architecture, undo-redo, conflict-resolution, offline-usage]
 
 ## TL;DR
 
-Instead of saving the latest state, you save the sequence of events that led to it, such as "item added" or "coupon applied".
-The current state is computed by replaying those events, so you get a full history, undo and time travel for free.
-The price is more storage, versioning old events and rebuilding state efficiently.
+Event sourcing keeps an ordered event log and derives state by replay.
+History helps auditing, but replay and schema evolution add complexity.
 
 <VisualPanel tabs={['diagram', 'code']}>
 <VisualTab kind="diagram">
@@ -50,7 +49,7 @@ function apply(cart: Cart, event: CartEvent): Cart {
 // State is never stored, only derived: replay every event, or only those up to a point in time.
 export const replay = (events: readonly CartEvent[]) => events.reduce(apply, emptyCart);
 
-// Undo is just replaying without the last event.
+// A local preview can replay a prefix. Never truncate the durable audit log for undo.
 export const undo = (events: readonly CartEvent[]) => events.slice(0, -1);
 ```
 
@@ -59,19 +58,18 @@ export const undo = (events: readonly CartEvent[]) => events.slice(0, -1);
 
 ## Key points
 
-- The event log is the source of truth; state is a cache you can always rebuild from it.
-- Events are facts in the past tense and are never edited; mistakes are fixed with new events.
-- You get an audit trail, undo and redo, time travel debugging and the ability to build new views from old data.
-- Long logs are replayed from snapshots, so you do not fold millions of events on every read.
-- Event shapes change over time, so version them and upgrade old events when you read them.
+- The immutable event log is the source of truth.
+- Append corrections; do not edit committed history.
+- Snapshots and projections keep reads practical.
+- Version event schemas and keep replay free of side effects.
 
 ## Trade-offs
 
-| Strengths                                  | Weaknesses                            |
-| ------------------------------------------ | ------------------------------------- |
-| Full history, audit trail and time travel  | More storage and more moving parts    |
-| Undo, redo and replay come almost for free | Old event versions must keep working  |
-| New read models can be built from old data | Read models are eventually consistent |
+| Strengths                | Weaknesses                    |
+| ------------------------ | ----------------------------- |
+| History and replay       | Storage and schema complexity |
+| Auditable undo workflows | Compensation rules required   |
+| New read models          | Projections can lag           |
 
 ## Interview questions
 
@@ -88,7 +86,7 @@ Keep read models, also called projections, updated as events arrive, so reads do
 
 </InterviewQuestion>
 
-<InterviewQuestion question="How do you change an event's shape once it is in production?">
+<InterviewQuestion question="How do you evolve a stored event's schema?">
 
 Never rewrite stored events.
 Add a version to each event and upcast old versions to the new shape when reading, or add a new event type and handle both.
@@ -97,8 +95,18 @@ Add a version to each event and upcast old versions to the new shape when readin
 
 <DeepDive>
 
+### Design details
+
+- The event log is the source of truth; state is a cache you can always rebuild from it.
+- Events are facts in the past tense and are never edited; mistakes are fixed with new events.
+- You get an audit trail, undo and redo, time travel debugging and the ability to build new views from old data.
+- Long logs are replayed from snapshots, so you do not fold millions of events on every read.
+- Event shapes change over time, so version them and upgrade old events when you read them.
+
 ### How it works
 
+The `undo` helper in the example returns a local preview prefix, not a rewritten durable log.
+To undo a committed domain change, append a compensating event while preserving the original history.
 Commands, such as "apply coupon", are validated against the current state and, if accepted, produce one or more events.
 Events are appended to an ordered log.
 Reducers fold the log into the current state, and projections build other views, such as a summary for a dashboard.

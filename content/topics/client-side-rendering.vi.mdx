@@ -1,0 +1,121 @@
+---
+description: 'Server gửi khung HTML gần như rỗng; JavaScript lấy dữ liệu và dựng toàn bộ trang trong trình duyệt.'
+visual: animation
+related: [server-side-rendering, code-splitting, ui-states, prerendering]
+---
+
+## Tóm tắt
+
+CSR dựng trang trong trình duyệt từ JavaScript và dữ liệu.
+Điều hướng sau đó nhanh, nhưng lần đầu phải chờ tải cả hai.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RenderingTimelineAnimation initialMode="csr" />
+</VisualTab>
+<VisualTab kind="code">
+
+```html
+<!-- index.html: toàn bộ HTML server gửi -->
+<!doctype html>
+<html lang="vi">
+  <head>
+    <title>Bảng điều khiển</title>
+    <script type="module" src="/assets/main.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+```
+
+```tsx
+// main.tsx: render ứng dụng, rồi tải dữ liệu từ trình duyệt.
+import { createRoot } from 'react-dom/client';
+
+createRoot(document.getElementById('root')!).render(<App />);
+
+function App() {
+  const { data, error, isPending } = useQuery({ queryKey: ['projects'], queryFn: fetchProjects });
+  if (isPending) return <Skeleton />;
+  if (error) return <ErrorState onRetry={() => location.reload()} />;
+  return <ProjectList projects={data} />;
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Lần đầu chờ HTML, JavaScript rồi dữ liệu.
+- Điều hướng sau không tải lại toàn bộ document.
+- Host file tĩnh đơn giản; SEO công khai cần xử lý thêm.
+- Chia bundle, prefetch và hiển thị trạng thái tải hữu ích.
+
+## Cân nhắc
+
+| Ưu điểm                      | Hạn chế                     |
+| ---------------------------- | --------------------------- |
+| Host file tĩnh tiết kiệm     | Lần đầu chờ JS và dữ liệu   |
+| Điều hướng sau nhanh         | Bản xem trước có thể rỗng   |
+| Một runtime trên trình duyệt | Bundle lớn làm máy yếu chậm |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Khi nào nên dùng client-side rendering?">
+
+Với ứng dụng sau đăng nhập như dashboard, trình chỉnh sửa hoặc trang quản trị, nơi SEO không quan trọng và người dùng làm việc lâu.
+Chi phí tải ban đầu được trả một lần; điều hướng sau nhanh và hạ tầng host file tĩnh đơn giản.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Cải thiện lần tải đầu của CSR thế nào?">
+
+Gửi ít JavaScript hơn: chia mã theo route, tải chậm widget nặng và bỏ dependency không dùng.
+Khởi chạy request dữ liệu sớm, song song với bundle, bằng preload phù hợp hoặc bắt đầu trước bước render.
+Dùng skeleton khớp bố cục cuối và cache phần khung bằng service worker cho các lần truy cập sau.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="CSR gây khó cho SEO thì khắc phục ra sao?">
+
+Crawler trước hết thấy một `div` rỗng; việc chạy JavaScript chậm hơn, có giới hạn và không được mọi crawler hay dịch vụ xem trước hỗ trợ.
+Prerender trang công khai ở build time hoặc render trên server, giữ CSR cho phần đã đăng nhập.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Chi tiết thiết kế
+
+- Lần truy cập đầu cần tải HTML, rồi bundle, rồi dữ liệu trước khi hiện nội dung hữu ích.
+- Sau đó router đổi trang trong trình duyệt, không tải lại document nên tạo cảm giác nhanh.
+- Website là các file tĩnh, dễ đưa lên CDN và không cần render server cho từng request.
+- Crawler hoặc bản xem trước không chạy JavaScript chỉ nhận khung rỗng, nên CSR đơn thuần không hợp trang nội dung cần SEO.
+- Chia mã, skeleton, prefetch và cache dữ liệu phía client giúp giảm thời gian chờ.
+
+### Cơ chế hoạt động
+
+Trình duyệt tải `index.html`, trong đó chỉ có tham chiếu đến bundle.
+Sau khi JavaScript chạy, router chọn trang, component lấy dữ liệu và React dựng DOM mới.
+Mỗi lần điều hướng tiếp theo thay component tại chỗ và chỉ lấy dữ liệu cần thiết.
+
+### Trường hợp biên
+
+- Điện thoại yếu có thể mất vài giây phân tích và chạy bundle lớn ngay cả khi mạng nhanh.
+- Deep link và thao tác reload cần server hoặc CDN trả `index.html` cho route tương ứng.
+- Khi JavaScript bị tắt hoặc tải lỗi, khung rỗng không có nội dung; cung cấp thông báo `noscript` hữu ích.
+
+### Lỗi thường gặp
+
+- Waterfall: tải bundle xong mới lấy dữ liệu trang, rồi component con lại bắt đầu request khác.
+- Để màn hình trắng thay vì skeleton lúc chờ.
+- Chọn CSR đơn thuần cho trang marketing hoặc nội dung cần được tìm kiếm.
+
+### Tài liệu tham khảo
+
+- [Rendering trên web tại web.dev](https://web.dev/articles/rendering-on-the-web)
+- [createRoot trong tài liệu React](https://react.dev/reference/react-dom/client/createRoot)
+
+</DeepDive>

@@ -6,8 +6,8 @@ related: [long-polling, server-sent-events, websockets, retries]
 
 ## TL;DR
 
-The client sends an ordinary HTTP request every few seconds to ask whether anything changed.
-It is the simplest real-time technique and works with any server, but most requests come back empty and an update can arrive up to one interval late.
+The client checks for updates with ordinary HTTP on a timer.
+It works with existing infrastructure, but empty requests and interval-length delays add cost.
 
 <VisualPanel tabs={['animation', 'code']}>
 <VisualTab kind="animation">
@@ -53,19 +53,18 @@ export function startPolling<T>({ url, intervalMs, onData, onError }: PollOption
 
 ## Key points
 
-- Plain HTTP requests on a timer, so it works with any server, cache and load balancer.
-- An update waits up to one interval, plus a round trip, before the client sees it.
-- Cost grows with clients times frequency, even when nothing changes.
-- Make it cheaper with adaptive intervals, `ETag` with `304 Not Modified`, and pausing in hidden tabs.
-- A good fit for slow-changing data where a few seconds of delay is fine, such as job status or a dashboard.
+- Updates wait up to one interval plus a round trip.
+- Load grows with clients and polling frequency.
+- Use conditional requests, adaptive timing and hidden-tab pauses.
+- Best for slow-changing data and tolerant latency budgets.
 
 ## Trade-offs
 
-| Strengths                              | Weaknesses                            |
-| -------------------------------------- | ------------------------------------- |
-| Simplest to build, debug and cache     | Many empty requests                   |
-| Stateless servers scale horizontally   | Latency up to one interval            |
-| Works through every proxy and firewall | Load grows with clients and frequency |
+| Strengths                 | Weaknesses                |
+| ------------------------- | ------------------------- |
+| Simple to build and cache | Many empty requests       |
+| Stateless servers         | Interval-length delays    |
+| Works through proxies     | Load grows with frequency |
 
 ## Interview questions
 
@@ -93,6 +92,14 @@ Scheduling the next poll in `finally` keeps exactly one request in flight and na
 </InterviewQuestion>
 
 <DeepDive>
+
+### Design details
+
+- Plain HTTP requests on a timer, so it works with any server, cache and load balancer.
+- An update waits up to one interval, plus a round trip, before the client sees it.
+- Cost grows with clients times frequency, even when nothing changes.
+- Make it cheaper with adaptive intervals, `ETag` with `304 Not Modified`, and pausing in hidden tabs.
+- A good fit for slow-changing data where a few seconds of delay is fine, such as job status or a dashboard.
 
 ### How it works
 

@@ -16,6 +16,9 @@ const paths = [
   '/topics/loading-sequence',
   '/topics/list-virtualization',
   '/topics/csrf',
+  '/topics/normalized-state',
+  '/vi/topics/normalized-state',
+  '/vi/topics/flux-architecture',
 ];
 
 for (const theme of ['light', 'dark']) {

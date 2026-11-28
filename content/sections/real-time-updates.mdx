@@ -12,6 +12,6 @@ Long polling is the fallback when neither streaming option gets through the netw
 | Latency              | Up to one interval          | About one round trip           | Immediate                          | Immediate                              |
 | Wasted requests      | Many                        | Only on timeouts               | None                               | None                                   |
 | Connection           | New request each time       | One held request at a time     | One long HTTP response             | One upgraded TCP connection            |
-| Reconnect and replay | Not needed                  | Manual, with a cursor          | Built in                           | Manual                                 |
+| Reconnect and replay | Not needed                  | Manual, with a cursor          | Browser reconnects; server replays | Manual                                 |
 | Infrastructure       | Any HTTP server             | Async server, long timeouts    | HTTP without response buffering    | WebSocket-aware load balancer, pub/sub |
 | Good for             | Job status, slow dashboards | Fallback, simple notifications | Feeds, notifications, AI streaming | Chat, collaboration, games             |

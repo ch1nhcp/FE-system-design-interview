@@ -6,9 +6,8 @@ related: [server-side-rendering, code-splitting, client-side-rendering, loading-
 
 ## TL;DR
 
-React Server Components render on the server, can read data directly and ship no JavaScript for themselves.
-Interactive parts are marked `'use client'` and become small client islands inside the server-rendered tree.
-With `Suspense`, the page streams: fast parts show up first and slow parts arrive when their data is ready.
+Server Components render data-heavy UI without shipping its code.
+Small client components handle interaction.
 
 <VisualPanel tabs={['animation', 'code']}>
 <VisualTab kind="animation">
@@ -63,19 +62,18 @@ export function AddToCart({ productId }: { productId: string }) {
 
 ## Key points
 
-- Server components run at request or build time and never in the browser, so their code and dependencies stay off the bundle.
-- They can be `async` and read databases, files or internal APIs directly, without a client-side fetch.
-- They cannot use state, effects or browser APIs; those belong in client components marked `'use client'`.
-- Props passed from a server to a client component must be serializable, such as plain data, not functions.
-- `Suspense` boundaries let the server stream slow parts later instead of blocking the whole page.
+- Run on the server at build or request time.
+- Read data directly; keep state and effects on the client.
+- Pass React-supported values across the boundary.
+- Stream slow sections behind Suspense boundaries.
 
 ## Trade-offs
 
-| Strengths                                   | Weaknesses                                     |
-| ------------------------------------------- | ---------------------------------------------- |
-| Less JavaScript, faster interactivity       | Needs a framework and a server (or build step) |
-| Data fetching next to the component, no API | New boundaries to learn: server vs client      |
-| Streaming shows content progressively       | Every navigation round-trips to the server     |
+| Strengths              | Weaknesses                      |
+| ---------------------- | ------------------------------- |
+| Less client JavaScript | Server or build integration     |
+| Data beside components | Explicit server/client boundary |
+| Progressive streaming  | Navigations may need the server |
 
 ## Interview questions
 
@@ -87,7 +85,7 @@ They are usually used together: server components for the static and data-heavy 
 
 </InterviewQuestion>
 
-<InterviewQuestion question="Where do you draw the line between server and client components?">
+<InterviewQuestion question="Where should the server/client boundary sit?">
 
 Keep components on the server by default, and move the smallest interactive leaf to the client, such as a button, a form or a menu.
 Pass server-rendered content into client components as `children` instead of importing it, so it stays on the server.
@@ -104,6 +102,14 @@ Each `Suspense` boundary is filled in as its data resolves, on the same response
 
 <DeepDive>
 
+### Design details
+
+- Server components run at request or build time and never in the browser, so their code and dependencies stay off the bundle.
+- They can be `async` and read databases, files or internal APIs directly, without a client-side fetch.
+- They cannot use state, effects or browser APIs; those belong in client components marked `'use client'`.
+- Props crossing to a client component must use React-supported serializable values; ordinary closures cannot cross.
+- `Suspense` boundaries let the server stream slow parts later instead of blocking the whole page.
+
 ### How it works
 
 The server renders the component tree into a serialized description of the UI, the RSC payload, plus HTML for the first load.
@@ -114,7 +120,7 @@ On navigation the client fetches only the new payload and merges it into the pag
 
 - Importing a server-only module, such as a database client, into a client component leaks it to the browser bundle; mark such modules `server-only`.
 - Context providers are client components, so wrap them as low in the tree as possible.
-- Non-serializable props, such as class instances or functions, fail at the server and client boundary.
+- Ordinary closures and unsupported class instances fail at the boundary; explicitly marked Server Functions cross as serializable references.
 
 ### Common mistakes
 

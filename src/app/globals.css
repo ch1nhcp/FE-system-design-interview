@@ -247,6 +247,11 @@
    * empty auto rows have no height.
    */
   @container topic (width >= 59rem) {
+    .topic-code-panel {
+      max-height: calc(100dvh - 10rem);
+      overflow: auto;
+    }
+
     .topic-body:has(> .topic-visual) {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 25rem;

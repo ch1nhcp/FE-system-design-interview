@@ -1,0 +1,132 @@
+---
+description: 'Lưu thay đổi thành chuỗi sự kiện có thứ tự và tính state hiện tại bằng cách phát lại chuỗi đó.'
+visual: diagram
+related: [flux-architecture, undo-redo, conflict-resolution, offline-usage]
+---
+
+## Tóm tắt
+
+Event sourcing lưu log sự kiện và dựng state bằng replay.
+Lịch sử giúp kiểm toán, nhưng tăng việc lưu trữ và quản lý schema.
+
+<VisualPanel tabs={['diagram', 'code']}>
+<VisualTab kind="diagram">
+<FlowDiagram
+  label="State từ log sự kiện"
+  steps={[
+    { title: 'Ý định của người dùng', note: 'Thêm món hàng, áp mã giảm giá' },
+    { title: 'Nối sự kiện vào log', note: 'Bất biến, có thứ tự, không sửa lại' },
+    { title: 'Log sự kiện', note: 'Nguồn dữ liệu chuẩn' },
+    { title: 'Phát lại (reduce)', note: 'Gộp sự kiện thành state' },
+    { title: 'State và các góc nhìn hiện tại', note: 'Dữ liệu dẫn xuất, có thể dựng lại' },
+  ]}
+  highlight={2}
+/>
+</VisualTab>
+<VisualTab kind="code">
+
+```ts
+type CartEvent =
+  | { type: 'itemAdded'; id: string; price: number }
+  | { type: 'itemRemoved'; id: string }
+  | { type: 'couponApplied'; percentOff: number };
+
+type Cart = { items: Readonly<Record<string, number>>; percentOff: number };
+
+const emptyCart: Cart = { items: {}, percentOff: 0 };
+
+function apply(cart: Cart, event: CartEvent): Cart {
+  switch (event.type) {
+    case 'itemAdded':
+      return { ...cart, items: { ...cart.items, [event.id]: event.price } };
+    case 'itemRemoved':
+      return { ...cart, items: Object.fromEntries(Object.entries(cart.items).filter(([id]) => id !== event.id)) };
+    case 'couponApplied':
+      return { ...cart, percentOff: event.percentOff };
+  }
+}
+
+// Dựng state bằng cách phát lại mọi sự kiện, hoặc một tiền tố của lịch sử.
+export const replay = (events: readonly CartEvent[]) => events.reduce(apply, emptyCart);
+
+// Bản xem cục bộ có thể phát lại tiền tố; không cắt log bền vững để hoàn tác.
+export const undo = (events: readonly CartEvent[]) => events.slice(0, -1);
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Log bất biến là nguồn dữ liệu chuẩn.
+- Sửa sai bằng sự kiện mới, không đổi lịch sử đã ghi.
+- Snapshot và projection giúp đọc nhanh.
+- Version schema và giữ replay không có side effect.
+
+## Cân nhắc
+
+| Ưu điểm                       | Hạn chế                        |
+| ----------------------------- | ------------------------------ |
+| Lịch sử và replay             | Tốn lưu trữ, quản lý schema    |
+| Hoàn tác có lịch sử kiểm toán | Cần quy tắc bù trừ             |
+| Tạo mô hình đọc mới           | Projection có thể cập nhật trễ |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Event sourcing xuất hiện ở front end như thế nào?">
+
+Redux devtools phát lại action, các ngăn xếp undo/redo, hàng đợi offline phát lại thay đổi khi mạng trở lại và trình chỉnh sửa cộng tác đồng bộ thao tác thay vì cả tài liệu.
+Đây là các ứng dụng của lịch sử và replay; log sự kiện bền vững còn cần quy tắc lưu trữ và nhất quán của miền nghiệp vụ.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Làm sao replay nhanh khi log dài?">
+
+Lưu snapshot state theo chu kỳ rồi chỉ phát lại sự kiện sau snapshot gần nhất.
+Duy trì các mô hình đọc, còn gọi là projection, khi sự kiện đến để việc đọc không cần replay toàn bộ log.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Thay đổi schema sự kiện đã lưu thế nào?">
+
+Không viết lại sự kiện đã lưu để đổi schema thông thường.
+Gắn version rồi upcast bản cũ khi đọc, hoặc tạo loại sự kiện mới và xử lý cả hai.
+Nếu dữ liệu lịch sử sai, dùng sự kiện hiệu chỉnh theo quy tắc nghiệp vụ để giữ dấu vết thay đổi.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Chi tiết thiết kế
+
+- Log sự kiện là nguồn chuẩn; state có thể xem như dữ liệu dẫn xuất có thể dựng lại.
+- Sự kiện mô tả sự thật đã xảy ra và không bị sửa; hiệu chỉnh được ghi bằng sự kiện mới.
+- Lịch sử hỗ trợ kiểm toán, replay, time travel và các quy trình undo/redo, nhưng hoàn tác nghiệp vụ không tự xuất hiện miễn phí.
+- Dùng snapshot để tránh phải fold hàng triệu sự kiện cho mỗi lần đọc.
+- Schema thay đổi theo thời gian, nên cần version và chuyển đổi sự kiện cũ lúc đọc.
+
+### Cơ chế hoạt động
+
+Command như yêu cầu áp mã giảm giá được kiểm tra dựa trên state hiện tại; command hợp lệ tạo một hoặc nhiều sự kiện.
+Sự kiện được nối vào log có thứ tự, reducer fold log thành state và projection tạo các góc nhìn khác như tổng hợp cho dashboard.
+Hàm `undo` trong ví dụ chỉ trả về một tiền tố để dựng bản xem cục bộ, không sửa log bền vững.
+Muốn hoàn tác thay đổi đã commit, thêm sự kiện bù trừ và giữ nguyên lịch sử gốc.
+
+### Trường hợp biên
+
+- Nhiều bên ghi đồng thời có thể tạo sự kiện xung đột; kiểm tra version mong đợi khi append hoặc dùng quy tắc hợp nhất như CRDT khi phù hợp.
+- Dữ liệu cá nhân trong log bất biến gây khó khi có yêu cầu xóa; cân nhắc lưu riêng thông tin đó hoặc mã hóa theo người dùng.
+- Replay không được gửi lại email hay lặp side effect; giữ chúng ngoài reducer.
+
+### Lỗi thường gặp
+
+- Lưu command như yêu cầu đặt tổng thành 42 thay vì sự kiện mô tả món hàng đã được thêm.
+- Sửa sự kiện cũ để vá lỗi thay vì ghi hiệu chỉnh mới.
+- Dùng event sourcing cho CRUD đơn giản không có nhu cầu giữ lịch sử.
+
+### Tài liệu tham khảo
+
+- [Event sourcing của Martin Fowler](https://martinfowler.com/eaaDev/EventSourcing.html)
+- [Mẫu Event Sourcing trong Azure Architecture Center](https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing)
+
+</DeepDive>

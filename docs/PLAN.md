@@ -122,15 +122,15 @@ Decision: animations are React SVG rendered from a pure model at a point in time
 
 ## Phase 3 progress
 
-| Batch | Sections                        | Topics | Status    |
-| ----- | ------------------------------- | ------ | --------- |
-| 1     | Architecture, State management  | 9      | Merged    |
-| 2     | Back end APIs, Component APIs   | 9      | Merged    |
-| 3     | Networking techniques           | 8      | Merged    |
-| 4     | Performance                     | 14     | Merged    |
-| 5     | Images, Accessibility           | 12     | Merged    |
-| 6     | SEO, User experience            | 10     | Merged    |
-| 7     | Security, i18n, Common patterns | 15     | In review |
+| Batch | Sections                        | Topics | Status |
+| ----- | ------------------------------- | ------ | ------ |
+| 1     | Architecture, State management  | 9      | Merged |
+| 2     | Back end APIs, Component APIs   | 9      | Merged |
+| 3     | Networking techniques           | 8      | Merged |
+| 4     | Performance                     | 14     | Merged |
+| 5     | Images, Accessibility           | 12     | Merged |
+| 6     | SEO, User experience            | 10     | Merged |
+| 7     | Security, i18n, Common patterns | 15     | Merged |
 
 Topics already written in an earlier section are not counted again, such as Optimistic updates under Performance.
 
@@ -225,20 +225,48 @@ The final standards and spec reviews have no unresolved findings.
 
 ## Phase 6 progress
 
-| Batch | Sections                  | Topics | Status      |
-| ----- | ------------------------- | ------ | ----------- |
-| 1     | Real-time updates         | 4      | In review   |
-| 2+    | The remaining 13 sections | 77     | Not started |
+| Batch     | Sections                       | New unique topics | Overviews | Status    |
+| --------- | ------------------------------ | ----------------- | --------- | --------- |
+| 1         | Real-time updates              | 4                 | 1         | Merged    |
+| 2         | Architecture, State management | 9                 | 2         | In review |
+| 3         | Back end APIs, Component APIs  | 9 planned         | 2 planned | Next      |
+| Remaining | The other 9 sections           | 59 planned        | 9 planned | Pending   |
+
+Vietnamese coverage is now 13 of 81 unique topics and 3 of 14 section overviews in the working branch.
+Shared topics reuse one translation, including Event sourcing under both State management and Common patterns.
+Case studies remain outside the completion goal.
 
 Batch 1 translates the four Real-time updates topics and the section overview, the same section that piloted the English template.
 Vietnamese pages use fixed headings: Tóm tắt, Ý chính, Cân nhắc, Câu hỏi phỏng vấn and, inside the deep dive, Cơ chế hoạt động, Trường hợp biên, Lỗi thường gặp and Tài liệu tham khảo.
 Established English terms such as polling, WebSocket, cursor, jitter and backoff stay in English; the surrounding explanation is Vietnamese.
 Code comments and sample strings are translated, while identifiers, APIs and protocol fields stay unchanged.
-Reference links keep the English URLs with Vietnamese link text.
-Content tests apply the one-screen rules to Vietnamese headings and check that each translation keeps its English file's visual, related topics, number of interview questions, code block languages and reference URLs.
-Flashcard tests now build cards from every topic file, including translations.
-The fallback notice E2E test moves to a topic that is still untranslated, and a new E2E test reads the whole Vietnamese section with `inLanguage: vi` JSON-LD and no fallback notice.
-Vietnamese summaries follow the same 820-pixel desktop budget as Batch 2 onwards; trade-off cells are kept short enough not to wrap, since each wrapped row adds about 20 pixels.
-Linux CI renders text slightly taller than macOS, so a page measured at 819 pixels locally failed at 820 in CI; keep at least one line (about 25 pixels) of local headroom.
-The English pilot pages predate that budget and measure 954 to 1075 pixels, so they do not meet it yet.
-Batch 1 validation passes 892 unit tests with 94.48% line coverage and 225 E2E tests, with eleven device-specific skips.
+Reference links keep their English URLs with Vietnamese link text.
+Content tests require every lesson and overview in completed Vietnamese sections and check visual types, related topics, question counts, code-block languages, reference URLs and translated heading hierarchy.
+Flashcard tests build cards from every topic file, including translations.
+The fallback notice E2E test uses a topic that is still untranslated.
+
+Batch 1 validation passed 892 unit tests with 94.48% line coverage and 225 E2E tests, with eleven device-specific skips.
+Linux CI rendered text slightly taller than macOS, so a locally measured 819-pixel page failed the 820-pixel limit in CI.
+Keep at least one line, about 25 pixels, of local headroom.
+The merged Real-time translations retain that headroom.
+
+Batch 2 translates the six Architecture lessons, three State management lessons and both overviews.
+Search, flashcards and JSON-LD consume the translated source directly.
+Event sourcing remains one URL and one progress state across its two sections.
+The text clarifies App Router cache invalidation versus regeneration, supported Server Function references, durable compensating events versus local undo previews, and cache-policy-dependent freshness.
+These clarifications follow the linked Next.js, React and Azure primary references.
+
+A browser audit found thirteen early English summaries above the 820-pixel budget.
+Batch 2 compacts all thirteen while retaining their detailed key points inside the collapsed deep dive.
+A registry-wide desktop E2E now checks every English topic, and the Vietnamese layout check covers all thirteen available translations.
+Long code panels receive a viewport height limit only in the wide sticky layout, with keyboard scrolling verified through the tab panel.
+Code-only panels have a localized accessible name even when no tab trigger is shown, and focused code panels show the existing semantic focus ring.
+Inline mobile code retains its natural page layout.
+All 24 distinct reference URLs used by the thirteen translated lessons return HTTP 200.
+
+Batch 2 validation passes the production build, type-check, lint and formatting gates.
+All 979 unit tests pass with 94.49% line coverage, and all 235 desktop/mobile E2E tests pass with thirteen device-specific skips.
+All 81 English summaries and all 13 available Vietnamese summaries pass the desktop budget.
+The newly compacted English summaries stay below 788 pixels locally, and the translated summaries stay below 795 pixels, preserving the Linux CI headroom.
+Desktop light/dark and 320-pixel mobile screenshots were checked for code, diagrams and both translated overviews.
+The standards review has no findings; the spec review's ISR call-site timing finding was corrected in both languages and rechecked with no unresolved findings.

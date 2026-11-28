@@ -1,0 +1,125 @@
+---
+description: 'Dựng và cache HTML như trang tĩnh, rồi tái tạo trang khi hết thời hạn hoặc bị vô hiệu hóa theo yêu cầu.'
+visual: animation
+related: [server-side-rendering, prerendering, caching-and-expiry, edge-computing]
+---
+
+## Tóm tắt
+
+ISR phục vụ HTML đã cache và tái tạo trang khi cần.
+Tốc độ của trang tĩnh đổi lấy khả năng hiển thị dữ liệu cũ.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RenderingTimelineAnimation initialMode="ssg" />
+</VisualTab>
+<VisualTab kind="code">
+
+```tsx
+// app/products/[id]/page.tsx (Next.js App Router)
+export const revalidate = 3600; // Đủ điều kiện revalidate theo thời gian sau một giờ.
+
+// Dựng trước trang phổ biến; các trang khác được tạo ở request đầu tiên.
+export async function generateStaticParams() {
+  const products = await getTopProducts(100);
+  return products.map((product) => ({ id: product.id }));
+}
+
+export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const product = await getProduct(id);
+  return <ProductDetails product={product} />;
+}
+```
+
+```ts
+// Vô hiệu hóa sau khi lưu; trang liên quan đang được xem có thể cập nhật ngay.
+'use server';
+import { revalidatePath } from 'next/cache';
+
+export async function publishProduct(id: string) {
+  await saveProduct(id);
+  revalidatePath(`/products/${id}`);
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- Hết hạn có thể vẫn trả HTML cũ trong lúc tái tạo.
+- API theo yêu cầu vô hiệu hóa path hoặc dữ liệu có tag.
+- Dựng trước trang phổ biến, tạo phần còn lại khi được hỏi.
+- Tách dữ liệu cá nhân và dữ liệu trực tiếp khỏi HTML chung.
+
+## Cân nhắc
+
+| Ưu điểm                      | Hạn chế                         |
+| ---------------------------- | ------------------------------- |
+| HTML dùng chung tải nhanh    | Có thể tạm hiển thị dữ liệu cũ  |
+| Chịu lưu lượng tăng đột biến | Không cache chung dữ liệu riêng |
+| Tạo trang khi được yêu cầu   | Cần nền tảng hỗ trợ tái tạo     |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="ISR khác SSR dùng cache CDN ở đâu?">
+
+Cả hai có thể phục vụ HTML đã cache rồi làm mới, nhưng ISR coi trang là sản phẩm build được giữ đến khi hết hạn hoặc được revalidate.
+SSR với `Cache-Control: s-maxage, stale-while-revalidate` đạt hiệu ứng tương tự qua cache HTTP trên CDN.
+ISR còn hỗ trợ dựng trước khi triển khai và vô hiệu hóa theo path hoặc tag.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Vì sao sửa trên CMS mà vẫn thấy trang cũ?">
+
+Với cơ chế theo thời gian, trang cache được giữ đến khi hết hạn; request đầu sau đó vẫn có thể nhận bản cũ trong lúc bản mới được dựng.
+Gọi cơ chế vô hiệu hóa từ publish hook của CMS và giữ lịch revalidate làm phương án dự phòng.
+Trong Next.js App Router, Route Handler đánh dấu path để tái xác thực ở lần truy cập tiếp theo.
+Server Function có thể cập nhật ngay UI của trang liên quan đang được xem; không nên mô tả cả hai là dựng lại lập tức mọi trang liên quan.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Trang nào phù hợp để tạo tĩnh?">
+
+Trang giống nhau với mọi người và ít thay đổi so với số lần được xem, như tài liệu, blog, marketing hoặc danh mục sản phẩm.
+Phần có dữ liệu theo người dùng hoặc đổi mỗi giây cần SSR hoặc lấy dữ liệu phía client.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Chi tiết thiết kế
+
+- HTML đã dựng sẵn có thể được phục vụ từ CDN gần người dùng, không render lại cho từng lượt xem.
+- Khi hết hạn theo thời gian, ISR có thể trả trang cũ rồi tái tạo nền theo mô hình stale-while-revalidate.
+- Sau thay đổi dữ liệu, có thể vô hiệu hóa path hoặc tag thay vì chờ lịch; thời điểm tái tạo tùy API của framework.
+- Chỉ dựng trước trang phổ biến, còn các đường dẫn khác được tạo ở lượt truy cập đầu để giảm thời gian build.
+- HTML cache chung không phù hợp với dữ liệu cá nhân hoặc cập nhật từng giây; lấy riêng các phần đó phía client.
+
+### Cơ chế hoạt động
+
+Trong build, framework render các đường dẫn đã biết thành HTML và lưu chúng.
+Request đọc cache; khi trang quá thời hạn `revalidate`, framework có thể tái tạo nền và thay cache sau khi hoàn tất.
+Đường dẫn chưa có có thể phải chờ lần render đầu, rồi mới được cache như các trang khác.
+
+### Trường hợp biên
+
+- Vị trí gọi API quan trọng: Route Handler đánh dấu path cho lượt truy cập tiếp theo, còn Server Function có thể cập nhật UI liên quan đang được xem; cả hai không phải tác vụ dựng lại hàng loạt trang ngay lập tức.
+- Tái tạo có thể lỗi khi API ngừng hoạt động; bản cũ tiếp tục được phục vụ nên cần theo dõi lỗi.
+- Trang sản phẩm và danh mục liên quan đều cần được vô hiệu hóa, thường nhóm bằng cache tag.
+- Website có hàng triệu trang vẫn cần quản lý thời gian build và dung lượng lưu trữ.
+
+### Lỗi thường gặp
+
+- Đưa dữ liệu theo người dùng vào HTML cache chung.
+- Đặt thời gian revalidate quá ngắn, làm tăng render và độ phức tạp gần như SSR.
+- Quên cơ chế vô hiệu hóa theo yêu cầu khiến biên tập viên phải đợi lịch.
+
+### Tài liệu tham khảo
+
+- [ISR trong tài liệu Next.js](https://nextjs.org/docs/app/guides/incremental-static-regeneration)
+- [revalidatePath trong tài liệu Next.js](https://nextjs.org/docs/app/api-reference/functions/revalidatePath)
+- [Rendering trên web tại web.dev](https://web.dev/articles/rendering-on-the-web)
+
+</DeepDive>

@@ -6,9 +6,8 @@ related: [client-side-rendering, incremental-static-regeneration, server-compone
 
 ## TL;DR
 
-For every request, the server fetches the data and renders complete HTML, so the user sees content as soon as it arrives.
-The browser then downloads the JavaScript and hydrates the page to make it interactive.
-You trade server work per request for a fast first paint and good SEO.
+SSR renders HTML for each request, then hydrates client code.
+Request-specific content trades server work for a faster first view.
 
 <VisualPanel tabs={['animation', 'code']}>
 <VisualTab kind="animation">
@@ -46,19 +45,18 @@ hydrateRoot(document, <App product={window.__DATA__} />);
 
 ## Key points
 
-- Content is visible after one round trip, which helps First Contentful Paint and Largest Contentful Paint.
-- Crawlers and link previews get real HTML, with no JavaScript needed.
-- The page looks ready before hydration finishes, so clicks can be ignored for a moment.
-- Every request costs server rendering time, which raises Time to First Byte under load.
-- Cache public pages at the CDN and stream the response to soften the cost.
+- Crawlers and previews receive real HTML.
+- Interactivity waits for hydration.
+- Rendering adds server work and can raise TTFB.
+- Use shared caching, streaming and parallel data fetching.
 
 ## Trade-offs
 
-| Strengths                                | Weaknesses                                   |
-| ---------------------------------------- | -------------------------------------------- |
-| Fast first content and good SEO          | Server cost on every request                 |
-| Always fresh, per-user data              | Slower Time to First Byte than static files  |
-| Works before JavaScript loads (no input) | Hydration ships and runs the same code twice |
+| Strengths              | Weaknesses                    |
+| ---------------------- | ----------------------------- |
+| Fast first content     | Rendering cost per request    |
+| Request-specific pages | Higher TTFB than static files |
+| HTML before JavaScript | Hydration delays controls     |
 
 ## Interview questions
 
@@ -86,6 +84,14 @@ Fetch data in parallel and close to the database, so the server is not waiting o
 </InterviewQuestion>
 
 <DeepDive>
+
+### Design details
+
+- Content is visible after one round trip, which helps First Contentful Paint and Largest Contentful Paint.
+- Crawlers and link previews get real HTML, with no JavaScript needed.
+- The page looks ready before hydration finishes, so clicks can be ignored for a moment.
+- Every request costs server rendering time, which raises Time to First Byte under load.
+- Cache public pages at the CDN and stream the response to soften the cost.
 
 ### How it works
 
