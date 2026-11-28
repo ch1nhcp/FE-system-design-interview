@@ -4,17 +4,17 @@ An interactive checklist of front end system design interview topics, built with
 
 ## Tech Stack
 
-- **Framework** — Next.js 16 (App Router), React 19, React Compiler enabled
-- **Language** — TypeScript (strict, `noUncheckedIndexedAccess`)
-- **Styling** — Tailwind CSS v4, `tw-animate-css`
-- **UI** — shadcn/ui (radix-nova style), Lucide icons, Sonner toasts, next-themes
-- **i18n** — next-intl (`/` for English default, `/vi` for Vietnamese)
-- **Client state** — Zustand
-- **Server state / data fetching** — TanStack Query v5 (+ devtools)
-- **Forms** — React Hook Form + `@hookform/resolvers` (Zod)
-- **Validation** — Zod (shared client/server schemas)
-- **Env vars** — T3 Env with Zod validation
-- **Tooling** — pnpm, oxlint, oxfmt, husky, commitlint, renovate
+- **Framework** - Next.js 16 (App Router), React 19, React Compiler enabled
+- **Language** - TypeScript (strict, `noUncheckedIndexedAccess`)
+- **Styling** - Tailwind CSS v4, `tw-animate-css`
+- **UI** - shadcn/ui (radix-nova style), Lucide icons, Sonner toasts, next-themes
+- **i18n** - next-intl (`/` for English default, `/vi` for Vietnamese)
+- **Client state** - Zustand
+- **Server state / data fetching** - TanStack Query v5 (+ devtools)
+- **Forms** - React Hook Form + `@hookform/resolvers` (Zod)
+- **Validation** - Zod (shared client/server schemas)
+- **Env vars** - T3 Env with Zod validation
+- **Tooling** - pnpm, oxlint, oxfmt, husky, commitlint, renovate
 
 ## Prerequisites
 
@@ -28,46 +28,68 @@ pnpm install
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). English is served at `/`, Vietnamese at `/vi`.
+Open [http://localhost:3000](http://localhost:3000).
+English is served at `/`, Vietnamese at `/vi`.
 
 ## Docker
 
-The [`Dockerfile`](./Dockerfile) uses a multi-stage build with Next.js `output: 'standalone'`
-for a minimal production image.
+The [`Dockerfile`](./Dockerfile) uses a multi-stage build with Next.js `output: 'standalone'` for a minimal production image.
 
 ```bash
-docker build -t multo .
+docker build --build-arg SITE_URL=https://your-domain.example -t multo .
 docker run -p 3000:3000 multo
 ```
 
-Pass runtime environment variables with `-e` or `--env-file .env.local`; see [`.env.example`](./.env.example) for what's validated by [`src/lib/env/`](./src/lib/env).
+The canonical origin is required when building production metadata and is retained in the image.
+Pass other runtime environment variables with `-e` or `--env-file .env.local`.
+See [`.env.example`](./.env.example) for the validated variables.
+
+## Production build
+
+Set `SITE_URL` to the actual canonical origin, without a path, query or credentials.
+Production builds fail when it is missing or invalid.
+
+```bash
+SITE_URL=https://your-domain.example pnpm build
+SITE_URL=https://your-domain.example pnpm start
+```
+
+The origin is baked into static metadata, sitemap entries, JSON-LD and share image URLs.
+Changing it requires a rebuild.
+CI uses `https://study.example.org` as a test fixture.
+The local development server defaults to `http://localhost:3000`.
+
+See [the implementation plan](./docs/PLAN.md) for content scope and [the Phase 5 audit](./docs/PHASE_5_AUDIT.md) for reproducible performance, accessibility and SEO checks.
 
 ## Scripts
 
-| Command             | Description                               |
-| ------------------- | ----------------------------------------- |
-| `pnpm dev`          | Start the development server (Turbopack). |
-| `pnpm build`        | Create a production build.                |
-| `pnpm start`        | Serve the production build.               |
-| `pnpm type-check`   | Run `next typegen` + `tsc --noEmit`.      |
-| `pnpm lint`         | Lint with oxlint.                         |
-| `pnpm lint:fix`     | Auto-fix lint issues.                     |
-| `pnpm format`       | Format with oxfmt.                        |
-| `pnpm format:check` | Check formatting without writing.         |
+| Command                  | Description                                                   |
+| ------------------------ | ------------------------------------------------------------- |
+| `pnpm dev`               | Start the development server (Turbopack).                     |
+| `pnpm build`             | Create a production build.                                    |
+| `pnpm start`             | Serve the production build.                                   |
+| `pnpm type-check`        | Run `next typegen` + `tsc --noEmit`.                          |
+| `pnpm lint`              | Lint with oxlint.                                             |
+| `pnpm lint:fix`          | Auto-fix lint issues.                                         |
+| `pnpm format`            | Format with oxfmt.                                            |
+| `pnpm format:check`      | Check formatting without writing.                             |
+| `pnpm test:coverage`     | Run units and content rules with coverage.                    |
+| `pnpm test:e2e`          | Run production desktop/mobile flows and accessibility checks. |
+| `pnpm audit:performance` | Measure a running production preview, default port 3101.      |
 
 ## Project Structure
 
-- [`src/app/[locale]/`](./src/app/[locale]) — App Router pages, locale-scoped.
-- [`src/components/`](./src/components) — Shared React components.
-- [`src/components/ui/`](./src/components/ui) — shadcn/ui primitives.
-- [`src/i18n/`](./src/i18n) — next-intl routing, navigation, and request config.
-- [`src/messages/`](./src/messages) — Translation files (`en.json`, `vi.json`).
-- [`src/stores/`](./src/stores) — Zustand stores.
-- [`src/lib/query/`](./src/lib/query) — TanStack Query client factory and provider.
-- [`src/lib/env/`](./src/lib/env) — T3 Env schemas for client/server variables.
-- [`src/proxy.ts`](./src/proxy.ts) — next-intl middleware (renamed to `proxy.ts` in Next 16).
-- [`redirects.ts`](./redirects.ts) — Redirect rules consumed by `next.config.ts`.
-- [`global.d.ts`](./global.d.ts) — next-intl `AppConfig` typing (`Locale`, `Messages`).
+- [`src/app/[locale]/`](./src/app/[locale]) - App Router pages, locale-scoped.
+- [`src/components/`](./src/components) - Shared React components.
+- [`src/components/ui/`](./src/components/ui) - shadcn/ui primitives.
+- [`src/i18n/`](./src/i18n) - next-intl routing, navigation, and request config.
+- [`src/messages/`](./src/messages) - Translation files (`en.json`, `vi.json`).
+- [`src/stores/`](./src/stores) - Zustand stores.
+- [`src/lib/query/`](./src/lib/query) - TanStack Query client factory and provider.
+- [`src/lib/env/`](./src/lib/env) - T3 Env schemas for client/server variables.
+- [`src/proxy.ts`](./src/proxy.ts) - next-intl middleware (renamed to `proxy.ts` in Next 16).
+- [`redirects.ts`](./redirects.ts) - Redirect rules consumed by `next.config.ts`.
+- [`global.d.ts`](./global.d.ts) - next-intl `AppConfig` typing (`Locale`, `Messages`).
 
 ## Internationalization
 
@@ -75,7 +97,7 @@ Locales are declared in [`src/i18n/routing.ts`](./src/i18n/routing.ts):
 
 - Default locale (English) is served without a URL prefix (`localePrefix: 'as-needed'`).
 - Vietnamese is served under `/vi`.
-- Browser language auto-detection is disabled — users switch languages explicitly via the locale switcher.
+- Browser language auto-detection is disabled - users switch languages explicitly via the locale switcher.
 
 To add a new locale:
 
@@ -86,7 +108,8 @@ To add a new locale:
 
 ## Data Fetching (TanStack Query)
 
-`QueryClientProvider` is wired in [`src/app/[locale]/layout.tsx`](./src/app/[locale]/layout.tsx) via [`src/lib/query/query-provider.tsx`](./src/lib/query/query-provider.tsx). The client is created with an `isServer` singleton so each SSR request gets a fresh instance while the browser reuses one.
+`QueryClientProvider` is wired in [`src/app/[locale]/layout.tsx`](./src/app/[locale]/layout.tsx) via [`src/lib/query/query-provider.tsx`](./src/lib/query/query-provider.tsx).
+The client is created with an `isServer` singleton so each SSR request gets a fresh instance while the browser reuses one.
 
 ```tsx
 'use client';
@@ -126,10 +149,11 @@ Run `pnpm dlx shadcn@latest add form` to install the shadcn `Form` primitive tha
 
 ## Environment Variables
 
-Managed with [T3 Env](https://env.t3.gg/). Add variables to:
+Managed with [T3 Env](https://env.t3.gg/).
+Add variables to:
 
-- [`src/lib/env/client.ts`](./src/lib/env/client.ts) — client-side (must be prefixed `NEXT_PUBLIC_`).
-- [`src/lib/env/server.ts`](./src/lib/env/server.ts) — server-side.
+- [`src/lib/env/client.ts`](./src/lib/env/client.ts) - client-side (must be prefixed `NEXT_PUBLIC_`).
+- [`src/lib/env/server.ts`](./src/lib/env/server.ts) - server-side.
 
 Values go in `.env.local` (not committed).
 
@@ -137,13 +161,13 @@ Values go in `.env.local` (not committed).
 
 Husky is configured in [`.husky/`](./.husky):
 
-- `commit-msg` — commitlint enforces [Conventional Commits](https://www.conventionalcommits.org/).
-- `post-merge` — runs `pnpm install` if `pnpm-lock.yaml` changed.
-- `pre-commit` — disabled by default. Enable with:
+- `commit-msg` - commitlint enforces [Conventional Commits](https://www.conventionalcommits.org/).
+- `post-merge` - runs `pnpm install` if `pnpm-lock.yaml` changed.
+- `pre-commit` - disabled by default. Enable with:
   ```bash
   echo 'HUSKY_ENABLED=true' > .husky/_/pre-commit.options
   ```
 
 ## License
 
-MIT — see [LICENSE.md](./LICENSE.md).
+MIT - see [LICENSE.md](./LICENSE.md).

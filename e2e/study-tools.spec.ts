@@ -3,7 +3,7 @@ import { expect, test } from './fixtures';
 test.describe('study tools', () => {
   test('opens search, follows a result and restores focus when dismissed', async ({ page }) => {
     await page.goto('/');
-    const opener = page.getByRole('button', { name: 'Search topics', exact: true });
+    const opener = page.getByRole('button', { name: /Search topics/ });
     await opener.click();
     const dialog = page.getByRole('dialog', { name: 'Search topics', exact: true });
     await expect(dialog).toBeVisible();
@@ -27,7 +27,7 @@ test.describe('study tools', () => {
       } else await route.continue();
     });
     await page.goto('/vi');
-    await page.getByRole('button', { name: 'Tìm chủ đề', exact: true }).click();
+    await page.getByRole('button', { name: /Tìm chủ đề/ }).click();
     await page.getByRole('combobox', { name: 'Tìm chủ đề', exact: true }).fill('WebSockets');
     await expect(page.getByRole('alert')).toContainText('Không tải được tìm kiếm');
     await page.getByRole('button', { name: 'Thử lại', exact: true }).click();

@@ -552,5 +552,10 @@
     "errorDescription": "Kiểm tra kết nối rồi thử lại.",
     "retry": "Thử lại",
     "keyboardHint": "Dùng phím mũi tên để chọn, Enter để mở và Escape để đóng."
+  },
+  "OpenGraph": {
+    "eyebrow": "ÔN PHỎNG VẤN",
+    "stats": "81 chủ đề / 14 phần",
+    "footer": "Học. Giải thích. Ôn lại."
   }
 }

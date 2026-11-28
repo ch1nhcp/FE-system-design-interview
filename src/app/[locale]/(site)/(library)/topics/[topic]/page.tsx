@@ -4,12 +4,15 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
 import { topicMdxComponents } from '@/components/mdx/mdx-components';
-import { topicLabelMarkup, TopicLabel } from '@/components/site/topic-label';
+import { PageStructuredData } from '@/components/site/page-structured-data';
+import { TopicLabel } from '@/components/site/topic-label';
 import { TopicProgressControls } from '@/components/topic/topic-progress-controls';
 import { Link } from '@/i18n/navigation';
 import { resolveLocale } from '@/i18n/resolve-locale';
 import { routing } from '@/i18n/routing';
 import { getTopicContent } from '@/lib/content/topic-source';
+import { createPageMetadata } from '@/lib/seo/metadata';
+import { getPageInfo } from '@/lib/seo/page-info';
 import { TOPIC_SLUGS, getAdjacentTopics, getTopicSections, isTopicSlug } from '@/lib/topics/registry';
 
 type Props = {
@@ -28,11 +31,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!isTopicSlug(topic)) {
     return {};
   }
-  const t = await getTranslations({ locale, namespace: 'Topics' });
-  return {
-    title: t.markup(topic, topicLabelMarkup),
-    description: getTopicContent(topic, locale)?.page.data.description,
-  };
+  const info = await getPageInfo(locale, `topic-${topic}`);
+  return info ? createPageMetadata(info, locale) : {};
 }
 
 const linkClassName =
@@ -61,6 +61,7 @@ export default async function TopicPage({ params }: Props) {
 
   return (
     <article className="flex flex-col gap-6">
+      <PageStructuredData info={await getPageInfo(locale, `topic-${topic}`)} locale={locale} />
       <nav aria-label={t('breadcrumb')}>
         <ol className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm">
           <li>

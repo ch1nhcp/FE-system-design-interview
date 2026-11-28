@@ -33,12 +33,10 @@ export function SearchLauncher() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" aria-label={t('title')}>
+        <Button variant="outline" aria-keyshortcuts="Meta+K Control+K">
           <SearchIcon aria-hidden data-icon="inline-start" />
-          <span className="hidden md:inline">{t('title')}</span>
-          <kbd aria-hidden className="text-muted-foreground hidden text-xs lg:inline">
-            ⌘ / Ctrl K
-          </kbd>
+          <span className="sr-only @min-[48rem]/site-header:not-sr-only">{t('title')}</span>
+          <kbd className="text-muted-foreground hidden text-xs @min-[64rem]/site-header:inline">⌘ / Ctrl K</kbd>
         </Button>
       </DialogTrigger>
       {open && (

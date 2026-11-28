@@ -39,7 +39,7 @@ export function LocaleSwitcher() {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-muted-foreground sr-only text-sm sm:not-sr-only">{t('label')}</span>
+      <span className="text-muted-foreground sr-only text-sm @min-[40rem]/site-header:not-sr-only">{t('label')}</span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm">

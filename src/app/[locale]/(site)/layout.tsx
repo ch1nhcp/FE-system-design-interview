@@ -1,11 +1,20 @@
-import { useTranslations } from 'next-intl';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 import { MAIN_CONTENT_ID } from '@/components/site/constants';
 import { ProgressHydrator } from '@/components/site/progress-hydrator';
 import { SiteHeader } from '@/components/site/site-header';
+import { resolveLocale } from '@/i18n/resolve-locale';
 
-export default function SiteLayout({ children }: { children: React.ReactNode }) {
-  const t = useTranslations('Site');
+export default async function SiteLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
+  const locale = await resolveLocale(params);
+  setRequestLocale(locale);
+  const t = await getTranslations('Site');
 
   return (
     <div className="flex min-h-screen flex-col">

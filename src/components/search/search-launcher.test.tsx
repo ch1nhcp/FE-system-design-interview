@@ -59,7 +59,7 @@ describe('SearchLauncher', () => {
   it('restores focus when the reader dismisses search', async () => {
     const user = userEvent.setup();
     renderWithIntl(<SearchLauncher />);
-    const opener = screen.getByRole('button', { name: 'Search topics' });
+    const opener = screen.getByRole('button', { name: /Search topics/ });
     await user.click(opener);
     await screen.findByRole('combobox');
     await user.keyboard('{Escape}');
@@ -70,7 +70,7 @@ describe('SearchLauncher', () => {
     engine.fail = true;
     const user = userEvent.setup();
     renderWithIntl(<SearchLauncher />);
-    await user.click(screen.getByRole('button', { name: 'Search topics' }));
+    await user.click(screen.getByRole('button', { name: /Search topics/ }));
     await user.type(await screen.findByRole('combobox'), 'socket');
     expect(screen.getByRole('alert')).toHaveTextContent('Search could not load');
     await user.click(screen.getByRole('button', { name: 'Try again' }));
@@ -83,7 +83,7 @@ describe('SearchLauncher', () => {
     renderWithIntl(<SearchLauncher />);
     fireEvent.keyDown(document, { key: 'k', ctrlKey: true, isComposing: true });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Search topics' }));
+    await user.click(screen.getByRole('button', { name: /Search topics/ }));
     await user.type(await screen.findByRole('combobox'), 'unknown');
     expect(screen.getByRole('status')).toHaveTextContent('No matching topics');
   });

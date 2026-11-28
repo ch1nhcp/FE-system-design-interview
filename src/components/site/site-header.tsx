@@ -13,7 +13,7 @@ export function SiteHeader() {
 
   return (
     <header className="bg-background/90 supports-backdrop-filter:bg-background/75 sticky top-0 z-40 border-b backdrop-blur">
-      <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-2 px-4 sm:gap-4">
+      <div className="@container/site-header mx-auto flex h-14 w-full max-w-7xl items-center gap-2 px-4 sm:gap-4">
         <MobileNav />
         <Link
           href="/"
@@ -21,7 +21,7 @@ export function SiteHeader() {
         >
           {t('name')}
         </Link>
-        <MainNavLinks className="hidden sm:block" />
+        <MainNavLinks className="hidden @min-[40rem]/site-header:block" />
         <div className="ml-auto flex items-center gap-2">
           <SearchLauncher />
           <ThemeToggle />
