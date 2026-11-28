@@ -1,0 +1,125 @@
+---
+description: Client hỏi server theo chu kỳ cố định để lấy dữ liệu mới, kể cả khi không có gì thay đổi.
+visual: animation
+related: [long-polling, server-sent-events, websockets, retries]
+---
+
+## Tóm tắt
+
+Client gửi request HTTP theo chu kỳ để kiểm tra dữ liệu mới.
+Cách này đơn giản, nhưng tốn request rỗng và có thể trễ cả một chu kỳ.
+
+<VisualPanel tabs={['animation', 'code']}>
+<VisualTab kind="animation">
+<RealtimeTransportAnimation initialMode="shortPolling" />
+</VisualTab>
+<VisualTab kind="code">
+
+```ts
+type PollOptions<T> = {
+  url: string;
+  intervalMs: number;
+  onData: (data: T) => void;
+  onError: (error: unknown) => void;
+};
+
+// Nối các setTimeout để request trước hoàn tất rồi mới lên lịch request sau.
+export function startPolling<T>({ url, intervalMs, onData, onError }: PollOptions<T>) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let stopped = false;
+
+  const poll = async () => {
+    try {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      onData((await response.json()) as T);
+    } catch (error) {
+      onError(error); // Giữ dữ liệu cũ trên màn hình và thử lại ở chu kỳ sau.
+    } finally {
+      if (!stopped) timer = setTimeout(poll, intervalMs);
+    }
+  };
+
+  void poll();
+  return () => {
+    stopped = true;
+    clearTimeout(timer);
+  };
+}
+```
+
+</VisualTab>
+</VisualPanel>
+
+## Ý chính
+
+- HTTP theo lịch, dùng được với hạ tầng hiện có.
+- Độ trễ tối đa bằng chu kỳ cộng thời gian khứ hồi.
+- Tải tăng theo tần suất hỏi.
+- Giảm tải bằng `ETag`, lịch thích ứng và dừng ở tab ẩn.
+- Hợp dữ liệu đổi chậm, như trạng thái tác vụ.
+
+## Cân nhắc
+
+| Ưu điểm                | Hạn chế                |
+| ---------------------- | ---------------------- |
+| Dễ triển khai và cache | Nhiều request rỗng     |
+| Server dễ mở rộng      | Trễ tới một chu kỳ     |
+| Qua proxy và tường lửa | Tải tăng theo tần suất |
+
+## Câu hỏi phỏng vấn
+
+<InterviewQuestion question="Khi nào chọn short polling thay cho WebSocket?">
+
+Khi dữ liệu ít thay đổi hoặc chấp nhận trễ vài giây, chẳng hạn kiểm tra tác vụ xuất báo cáo đã hoàn tất chưa.
+Polling không cần hạ tầng mới, đi qua được các proxy hạn chế kết nối và giữ server không có trạng thái riêng cho từng client.
+Chuyển sang SSE hoặc WebSocket khi cần cập nhật tức thì hoặc chi phí request rỗng trở nên đáng kể.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Giảm chi phí polling bằng cách nào?">
+
+Hỏi ít hơn: giãn chu kỳ khi dữ liệu không đổi, tăng tần suất sau thao tác của người dùng và dừng khi tab bị ẩn qua `visibilitychange`.
+Giảm kích thước phản hồi bằng request có điều kiện: gửi `If-None-Match` với `ETag` gần nhất để server trả `304 Not Modified` không kèm body.
+Thêm jitter vào chu kỳ để hàng nghìn client không cùng gửi request trong một giây.
+
+</InterviewQuestion>
+
+<InterviewQuestion question="Vì sao nối setTimeout thay vì dùng setInterval?">
+
+`setInterval` vẫn chạy theo lịch khi request trước chưa xong, khiến các request chồng lên nhau và phản hồi có thể về sai thứ tự.
+Lên lịch lần hỏi tiếp theo trong `finally` giữ tối đa một request đang chạy và tự giãn tốc độ khi server chậm.
+
+</InterviewQuestion>
+
+<DeepDive>
+
+### Cơ chế hoạt động
+
+Request HTTP quen thuộc giúp việc triển khai và gỡ lỗi đơn giản.
+Mỗi lần hỏi là một lượt trao đổi HTTP đầy đủ.
+Tái sử dụng kết nối giúp giảm chi phí, nhưng mỗi request vẫn mang header, cookie và thông tin xác thực.
+Request HTTP thông thường dùng được với server, cache và bộ cân bằng tải hiện có.
+Server trả trạng thái hiện tại rồi không cần nhớ client đến lần hỏi sau, nên dễ mở rộng theo chiều ngang.
+Đây là lựa chọn hợp lý cho dashboard đổi chậm hoặc trạng thái tác vụ chấp nhận trễ vài giây.
+
+### Trường hợp biên
+
+- Tab ẩn: trình duyệt giảm tần suất timer ở nền, nên kiểm tra `document.visibilityState` và hỏi ngay khi tab hiện lại.
+- Phản hồi sai thứ tự: nếu request có thể chồng nhau, chẳng hạn sau khi làm mới thủ công, bỏ qua phản hồi cũ hơn dữ liệu đang hiển thị.
+- Mất mạng: bỏ qua các lần hỏi khi `navigator.onLine` là `false` và hỏi lại khi nhận sự kiện `online`.
+- Nhiều tab: mỗi tab tự polling sẽ nhân tải; dùng `BroadcastChannel` hoặc shared worker để một tab hỏi thay cho các tab khác.
+
+### Lỗi thường gặp
+
+- Dùng `setInterval` khiến request dồn lại khi server chậm.
+- Quên dừng polling khi component bị unmount, làm rò rỉ timer và request.
+- Cho mọi client cùng chu kỳ mà không có jitter, tạo đỉnh lưu lượng.
+- Hỏi mỗi giây dù dữ liệu chỉ đổi mỗi giờ.
+
+### Tài liệu tham khảo
+
+- [Page Visibility API trên MDN](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API)
+- [Request HTTP có điều kiện trên MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Conditional_requests)
+
+</DeepDive>

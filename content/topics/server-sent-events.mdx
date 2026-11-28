@@ -6,9 +6,7 @@ related: [websockets, long-polling, short-polling, offline-usage]
 
 ## TL;DR
 
-The browser opens an `EventSource`, a normal HTTP request whose response never ends.
-The server writes events into that stream as soon as it has them, and the browser reconnects on its own if the connection drops.
-Data only flows from server to client.
+SSE streams server events over HTTP with automatic reconnect.
 
 <VisualPanel tabs={['animation', 'code']}>
 <VisualTab kind="animation">
@@ -58,20 +56,20 @@ data: {"id":"42","title":"New comment on your post"}
 
 ## Key points
 
-- One way, from server to client; the client sends data with normal requests.
-- The browser reconnects automatically and sends `Last-Event-ID`, so the server can replay missed events.
-- Plain HTTP with `Content-Type: text/event-stream`, so cookies, HTTP/2 and most infrastructure just work.
-- Text only, and the native `EventSource` cannot set custom headers such as `Authorization`.
-- A great fit for notifications, live feeds, progress updates and streaming AI responses.
+- One way; use separate requests for client writes.
+- Automatic reconnect includes `Last-Event-ID`.
+- Plain HTTP, cookies and HTTP/2.
+- Text only; native `EventSource` has no custom headers.
+- Best for feeds, notifications, progress and AI streams.
 
 ## Trade-offs
 
-| Strengths                          | Weaknesses                                       |
-| ---------------------------------- | ------------------------------------------------ |
-| Reconnection and replay built in   | Server to client only                            |
-| Plain HTTP, easy auth with cookies | Text only, no custom headers in `EventSource`    |
-| Very little client code            | Proxies may buffer the stream unless told not to |
-| Multiplexed for free over HTTP/2   | About six streams per domain on HTTP/1.1         |
+| Strengths              | Weaknesses                |
+| ---------------------- | ------------------------- |
+| Automatic reconnect    | Server owns replay        |
+| Plain HTTP and cookies | One way, text only        |
+| Small client API       | Proxies can buffer events |
+| HTTP/2 multiplexing    | HTTP/1.1 connection limit |
 
 ## Interview questions
 
@@ -100,6 +98,25 @@ Proxies that buffer responses delay events, so disable buffering (`X-Accel-Buffe
 </InterviewQuestion>
 
 <DeepDive>
+
+### Design details
+
+The browser opens an `EventSource`, a normal HTTP request whose response never ends.
+The server writes events into that stream as soon as it has them, and the browser reconnects on its own if the connection drops.
+Data only flows from server to client.
+
+- One way, from server to client; the client sends data with normal requests.
+- The browser reconnects automatically and sends `Last-Event-ID`, so the server can replay missed events.
+- Plain HTTP with `Content-Type: text/event-stream`, so cookies, HTTP/2 and most infrastructure just work.
+- Text only, and the native `EventSource` cannot set custom headers such as `Authorization`.
+- A great fit for notifications, live feeds, progress updates and streaming AI responses.
+
+| Strengths                                             | Weaknesses                                       |
+| ----------------------------------------------------- | ------------------------------------------------ |
+| Browser reconnects; server retains and replays events | Server to client only                            |
+| Plain HTTP, easy auth with cookies                    | Text only, no custom headers in `EventSource`    |
+| Very little client code                               | Proxies may buffer the stream unless told not to |
+| Multiplexed for free over HTTP/2                      | About six streams per domain on HTTP/1.1         |
 
 ### How it works
 

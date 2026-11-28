@@ -1,0 +1,17 @@
+## Cách lựa chọn
+
+Bắt đầu từ hai câu hỏi: bên nào gửi dữ liệu và dữ liệu cần đến nhanh đến mức nào?
+Nếu chỉ server có dữ liệu mới và chấp nhận trễ vài giây, dùng polling.
+Nếu chỉ server gửi nhưng cập nhật cần tức thì, dùng server-sent events.
+Nếu cả hai phía thường xuyên gửi, dùng WebSocket.
+Long polling là phương án dự phòng khi mạng không cho phép hai cách truyền luồng trên.
+
+|                        | Short polling                         | Long polling                    | Server-sent events                          | WebSocket                              |
+| ---------------------- | ------------------------------------- | ------------------------------- | ------------------------------------------- | -------------------------------------- |
+| Hướng truyền           | Client hỏi                            | Client hỏi, server chờ          | Server xuống client                         | Hai chiều                              |
+| Độ trễ                 | Tối đa một chu kỳ                     | Khoảng một lượt khứ hồi         | Gần tức thì                                 | Gần tức thì                            |
+| Request lãng phí       | Nhiều                                 | Chủ yếu khi hết thời gian chờ   | Không có lượt hỏi định kỳ                   | Không có lượt hỏi định kỳ              |
+| Kết nối                | Một request mỗi lần                   | Một request được giữ chờ        | Một response HTTP sống lâu                  | Một kết nối TCP được nâng cấp          |
+| Kết nối lại và phát bù | Hỏi trạng thái ở lần sau              | Tự triển khai với cursor        | Trình duyệt nối lại; server phát bù theo ID | Tự triển khai                          |
+| Hạ tầng                | Server HTTP bất kỳ                    | Server bất đồng bộ, timeout dài | HTTP không giữ phản hồi trong bộ đệm        | Cân bằng tải hỗ trợ WebSocket, pub/sub |
+| Phù hợp                | Trạng thái tác vụ, dashboard đổi chậm | Dự phòng, thông báo đơn giản    | Bảng tin, thông báo, phản hồi AI dạng luồng | Chat, cộng tác, game                   |

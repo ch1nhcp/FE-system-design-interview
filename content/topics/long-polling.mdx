@@ -6,9 +6,8 @@ related: [short-polling, server-sent-events, websockets, retries]
 
 ## TL;DR
 
-The client sends a request and the server keeps it open until there is new data, then responds.
-The client immediately sends the next request, so updates arrive almost instantly over plain HTTP.
-When nothing happens before a timeout, the server answers empty and the client simply asks again.
+The server holds an HTTP request until data arrives or a timeout expires.
+The client immediately asks again, using a cursor to catch events between requests.
 
 <VisualPanel tabs={['animation', 'code']}>
 <VisualTab kind="animation">
@@ -65,19 +64,19 @@ export async function longPoll<T>(url: string, onEvents: (events: T[]) => void, 
 
 ## Key points
 
-- Updates arrive about one round trip after they are ready, over ordinary HTTP.
-- Every update still costs a full request and response, headers included.
-- Each waiting client holds a request open, so the server must keep many idle requests cheaply.
-- Answer before proxies and load balancers cut idle connections, typically after 20 to 60 seconds.
-- Send a cursor, the id of the last event seen, so events between two requests are not lost.
+- Near real-time updates over ordinary HTTP.
+- Every update still costs a request, response and headers.
+- Servers must hold idle requests cheaply.
+- Respond before proxy and load-balancer timeouts.
+- Use a cursor to recover events between requests.
 
 ## Trade-offs
 
-| Strengths                                | Weaknesses                                |
-| ---------------------------------------- | ----------------------------------------- |
-| Near real-time without a new protocol    | One request and response per update       |
-| Works where WebSockets are blocked       | Servers hold many open requests           |
-| Fewer empty responses than short polling | Missed and duplicate events need a cursor |
+| Strengths                | Weaknesses                      |
+| ------------------------ | ------------------------------- |
+| No new protocol          | One HTTP round trip per update  |
+| Works without WebSockets | Many open requests              |
+| Fewer empty responses    | Cursor and deduplication needed |
 
 ## Interview questions
 
@@ -107,6 +106,24 @@ On HTTP/1.1 a browser allows about six connections per domain, and each pending 
 </InterviewQuestion>
 
 <DeepDive>
+
+### Design details
+
+The client sends a request and the server keeps it open until there is new data, then responds.
+The client immediately sends the next request, so updates arrive almost instantly over plain HTTP.
+When nothing happens before a timeout, the server answers empty and the client simply asks again.
+
+- Updates arrive about one round trip after they are ready, over ordinary HTTP.
+- Every update still costs a full request and response, headers included.
+- Each waiting client holds a request open, so the server must keep many idle requests cheaply.
+- Answer before proxies and load balancers cut idle connections, typically after 20 to 60 seconds.
+- Send a cursor, the id of the last event seen, so events between two requests are not lost.
+
+| Strengths                                | Weaknesses                                |
+| ---------------------------------------- | ----------------------------------------- |
+| Near real-time without a new protocol    | One request and response per update       |
+| Works where WebSockets are blocked       | Servers hold many open requests           |
+| Fewer empty responses than short polling | Missed and duplicate events need a cursor |
 
 ### How it works
 

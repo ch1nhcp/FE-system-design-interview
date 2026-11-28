@@ -222,3 +222,28 @@ The actual production domain remains a deployment configuration input; no deploy
 The remaining implementation phase is all 81 Vietnamese topic translations and all 14 Vietnamese section overviews.
 Phase 5 validation passes 853 unit tests with 94.48% line coverage and 222 E2E tests, with ten device-specific skips.
 The final standards and spec reviews have no unresolved findings.
+
+## Phase 6 progress
+
+The first translation batch adds all four Real-time updates lessons and its section overview.
+Vietnamese coverage is now 4 of 81 unique topics and 1 of 14 section overviews.
+The translations include descriptions, prose, example comments and display strings, interview questions, answers and reference labels.
+Search and flashcards consume the translated MDX rather than maintaining a second catalog.
+Content tests require the completed Vietnamese section and check translated hierarchy, navigation, code-example languages, question counts and reference URLs against the English source.
+
+| Batch     | Sections                       | Vietnamese topics | Overviews  | Status    |
+| --------- | ------------------------------ | ----------------- | ---------- | --------- |
+| 1         | Real-time updates              | 4                 | 1          | In review |
+| 2         | Architecture, State management | 9 planned         | 2 planned  | Next      |
+| Remaining | The other 11 sections          | 68 planned        | 11 planned | Pending   |
+
+An audit of all 81 English desktop summaries found thirteen early lessons above the 820-pixel limit.
+This batch compacts the four Real-time summaries while retaining their original detail in the collapsed deep dive.
+The remaining nine are the Architecture and State management lessons, scheduled for the next translation batch.
+The SSE comparison now distinguishes browser reconnection and event IDs from server-owned retention and replay.
+All eight reference URLs in this batch return HTTP 200.
+The standards and spec reviews have no unresolved findings for this batch.
+Production build, types, lint and formatting pass, along with 892 unit tests at 94.48% line coverage.
+All 229 desktop/mobile E2E tests pass, with eleven device-specific skips.
+All eight English/Vietnamese Real-time summaries stay below 813 pixels at a 1440 by 900 viewport.
+Desktop light/dark and 320-pixel mobile screenshots were checked, including translated code and the section comparison table.

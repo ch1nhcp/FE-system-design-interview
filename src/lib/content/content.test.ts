@@ -17,6 +17,15 @@ const EM_DASH = String.fromCodePoint(0x20_14);
 const topicFiles = readdirSync(TOPICS_DIR);
 const sectionFiles = readdirSync(SECTIONS_DIR);
 
+describe('completed Vietnamese real-time section', () => {
+  it('has a translated overview and every registered lesson', () => {
+    expect(sectionFiles).toContain('real-time-updates.vi.mdx');
+    for (const topic of getSection('real-time-updates')?.topics ?? []) {
+      expect(topicFiles).toContain(`${topic}.vi.mdx`);
+    }
+  });
+});
+
 describe.each(SECTIONS.map(({ slug }) => slug))('completed English section: %s', (slug) => {
   it('has a cheatsheet for every registered topic', () => {
     const section = getSection(slug);
@@ -58,6 +67,7 @@ describe.each(topicFiles)('content/topics/%s', (file) => {
   const match = FILE_NAME.exec(file);
   const source = readFileSync(path.join(TOPICS_DIR, file), 'utf8');
   const frontmatter = topicFrontmatterSchema.safeParse(parseFrontmatter(source));
+  const isVietnamese = match?.groups?.locale === 'vi';
 
   it('is named <topic>.mdx or <topic>.<locale>.mdx for a known topic and locale', () => {
     expect(match, 'file name').not.toBeNull();
@@ -78,11 +88,13 @@ describe.each(topicFiles)('content/topics/%s', (file) => {
 
   it('fits the one-screen cheatsheet: short TL;DR, a few key points and interview questions', () => {
     // Markdown in this repo puts one sentence per line, so lines count sentences.
-    const tldr = sectionLines(source, 'TL;DR');
+    const tldr = sectionLines(source, isVietnamese ? 'Tóm tắt' : 'TL;DR');
     expect(tldr.length, 'TL;DR sentences').toBeGreaterThanOrEqual(1);
     expect(tldr.length, 'TL;DR sentences').toBeLessThanOrEqual(3);
 
-    const keyPoints = sectionLines(source, 'Key points').filter((line) => line.startsWith('- '));
+    const keyPoints = sectionLines(source, isVietnamese ? 'Ý chính' : 'Key points').filter((line) =>
+      line.startsWith('- '),
+    );
     expect(keyPoints.length, 'key points').toBeGreaterThanOrEqual(3);
     expect(keyPoints.length, 'key points').toBeLessThanOrEqual(5);
 
@@ -92,7 +104,11 @@ describe.each(topicFiles)('content/topics/%s', (file) => {
   });
 
   it('keeps everything else in a deep dive with references', () => {
-    expect(source).toMatch(/<DeepDive>[\s\S]*### References[\s\S]*<\/DeepDive>/);
+    expect(source).toMatch(
+      isVietnamese
+        ? /<DeepDive>[\s\S]*### Tài liệu tham khảo[\s\S]*<\/DeepDive>/
+        : /<DeepDive>[\s\S]*### References[\s\S]*<\/DeepDive>/,
+    );
   });
 
   it('has a visual panel whose tabs match its content, starting with the declared visual', () => {
@@ -123,5 +139,32 @@ describe.each(sectionFiles)('content/sections/%s', (file) => {
 
   it('never uses an em dash', () => {
     expect(source).not.toContain(EM_DASH);
+  });
+});
+
+describe.each(topicFiles.filter((file) => file.endsWith('.vi.mdx')))('translation completeness: %s', (file) => {
+  it('preserves navigation, examples, references and the number of questions', () => {
+    const source = readFileSync(path.join(TOPICS_DIR, file), 'utf8');
+    const original = readFileSync(path.join(TOPICS_DIR, file.replace('.vi.mdx', '.mdx')), 'utf8');
+    const translatedMetadata = topicFrontmatterSchema.parse(parseFrontmatter(source));
+    const originalMetadata = topicFrontmatterSchema.parse(parseFrontmatter(original));
+    expect(translatedMetadata.visual).toBe(originalMetadata.visual);
+    expect(translatedMetadata.related).toEqual(originalMetadata.related);
+    expect(source.match(/<InterviewQuestion /g)?.length).toBe(original.match(/<InterviewQuestion /g)?.length);
+    expect(source.match(/^```[a-z0-9-]+/gm)).toEqual(original.match(/^```[a-z0-9-]+/gm));
+    const referenceUrls = (text: string) => [...text.matchAll(/\]\((https?:\/\/[^)]+)\)/g)].map((match) => match[1]);
+    expect(referenceUrls(source)).toEqual(referenceUrls(original));
+    for (const heading of [
+      '## Tóm tắt',
+      '## Ý chính',
+      '## Cân nhắc',
+      '## Câu hỏi phỏng vấn',
+      '### Cơ chế hoạt động',
+      '### Trường hợp biên',
+      '### Lỗi thường gặp',
+      '### Tài liệu tham khảo',
+    ]) {
+      expect(source).toContain(`${heading}\n`);
+    }
   });
 });

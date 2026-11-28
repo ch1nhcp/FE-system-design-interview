@@ -1,9 +1,9 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 import { createProcessor } from '@mdx-js/mdx';
 import { describe, expect, it } from 'vitest';
 
-import { TOPIC_SLUGS } from '@/lib/topics/registry';
+import { isTopicSlug } from '@/lib/topics/registry';
 
 import { extractFlashcards } from './flashcards';
 
@@ -80,17 +80,22 @@ const budget = 3;
     ]);
   });
 
-  it.each(TOPIC_SLUGS)('builds usable cards from the real %s lesson', (topic) => {
-    const source = readFileSync(`content/topics/${topic}.mdx`, 'utf8');
-    const cards = extractFlashcards(topic, createProcessor().parse(source));
-    expect(cards.length).toBeGreaterThanOrEqual(2);
-    expect(cards.length).toBeLessThanOrEqual(4);
-    for (const card of cards) {
-      expect(card.question.trim()).not.toBe('');
-      expect(card.answer.length).toBeGreaterThan(0);
-    }
-    expect(new Set(cards.map(({ id }) => id)).size).toBe(cards.length);
-  });
+  it.each(readdirSync('content/topics').filter((file) => file.endsWith('.mdx')))(
+    'builds usable cards from the real %s lesson',
+    (file) => {
+      const topic = file.split('.')[0] ?? '';
+      if (!isTopicSlug(topic)) throw new Error(`Unknown topic in ${file}`);
+      const source = readFileSync(`content/topics/${file}`, 'utf8');
+      const cards = extractFlashcards(topic, createProcessor().parse(source));
+      expect(cards.length).toBeGreaterThanOrEqual(2);
+      expect(cards.length).toBeLessThanOrEqual(4);
+      for (const card of cards) {
+        expect(card.question.trim()).not.toBe('');
+        expect(card.answer.length).toBeGreaterThan(0);
+      }
+      expect(new Set(cards.map(({ id }) => id)).size).toBe(cards.length);
+    },
+  );
 
   it('preserves quoted guidance and hard line breaks', () => {
     const tree = createProcessor().parse(

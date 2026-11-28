@@ -6,9 +6,8 @@ related: [server-sent-events, long-polling, retries, conflict-resolution]
 
 ## TL;DR
 
-A WebSocket starts as an HTTP request that asks to upgrade the connection.
-Once the server agrees, the same TCP connection stays open and both sides can send small messages at any time.
-It gives the lowest latency in both directions, but reconnection, heartbeats and scaling are up to you.
+A WebSocket upgrades HTTP to a persistent, two-way connection.
+It has low latency and small frames, but the app owns recovery and resync.
 
 <VisualPanel tabs={['animation', 'code']}>
 <VisualTab kind="animation">
@@ -61,19 +60,19 @@ export function connect<In, Out>(url: string, onMessage: (message: In) => void):
 
 ## Key points
 
-- Full duplex: both sides send messages on one long-lived connection.
-- After the handshake each message adds only 2 to 14 bytes of framing instead of full HTTP headers.
-- No built-in reconnection, message ids or delivery guarantees; you add heartbeats, backoff and resync.
-- Each connection lives on one server, so broadcasting needs pub/sub across servers, and load balancers need long idle timeouts.
-- Best for chat, collaboration, multiplayer and trading, where both sides talk often.
+- Both sides send on one persistent connection.
+- Frames add 2 to 14 bytes after the handshake.
+- Add heartbeats, backoff, IDs and delivery guarantees.
+- Scale broadcasts with pub/sub and long idle timeouts.
+- Best for chat, collaboration, games and trading.
 
 ## Trade-offs
 
-| Strengths                         | Weaknesses                                      |
-| --------------------------------- | ----------------------------------------------- |
-| Lowest latency in both directions | Reconnection, heartbeats and resync are on you  |
-| Tiny per-message overhead         | Stateful servers are harder to scale and deploy |
-| Text and binary messages          | Some corporate proxies block the upgrade        |
+| Strengths                | Weaknesses                   |
+| ------------------------ | ---------------------------- |
+| Low latency both ways    | App owns recovery and resync |
+| Small message overhead   | Stateful servers and deploys |
+| Text and binary messages | Some proxies block upgrades  |
 
 ## Interview questions
 
@@ -93,7 +92,7 @@ On deploys, drain connections gradually and let clients reconnect with jitter to
 
 </InterviewQuestion>
 
-<InterviewQuestion question="Which would you use for a chat app: WebSockets, SSE or long polling?">
+<InterviewQuestion question="Which transport would you choose for chat?">
 
 WebSockets: users send and receive often, and typing indicators need low latency both ways.
 SSE plus normal `POST` requests is a simpler option when sending is rare.
@@ -102,6 +101,24 @@ Long polling is the fallback when neither gets through the network.
 </InterviewQuestion>
 
 <DeepDive>
+
+### Design details
+
+A WebSocket starts as an HTTP request that asks to upgrade the connection.
+Once the server agrees, the same TCP connection stays open and both sides can send small messages at any time.
+It gives the lowest latency in both directions, but reconnection, heartbeats and scaling are up to you.
+
+- Full duplex: both sides send messages on one long-lived connection.
+- After the handshake each message adds only 2 to 14 bytes of framing instead of full HTTP headers.
+- No built-in reconnection, message ids or delivery guarantees; you add heartbeats, backoff and resync.
+- Each connection lives on one server, so broadcasting needs pub/sub across servers, and load balancers need long idle timeouts.
+- Best for chat, collaboration, multiplayer and trading, where both sides talk often.
+
+| Strengths                         | Weaknesses                                      |
+| --------------------------------- | ----------------------------------------------- |
+| Lowest latency in both directions | Reconnection, heartbeats and resync are on you  |
+| Tiny per-message overhead         | Stateful servers are harder to scale and deploy |
+| Text and binary messages          | Some corporate proxies block the upgrade        |
 
 ### How it works
 
