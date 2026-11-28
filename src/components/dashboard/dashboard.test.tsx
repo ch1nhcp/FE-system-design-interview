@@ -85,6 +85,20 @@ describe('Dashboard', () => {
     expect(screen.getByRole('checkbox', { name: 'Learned: CORS' })).not.toBeChecked();
   });
 
+  it('filters the checklist to topics marked for review without changing overall progress', async () => {
+    const user = userEvent.setup();
+    useProgressStore.setState({ topics: { cors: 'review', xss: 'learned' } });
+    renderWithIntl(<Dashboard />);
+    await user.click(screen.getByRole('radio', { name: 'Review again' }));
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1);
+    expect(screen.getByRole('checkbox', { name: 'Learned: CORS' })).toBeInTheDocument();
+    expect(screen.getByText('1 of 81 done')).toBeInTheDocument();
+    await user.click(screen.getByRole('checkbox', { name: 'Learned: CORS' }));
+    expect(screen.getByRole('status')).toHaveFocus();
+    await user.click(screen.getByRole('radio', { name: 'All topics' }));
+    expect(screen.getAllByRole('checkbox')).toHaveLength(85);
+  });
+
   it('highlights a section once every topic in it is learned', () => {
     useProgressStore.setState({
       topics: { 'event-sourcing': 'learned', 'flux-architecture': 'learned', 'normalized-state': 'learned' },

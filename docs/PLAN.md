@@ -184,3 +184,22 @@ The new topics use code and diagrams to explain trust boundaries, language-sensi
 - `FlowDiagram`: a vertical chain of steps with an optional loop, for topics about structure rather than timing.
 - `AnimationFrame` and `useTimelinePlayback` hold what every step-through animation shares, so a new animation only needs a model and a picture.
 - The animations originally planned through the Performance batch are implemented.
+
+## Phase 4 progress
+
+- RADIO now has an original guide in both UI languages, with suggested practice pacing, concrete prompts and links to relevant lessons.
+- Search evaluates and uses Fumadocs' built-in multilingual static index, exported at `/api/search` and loaded when the search dialog is used.
+- The dialog supports the header trigger, Cmd/Ctrl+K, keyboard selection, Escape, focus return and a recoverable index-load failure.
+- Flashcards are extracted from the authored `InterviewQuestion` MDX AST, preserving answer paragraphs, code, lists, emphasis and links without evaluating arbitrary expressions.
+- Flashcards support section and review filters, answer reveal, previous/next navigation and the existing topic-level progress store.
+- The dashboard also filters the checklist to review topics while preserving overall and full-section progress counts.
+- Removing a reviewed topic moves focus to the next question, a recovery action or the checklist summary instead of leaving focus on the page body.
+- Topic translations remain Phase 6 work; flashcards retain the actual content language until each translation is published.
+
+Phase 4 validation uses a production preview on port 3101 because another worktree owns port 3100.
+All 844 unit tests pass with 96.84% line coverage.
+All 205 desktop/mobile E2E tests pass, with nine device-specific skips.
+The keyboard flow covers section selection, review filtering, empty recovery, answer reveal and previous/next navigation.
+Navigation clears the revealed answer even when returning to a previously viewed card.
+Desktop and 320-pixel mobile layouts were checked in both themes, including search focus visibility and empty review states.
+Standards and spec reviews have no unresolved findings.
